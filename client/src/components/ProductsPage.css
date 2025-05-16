@@ -1,0 +1,276 @@
+/* -----------------------------------------------
+   ProductsPage.css - Version Améliorée & Commentée
+---------------------------------------------------*/
+
+/* 🌱 Variables globales réutilisables */
+:root {
+  --primary-color: #2ecc71;
+  --primary-hover: #27ae60;
+  --text-dark: #2c3e50;
+  --text-light: #7f8c8d;
+  --success: #2ecc71;
+  --error: #e74c3c;
+  --warning: #f39c12;
+  --background: rgba(255, 255, 255, 0.9);
+  --card-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --card-shadow-hover: 0 6px 16px rgba(0, 0, 0, 0.15);
+  --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* 🌐 Conteneur principal */
+.products-container {
+  padding: 2rem;
+  background-color: var(--background);
+  min-height: 100vh;
+  max-width: 1400px;
+  margin: 0 auto;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* 🧩 En-tête */
+.products-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.products-container h2 {
+  color: var(--text-dark);
+  font-size: clamp(1.8rem, 4vw, 2.2rem);
+  position: relative;
+  margin: 0 auto;                /* Centre le bloc horizontalement */
+  text-align: center;           /* Centre le texte dans le bloc */
+  flex-basis: 100%;             /* Force le h2 à prendre toute la ligne dans le flex */
+}
+
+
+.products-container h2::after {
+  content: "";
+  display: block;
+  width: 100px;
+  height: 4px;
+  background: var(--primary-color);
+  margin: 0.75rem auto 0;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.products-container h2:hover::after {
+  width: 150px;
+}
+
+/* 🔁 Bouton de rafraîchissement */
+.refresh-button {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: var(--transition);
+}
+
+.refresh-button:hover {
+  background: rgba(46, 204, 113, 0.1);
+  transform: scale(1.05);
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 🧱 Grille des produits */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 2rem;
+  padding: 1rem;
+}
+
+/* 🧃 Carte produit */
+.product-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* 🖼️ Image produit */
+.product-image-container {
+  position: relative;
+  height: 150px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+  overflow: hidden;
+}
+
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+}
+
+.product-card:hover .product-image {
+  transform: scale(1.05);
+}
+
+/* 🏷️ Badge catégorie */
+.product-category {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.35rem 1rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* ℹ️ Infos du produit */
+.product-info {
+  padding: 1.5rem;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* Réduit l'espace entre les éléments enfants */
+}
+
+.product-card h3 {
+  margin: 0 0 0.75rem;
+  color: var(--text-dark);
+  font-size: 1.25rem;
+  text-align: center;
+  min-height: 3.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-price {
+  margin: 0; /* Supprime les marges par défaut */
+  color: var(--primary-500);
+  font-weight: 700;
+  font-size: 1.15rem;
+  text-align: center;
+}
+
+/* 🛒 Bouton CTA */
+.product-button {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 0.85rem;
+  border-radius: 25px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+  margin: 1rem 1.5rem 1.5rem;
+  width: calc(100% - 3rem);
+}
+
+.product-button:hover {
+  background-color: var(--primary-hover);
+  transform: translateY(-2px);
+}
+
+/* 📦 États spéciaux */
+.loading, .error, .no-products {
+  text-align: center;
+  padding: 3rem;
+  grid-column: 1 / -1;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+.error {
+  color: var(--error);
+  background: rgba(231, 76, 60, 0.08);
+  border-radius: 12px;
+}
+
+.no-products {
+  color: var(--text-light);
+}
+
+/* ⏳ Spinner de chargement */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 2rem;
+}
+
+/* 🖼️ Placeholder d'image */
+.image-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+/* ✨ Animation d'apparition */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.product-image.loaded {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* 📱 Responsive */
+@media (max-width: 768px) {
+  .products-container {
+    padding: 1.5rem;
+  }
+
+  .products-grid {
+    grid-template-columns: 1fr;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .products-header {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
