@@ -1,0 +1,201 @@
+/* Variables */
+:root {
+  --primary: #2ecc71;
+  --primary-dark: #27ae60;
+  --blue: #3498db;
+  --gold: #f1c40f;
+  --platinum: #95a5a6;
+  --text-dark: #2c3e50;
+  --text-light: #043311;
+  --bg-light: #ffffff;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.75);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.15);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --transition: all 0.3s ease;
+  
+}
+
+/* Base */
+.offers-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background-color: #ffffffac;
+}
+
+.offers-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.offers-header h1 {
+  font-size: 2.2rem;
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  color: var(--text-light);
+  font-size: 1.1rem;
+}
+
+/* Grille des offres */
+.offers-grid {
+  display: grid;
+  gap: 3rem;
+}
+
+.offer-category {
+  margin-bottom: 2rem;
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.category-header h2 {
+  font-size: 1.5rem;
+  color: var(--text-dark);
+}
+
+.category-header .icon {
+  font-size: 1.8rem;
+}
+
+.offer-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+/* Carte d'offre */
+.offer-card {
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  border-top: 4px solid;
+}
+
+.offer-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+}
+
+.offer-card.blue {
+  border-color: var(--blue);
+}
+
+.offer-card.gold {
+  border-color: var(--gold);
+}
+
+.offer-card.platinum {
+  border-color: var(--platinum);
+}
+
+.offer-badge {
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.offer-card.blue .offer-badge {
+  background-color: rgba(52, 152, 219, 0.1);
+  color: var(--blue);
+}
+
+.offer-card.gold .offer-badge {
+  background-color: rgba(241, 196, 15, 0.1);
+  color: var(--gold);
+}
+
+.offer-card.platinum .offer-badge {
+  background-color: rgba(149, 165, 166, 0.1);
+  color: var(--platinum);
+}
+
+.offer-features {
+  flex-grow: 1;
+  margin: 1rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.offer-features li {
+  margin-bottom: 0.8rem;
+  padding-left: 1.5rem;
+  position: relative;
+  color: var(--text-dark);
+}
+
+.offer-features li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.offer-price {
+  text-align: center;
+  margin: 1.5rem 0;
+}
+
+.price {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-dark);
+}
+
+.period {
+  font-size: 1rem;
+  color: var(--text-light);
+}
+
+.subscribe-button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.8rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  width: 100%;
+}
+
+.subscribe-button:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .offers-header h1 {
+    font-size: 1.8rem;
+  }
+  
+  .category-header h2 {
+    font-size: 1.3rem;
+  }
+  
+  .offer-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .price {
+    font-size: 1.5rem;
+  }
+}

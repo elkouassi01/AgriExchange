@@ -1,0 +1,41 @@
+/* Conteneur principal de la page */
+.page-parametres {
+  padding: 24px;
+}
+
+/* Titre principal */
+.titre-parametres {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+/* Sous-titre */
+.sous-titre-parametres {
+  color: #6c757d;
+}
+
+/* Section du bouton de sauvegarde */
+.actions-parametres {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+/* Contenu des onglets */
+.panneau-onglet-parametres {
+  padding: 24px;
+}
+
+/* Texte explicatif des interrupteurs */
+.description-interrupteur {
+  margin-top: 8px;
+  margin-left: 56px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+/* Marge verticale pour les séparateurs */
+.separateur-paiement {
+  margin: 24px 0;
+}
