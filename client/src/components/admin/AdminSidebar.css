@@ -1,0 +1,380 @@
+/* src/components/admin/AdminSidebar.css */
+.admin-sidebar-container {
+  position: relative;
+  z-index: 50;
+  height: 100vh;
+}
+
+.mobile-menu-button {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.4);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: none;
+  color: white;
+  cursor: pointer;
+}
+
+.mobile-menu-button:hover {
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 0 15px 30px -5px rgba(59, 130, 246, 0.5);
+}
+
+.mobile-menu-button svg {
+  width: 1.5rem;
+  height: 1.5rem;
+  stroke-width: 1.5;
+}
+
+.admin-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 16rem;
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  color: #e2e8f0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 
+    0 0 0 1px rgba(30, 41, 59, 0.8),
+    0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  overflow: hidden;
+}
+
+/* État replié */
+.admin-sidebar.collapsed {
+  width: 5.5rem; /* 88px */
+}
+
+.admin-sidebar-header {
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(4px);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.brand-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.2),
+    0 2px 4px -1px rgba(0, 0, 0, 0.1),
+    inset 0 0 10px rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.admin-sidebar.collapsed .brand-icon {
+  transform: scale(0.9);
+}
+
+.brand-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  transition: opacity 0.3s ease;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(to right, #f0f9ff, #e0f2fe);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.collapse-button {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #e2e8f0;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.collapse-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%) scale(1.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.admin-nav {
+  flex: 1;
+  padding: 1.5rem 0.5rem;
+  overflow-y: auto;
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  margin: 0 0.5rem;
+  border-radius: 0.75rem;
+  color: #cbd5e1;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-decoration: none;
+  position: relative;
+  overflow: visible;
+  z-index: 1;
+}
+
+.nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0) 100%);
+  transition: width 0.4s ease;
+  z-index: -1;
+}
+
+.nav-link:hover {
+  color: #f1f5f9;
+  transform: translateX(0.25rem);
+}
+
+.nav-link:hover::before {
+  width: 100%;
+}
+
+.nav-link.active {
+  background: rgba(30, 41, 59, 0.7);
+  color: #3b82f6;
+  font-weight: 500;
+  border-left: 4px solid #3b82f6;
+  box-shadow: inset 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+.nav-link.active::before {
+  width: 100%;
+}
+
+.nav-icon {
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+  transition: margin 0.3s ease;
+  font-size: 1.25rem;
+}
+
+.admin-sidebar.collapsed .nav-icon {
+  margin-right: 0;
+  font-size: 1.5rem;
+}
+
+/* Tooltip pour l'état replié */
+.nav-link .tooltip, .logout-button .tooltip {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 100;
+  margin-left: 1rem;
+  backdrop-filter: blur(10px);
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.admin-sidebar.collapsed .nav-link:hover .tooltip,
+.admin-sidebar.collapsed .logout-button:hover .tooltip {
+  opacity: 1;
+}
+
+.logout-button {
+  display: flex;
+  align-items: center;
+  width: calc(100% - 1rem);
+  padding: 0.85rem 1rem;
+  margin: 0.5rem;
+  border-radius: 0.75rem;
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  text-align: left;
+  position: relative;
+  overflow: visible; 
+  z-index: 1;
+}
+
+.logout-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0) 100%);
+  transition: width 0.4s ease;
+  z-index: -1;
+}
+
+.logout-button:hover {
+  color: #fecaca;
+  transform: translateX(0.25rem);
+}
+
+.logout-button:hover::before {
+  width: 100%;
+}
+
+/* Styles pour l'état replié */
+.admin-sidebar.collapsed .brand-text,
+.admin-sidebar.collapsed .nav-link > span:not(.nav-icon),
+.admin-sidebar.collapsed .logout-button > span {
+  display: none;
+}
+
+.admin-sidebar.collapsed .nav-link {
+  justify-content: center;
+  padding: 1rem 0;
+  margin: 0 0.75rem;
+}
+
+.admin-sidebar.collapsed .nav-icon {
+  margin-right: 0;
+}
+
+.admin-sidebar.collapsed .logout-button {
+  justify-content: center;
+  padding: 1rem 0;
+  margin: 0.5rem 0.75rem;
+}
+
+.admin-sidebar.collapsed .logout-button svg {
+  margin-right: 0;
+}
+
+/* Effet de bordure animée */
+.admin-sidebar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899);
+  background-size: 300% 300%;
+  animation: gradientBorder 3s ease infinite;
+  z-index: 2;
+}
+
+@keyframes gradientBorder {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .mobile-menu-button {
+    display: block;
+  }
+  
+  .admin-sidebar {
+    width: 16rem;
+    transform: translateX(-100%);
+  }
+  
+  .admin-sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  
+  /* En mode mobile, ignorer l'état replié */
+  .admin-sidebar.mobile-open.collapsed {
+    width: 16rem;
+  }
+  
+  .admin-sidebar.mobile-open.collapsed .brand-text,
+  .admin-sidebar.mobile-open.collapsed .nav-link > span:not(.nav-icon),
+  .admin-sidebar.mobile-open.collapsed .logout-button > span {
+    display: inline-block;
+  }
+  
+  .admin-sidebar.mobile-open.collapsed .nav-link {
+    justify-content: flex-start;
+    padding: 0.85rem 1rem;
+    margin: 0 0.5rem;
+  }
+  
+  .admin-sidebar.mobile-open.collapsed .nav-icon {
+    margin-right: 0.75rem;
+  }
+  
+  .admin-sidebar.mobile-open.collapsed .logout-button {
+    justify-content: flex-start;
+    padding: 0.85rem 1rem;
+    margin: 0.5rem;
+  }
+  
+  /* Cacher le bouton de repli en mode mobile */
+  .collapse-button {
+    display: none;
+  }
+}
+
+/* Scrollbar styling */
+.admin-nav::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-nav::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 4px;
+}
+
+.admin-nav::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-nav::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #60a5fa, #3b82f6);
+}

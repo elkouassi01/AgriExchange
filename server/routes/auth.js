@@ -1,96 +1,141 @@
 const express = require('express');
+const bcrypt = require('bcrypt');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const rateLimit = require('express-rate-limit');
-const { body, validationResult } = require('express-validator');
+const { generateToken, protect } = require('../middlewares/auth');
 
-// Limitation des tentatives de connexion pour la sécurité
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limite à 5 tentatives par fenêtre
-  message: 'Trop de tentatives de connexion, veuillez réessayer plus tard'
-});
+// =============================================
+// 🔐 CONNEXION UTILISATEUR
+// =============================================
+router.post('/connexion', async (req, res) => {
+  // ✅ Journalisation utile pour debug
+  console.log('🔍 Tentative de connexion - req.body:', req.body);
 
-// Middleware de validation
-const validateLogin = [
-  body('email').isEmail().normalizeEmail().withMessage('Email invalide'),
-  body('motDePasse').notEmpty().withMessage('Le mot de passe est requis')
-];
-
-router.post('/connexion', limiter, validateLogin, async (req, res) => {
-  // Vérification des erreurs de validation
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
+  // ✅ Vérification existence de req.body
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({
+      success: false,
+      message: 'Données manquantes ou invalides dans la requête'
+    });
   }
 
   const { email, motDePasse } = req.body;
 
-  try {
-    // Recherche de l'utilisateur en sélectionnant explicitement le mot de passe
-    const utilisateur = await User.findOne({ email }).select('+motDePasse');
-    
-    if (!utilisateur) {
-      return res.status(401).json({ 
-        message: "Identifiants incorrects" // Message générique pour la sécurité
-      });
-    }
-
-    const estValide = await utilisateur.verifierMotDePasse(motDePasse);
-    if (!estValide) {
-      return res.status(401).json({ 
-        message: "Identifiants incorrects" // Même message que ci-dessus
-      });
-    }
-
-    // Création du token JWT
-    const token = jwt.sign(
-      { 
-        id: utilisateur._id, 
-        role: utilisateur.role, 
-        nom: utilisateur.nom 
-      },
-      process.env.JWT_SECRET,
-      { 
-        expiresIn: process.env.JWT_EXPIRE || '1d',
-        issuer: process.env.JWT_ISSUER || 'votre-application'
-      }
-    );
-
-    // Options pour le cookie (si vous utilisez des cookies)
-    const cookieOptions = {
-      expires: new Date(
-        Date.now() + (process.env.JWT_COOKIE_EXPIRE || 24 * 60 * 60 * 1000)
-      ),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
-    };
-
-    // Réponse avec token et données utilisateur (sans informations sensibles)
-    res
-      .status(200)
-      .cookie('token', token, cookieOptions) // Optionnel: si vous utilisez des cookies
-      .json({
-        success: true,
-        token,
-        utilisateur: {
-          id: utilisateur._id,
-          nom: utilisateur.nom,
-          role: utilisateur.role,
-          email: utilisateur.email
-        }
-      });
-
-  } catch (err) {
-    console.error('Erreur de connexion:', err);
-    res.status(500).json({ 
+  // ✅ Validation des champs obligatoires
+  if (!email || !motDePasse) {
+    return res.status(400).json({
       success: false,
-      message: "Une erreur est survenue lors de la connexion",
-      error: process.env.NODE_ENV === 'development' ? err.message : undefined
+      message: 'Email et mot de passe requis'
     });
   }
+
+  try {
+    // 🔎 Recherche de l'utilisateur avec sélection explicite du mot de passe
+    const user = await User.findOne({ email }).select('+motDePasse');
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Identifiants invalides'
+      });
+    }
+
+    // 🔐 Vérification du mot de passe
+    const passwordMatch = await bcrypt.compare(motDePasse, user.motDePasse);
+    if (!passwordMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Mot de passe incorrect'
+      });
+    }
+
+    // ❌ Vérification si le compte est désactivé
+    if (!user.estActif) {
+      return res.status(403).json({
+        success: false,
+        message: 'Compte désactivé. Contactez l\'administrateur.'
+      });
+    }
+
+    // ✅ Génération du token
+    const token = generateToken(user);
+
+    // 🍪 Définition du cookie sécurisé (optionnel)
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      maxAge: 60 * 60 * 1000, // 1h
+      domain: process.env.NODE_ENV === 'production' ? '.votredomaine.com' : undefined
+    });
+
+    // ✅ Réponse utilisateur (sans mot de passe)
+    const userData = {
+      id: user._id,
+      nom: user.nom,
+      email: user.email,
+      role: user.role,
+      estActif: user.estActif
+    };
+
+    return res.status(200).json({
+      success: true,
+      message: 'Connexion réussie',
+      utilisateur: userData,
+      token
+    });
+
+  } catch (error) {
+    console.error('❌ [Connexion] Erreur serveur :', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// =============================================
+// ✅ INFOS DE L’UTILISATEUR CONNECTÉ
+// =============================================
+router.get('/me', protect, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session expirée ou invalide'
+      });
+    }
+
+    const userData = {
+      id: req.user._id,
+      nom: req.user.nom,
+      email: req.user.email,
+      role: req.user.role,
+      estActif: req.user.estActif
+    };
+
+    return res.status(200).json({
+      success: true,
+      utilisateur: userData
+    });
+  } catch (error) {
+    console.error('[Me] Erreur serveur :', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// =============================================
+// ✅ TEST DISPONIBILITÉ DE L'API AUTH
+// =============================================
+router.get('/', (req, res) => {
+  res.json({
+    status: 'active',
+    message: 'API Auth opérationnelle',
+    timestamp: new Date().toISOString()
+  });
 });
 
 module.exports = router;

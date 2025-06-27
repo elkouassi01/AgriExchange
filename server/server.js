@@ -5,93 +5,135 @@ const path = require('path');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-// const mongoSanitize = require('express-mongo-sanitize');
 const hpp = require('hpp');
-// const xss = require('xss-clean');
 const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
-const productRoutes = require('./routes/products');
+// 🛡️ Middlewares personnalisés
+const errorHandler = require('./middlewares/errorHandler');
+const { protect } = require('./middlewares/auth');
+
+// 📦 Routes API
 const authRoutes = require('./routes/auth');
-const errorHandler = require('./middleware/errorHandler');
+const utilisateursRoutes = require('./routes/utilisateurs');
+const productsRoutes = require('./routes/products');
+const paiementRoutes = require('./routes/paiement');
+const contactRoutes = require('./routes/contact');
+const forfaitsRoutes = require('./routes/forfaits');
+const adminRoutes = require('./routes/adminRoutes');
+const cinetpayNotifyRoutes = require('./routes/cinetpayNotify');
+const chatRoutes = require('./routes/chatRoutes');
+const userRoutes = require('./routes/userRoutes'); // 🔒 Sécurisé
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const FRONTEND_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
 
-// 1. Sécurité : en-têtes, anti-injection, cookies
-app.use(helmet());
-app.use(hpp());
-// app.use(xss());
-// app.use(mongoSanitize());
-app.use(cookieParser());
-app.use(express.json({ limit: '10kb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// 2. CORS global (React en dev)
+// ======================
+// 🔐 MIDDLEWARES DE SÉCURITÉ
+// ======================
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
+  origin: FRONTEND_ORIGIN,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept']
 }));
 
-// 3. Logging en mode développement
-if (process.env.NODE_ENV === 'development') {
+app.use(helmet());
+app.use(hpp());
+app.use(cookieParser());
+app.use(express.json({ limit: '10kb' }));           // ✅ JSON Parser pour Postman/Front
+app.use(express.urlencoded({ extended: true }));    // ✅ Pour les formulaires HTML encodés
+
+// ======================
+// 🛠️ LOGGING & RATE LIMIT
+// ======================
+if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
   console.log('🛠 Mode développement activé');
 }
 
-// 4. Protection contre le spam d'API
-const limiter = rateLimit({
+app.use('/api', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: '🚫 Trop de requêtes depuis cette IP, réessayez plus tard.'
+  message: '🚫 Trop de requêtes, réessayez plus tard.'
+}));
+
+// ======================
+// 🌱 CONNEXION MONGODB
+// ======================
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 10000
+})
+.then(() => console.log('✅ MongoDB Atlas connecté'))
+.catch((err) => {
+  console.error('❌ Erreur de connexion MongoDB :', err.message);
+  process.exit(1);
 });
-app.use('/api', limiter);
 
-// 5. Connexion MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB connecté'))
-  .catch(err => {
-    console.error('❌ Erreur MongoDB:', err);
-    process.exit(1);
-  });
-
-// 6. Exposition du dossier /uploads avec en-têtes CORS
+// ======================
+// 📂 FICHIERS STATIQUES (IMAGES)
+// ======================
 app.use('/uploads', (req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', process.env.CORS_ORIGIN || 'http://localhost:5173');
+  res.setHeader('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, express.static(path.join(__dirname, 'uploads'), {
   maxAge: '7d',
   setHeaders: (res, filePath) => {
-    if (filePath.endsWith('.jpg') || filePath.endsWith('.png') || filePath.endsWith('.jpeg')) {
+    if (/\.(jpg|jpeg|png|gif|webp)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=604800');
     }
   }
 }));
 
-// 7. Routes principales
-app.use('/api/v1/products', productRoutes);
+// ======================
+// 📡 ROUTES API
+// ======================
+// 🔓 Publiques
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/utilisateurs', utilisateursRoutes);
+app.use('/api/v1/products', productsRoutes);
+app.use('/api/v1/paiement', paiementRoutes);
+app.use('/api/v1/contact', contactRoutes);
+app.use('/api/v1/forfaits', forfaitsRoutes);
+app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/chat', chatRoutes);
+app.use('/api', cinetpayNotifyRoutes);
 
-// 8. Health check
+// 🔐 Privées (auth obligatoire)
+app.use('/api/v1/users', protect, userRoutes);
+
+// ✅ Vérification API
 app.get('/api/v1/health', (req, res) => {
-  res.status(200).json({ status: 'OK' });
+  res.status(200).json({
+    status: 'OK',
+    env: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
 });
 
-// 9. 404
+// ❌ Route non trouvée
 app.use((req, res) => {
-  res.status(404).json({ message: 'Route non trouvée' });
+  res.status(404).json({
+    success: false,
+    message: 'Route non trouvée'
+  });
 });
 
-// 10. Gestion d'erreurs
+// 🛠 Gestion centralisée des erreurs
 app.use(errorHandler);
 
-// 11. Démarrage
+// ======================
+// 🚀 LANCEMENT DU SERVEUR
+// ======================
 const server = app.listen(PORT, () => {
   console.log(`🚀 Serveur lancé sur http://localhost:${PORT}`);
 });
 
-// 12. Arrêt propre
+// 🛑 Fermeture propre (ex: Heroku)
 process.on('SIGTERM', () => {
   console.log('🛑 Arrêt du serveur...');
   server.close(() => process.exit(0));

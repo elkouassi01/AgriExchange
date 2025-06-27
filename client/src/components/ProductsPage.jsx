@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import './ProductsPage.css';
 import { useNavigate } from 'react-router-dom';
 
-const DEFAULT_IMAGE =
-  'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
+const SERVER_BASE_URL = 'http://localhost:5000';
+const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
 
-// Composant Image sécurisé
 const ProductImage = ({ src, alt, onClick }) => {
   const [imageSrc, setImageSrc] = useState(DEFAULT_IMAGE);
-     
 
   useEffect(() => {
     if (!src) {
@@ -16,10 +14,8 @@ const ProductImage = ({ src, alt, onClick }) => {
       return;
     }
 
-    // Définir l'URL de base du serveur pour les images
-    const SERVER_BASE_URL = 'http://localhost:5000';
-    
     let finalUrl;
+
     if (src.startsWith('http')) {
       finalUrl = src;
     } else if (src.startsWith('/uploads')) {
@@ -45,36 +41,66 @@ const ProductImage = ({ src, alt, onClick }) => {
 
 function ProductsPage() {
   const navigate = useNavigate();
-  const [produits, setProduits] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchProduits = async () => {
     try {
-      const res = await fetch('/api/v1/products');
+      if (!loading) setRefreshing(true);
+      
+      const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
+      
       if (!res.ok) {
-        throw new Error(`Erreur ${res.status}: ${res.statusText}`);
+        // Essayer d'extraire le message d'erreur du corps de la réponse
+        let errorMessage = `Erreur ${res.status}: ${res.statusText}`;
+        
+        try {
+          const errorData = await res.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          } else if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          console.warn("Échec d'analyse de la réponse d'erreur", parseError);
+        }
+        
+        throw new Error(errorMessage);
       }
+
       const data = await res.json();
-      console.log('📦 Produits reçus de l’API :', data);
+      console.log('📦 Réponse API:', data);
 
-      setProduits(
-        data.map((p) => {
-          const prixFormatte = `${Number(p.prix).toLocaleString('fr-FR')} FCFA / ${p.unite || 'kg'}`;
-          const imageUrl = p.imageUrl || ''; // vide si rien
-
-          return {
-            ...p,
-            prix: prixFormatte,
-            imageUrl,
-            categorie: p.categorie || 'Non classé',
-          };
-        })
-      );
-      setError(null);
+      // Gestion des différents formats de réponse
+      if (Array.isArray(data)) {
+        processProducts(data);
+      } 
+      else if (data.products && Array.isArray(data.products)) {
+        processProducts(data.products);
+      } 
+      else if (data.message) {
+        throw new Error(data.message);
+      } 
+      else {
+        throw new Error("Format de données inattendu de l'API");
+      }
     } catch (err) {
-      setError(err.message);
+      // Traduction des erreurs techniques en messages conviviaux
+      let userMessage = err.message;
+      
+      if (err.message.includes('Failed to fetch')) {
+        userMessage = "Impossible de se connecter au serveur. Vérifiez votre connexion Internet.";
+      } 
+      else if (err.message.includes('404')) {
+        userMessage = "Ressource non trouvée. Le endpoint API a peut-être changé.";
+      }
+      else if (err.message.includes('500')) {
+        userMessage = "Erreur interne du serveur. Veuillez réessayer plus tard.";
+      }
+      
+      setError(userMessage);
       console.error('Erreur API:', err);
     } finally {
       setLoading(false);
@@ -82,25 +108,75 @@ function ProductsPage() {
     }
   };
 
+  const processProducts = (products) => {
+    console.log('🔁 Traitement de', products.length, 'produits');
+    
+    if (products.length === 0) {
+      setError("Aucun produit disponible dans la base de données");
+      setCategories([]);
+      return;
+    }
+    
+    const groupedByCategory = {};
+
+    products.forEach((p) => {
+      const cat = p.categorie || p.category || 'Non classé';
+      if (!groupedByCategory[cat]) {
+        groupedByCategory[cat] = [];
+      }
+      groupedByCategory[cat].push(p);
+    });
+
+    const categoriesArray = Object.entries(groupedByCategory).map(
+      ([nom, produits]) => ({
+        nom,
+        produits,
+        imageUrl: produits.find(p => p.imageUrl)?.imageUrl || ''
+      })
+    );
+
+    setCategories(categoriesArray);
+    setError(null);
+  };
+
   useEffect(() => {
     fetchProduits();
   }, []);
 
-  if (loading)
+  if (loading) {
     return (
       <div className="products-container">
         <div className="loading">
-          <div className="loading-spinner"></div>Chargement des produits...
+          <div className="loading-spinner"></div>
+          Chargement des catégories...
         </div>
       </div>
     );
+  }
 
-  if (error)
-    return (
-      <div className="products-container">
+  return (
+    <div className="products-container">
+      <div className="products-header">
+        <h2>🌾 Nos catégories de produits</h2>
+        <button
+          onClick={fetchProduits}
+          className="refresh-button"
+          disabled={refreshing}
+          aria-label="Actualiser les produits"
+        >
+          ⟳ {refreshing ? 'Actualisation...' : 'Actualiser'}
+        </button>
+      </div>
+
+      {error ? (
         <div className="error">
           <h3>Erreur de chargement</h3>
           <p>{error}</p>
+          <div className="error-details">
+            <small>
+              Conseil: Vérifiez que le serveur est en marche à {SERVER_BASE_URL}
+            </small>
+          </div>
           <button
             onClick={fetchProduits}
             className="product-button"
@@ -109,61 +185,40 @@ function ProductsPage() {
             {refreshing ? 'Actualisation...' : 'Réessayer'}
           </button>
         </div>
-      </div>
-    );
-
-  return (
-    <div className="products-container">
-      <div className="products-header">
-        <h2>🌾 Tous nos produits</h2>
-        <button
-          onClick={fetchProduits}
-          className="refresh-button"
-          disabled={refreshing}
-        >
-          ⟳ Actualiser
-        </button>
-      </div>
-
-      {produits.length === 0 ? (
+      ) : categories.length === 0 ? (
         <div className="no-products">
-          <p>Aucun produit disponible actuellement</p>
-          <button onClick={fetchProduits} className="product-button">
-            Actualiser
+          <p>Aucune catégorie disponible actuellement</p>
+          <button
+            onClick={fetchProduits}
+            className="product-button"
+          >
+            Recharger
           </button>
         </div>
       ) : (
-        <>
-          <div className="products-grid">
-            {produits.map((produit) => (
-              <div key={produit._id} className="product-card">
-                <div className="product-image-container">
-                  <ProductImage
-                    src={produit.imageUrl}
-                    alt={produit.nom}
-                    onClick={() => navigate(`/produits/${produit._id}`)}
-                  />
-                  <span className="product-category">
-                    {produit.categorie}
-                  </span>
-                </div>
-                <div className="product-info">
-                  <h3>{produit.nom}</h3>
-                  <p className="product-price">{produit.prix}</p>
-                </div>
-                <button
-                  className="product-button"
-                  onClick={() => navigate(`/produits/${produit._id}`)}
-                >
-                  Voir plus
-                </button>
+        <div className="categories-grid">
+          {categories.map((cat) => (
+            <div key={cat.nom} className="category-card">
+              <div className="product-image-container">
+                <ProductImage
+                  src={cat.imageUrl}
+                  alt={`Produits de la catégorie ${cat.nom}`}
+                  onClick={() => navigate(`/categories/${encodeURIComponent(cat.nom)}`)}
+                />
               </div>
-            ))}
-          </div>
-          <div className="products-footer">
-            <p>{produits.length} produits disponibles</p>
-          </div>
-        </>
+              <div className="product-info">
+                <h3>{cat.nom}</h3>
+                <p>{cat.produits.length} produit(s)</p>
+              </div>
+              <button
+                className="product-button"
+                onClick={() => navigate(`/categories/${encodeURIComponent(cat.nom)}`)}
+              >
+                Voir les produits
+              </button>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

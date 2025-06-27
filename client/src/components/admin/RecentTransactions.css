@@ -1,0 +1,156 @@
+/* src/components/admin/RecentTransactions.css */
+
+.recent-transactions-container {
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: linear-gradient(145deg, #ffffff, #f5f7fa);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.recent-transactions-container:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+.recent-transactions-title {
+  padding: 20px 24px 16px;
+  font-weight: 700 !important;
+  color: #1e293b !important;
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  position: relative;
+}
+
+.recent-transactions-title::after {
+  content: '';
+  position: absolute;
+  bottom: 12px;
+  left: 24px;
+  width: 50px;
+  height: 3px;
+  background: linear-gradient(to right, #3b82f6, #8b5cf6);
+  border-radius: 3px;
+}
+
+.empty-state {
+  padding: 40px 24px;
+  text-align: center;
+  color: #64748b;
+}
+
+.empty-state-icon {
+  font-size: 3rem !important;
+  margin-bottom: 16px;
+  color: #cbd5e1;
+}
+
+.transaction-table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.transaction-table thead {
+  background-color: rgba(241, 245, 249, 0.8);
+  backdrop-filter: blur(4px);
+}
+
+.transaction-table th {
+  font-weight: 600 !important;
+  color: #475569 !important;
+  padding: 12px 16px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.transaction-table td {
+  padding: 16px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  transition: background-color 0.2s ease;
+}
+
+.transaction-table tr {
+  background: white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.transaction-table tr:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.transaction-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+.user-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name {
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.transaction-date {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.amount-cell {
+  font-weight: 600 !important;
+}
+
+.credit-amount {
+  color: #10b981 !important;
+}
+
+.debit-amount {
+  color: #ef4444 !important;
+}
+
+.type-chip {
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  padding: 4px 8px !important;
+}
+
+.status-chip {
+  border-radius: 20px !important;
+  font-weight: 500 !important;
+  padding: 4px 12px !important;
+}
+
+.completed-status {
+  background-color: #ecfdf5 !important;
+  color: #10b981 !important;
+}
+
+.pending-status {
+  background-color: #fffbeb !important;
+  color: #f59e0b !important;
+}
+
+.failed-status {
+  background-color: #fef2f2 !important;
+  color: #ef4444 !important;
+}
+
+.action-button {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  background-color: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+.action-button:hover {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6) !important;
+  color: white !important;
+  transform: scale(1.1) rotate(5deg);
+}
