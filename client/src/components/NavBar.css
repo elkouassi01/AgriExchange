@@ -117,3 +117,17 @@
     border-bottom: 1px solid #eee;
   }
 }
+.initials-circle {
+  margin-left: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--primary-dark);
+  color: #fff;
+  font-weight: bold;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}

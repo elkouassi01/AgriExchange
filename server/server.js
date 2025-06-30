@@ -22,7 +22,7 @@ const contactRoutes = require('./routes/contact');
 const forfaitsRoutes = require('./routes/forfaits');
 const adminRoutes = require('./routes/adminRoutes');
 const cinetpayNotifyRoutes = require('./routes/cinetpayNotify');
-const chatRoutes = require('./routes/chatRoutes');
+const chatRoutes = require('./routes/chatRoutes'); // <-- assure-toi que ce fichier exporte bien un Router Express
 const userRoutes = require('./routes/userRoutes'); // 🔒 Sécurisé
 
 const app = express();
@@ -42,8 +42,8 @@ app.use(cors({
 app.use(helmet());
 app.use(hpp());
 app.use(cookieParser());
-app.use(express.json({ limit: '10kb' }));           // ✅ JSON Parser pour Postman/Front
-app.use(express.urlencoded({ extended: true }));    // ✅ Pour les formulaires HTML encodés
+app.use(express.json({ limit: '10kb' }));           // JSON parser
+app.use(express.urlencoded({ extended: true }));    // Parser form data
 
 // ======================
 // 🛠️ LOGGING & RATE LIMIT
@@ -53,9 +53,9 @@ if (process.env.NODE_ENV !== 'production') {
   console.log('🛠 Mode développement activé');
 }
 
-app.use('/api', rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // max 100 requêtes par IP
   message: '🚫 Trop de requêtes, réessayez plus tard.'
 }));
 
@@ -92,7 +92,7 @@ app.use('/uploads', (req, res, next) => {
 // ======================
 // 📡 ROUTES API
 // ======================
-// 🔓 Publiques
+// Routes publiques
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/utilisateurs', utilisateursRoutes);
 app.use('/api/v1/products', productsRoutes);
@@ -100,13 +100,13 @@ app.use('/api/v1/paiement', paiementRoutes);
 app.use('/api/v1/contact', contactRoutes);
 app.use('/api/v1/forfaits', forfaitsRoutes);
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/chat', chatRoutes); // <-- route chat configurée ici
 app.use('/api', cinetpayNotifyRoutes);
 
-// 🔐 Privées (auth obligatoire)
+// Routes sécurisées (authentification requise)
 app.use('/api/v1/users', protect, userRoutes);
 
-// ✅ Vérification API
+// ✅ Endpoint santé de l'API
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
@@ -115,7 +115,7 @@ app.get('/api/v1/health', (req, res) => {
   });
 });
 
-// ❌ Route non trouvée
+// ❌ Gestion des routes non trouvées
 app.use((req, res) => {
   res.status(404).json({
     success: false,

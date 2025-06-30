@@ -17,7 +17,7 @@ function NavBar() {
   const closeMenu = () => setMenuOpen(false);
 
   const handleLogout = () => {
-    logout(); // Cela déconnecte admin ou user selon le contexte
+    logout();
     navigate('/');
     closeMenu();
   };
@@ -28,10 +28,18 @@ function NavBar() {
     user?.role === 'consommateur' ? '/profil-consommateur' :
     null;
 
-  const userName = admin?.nom || user?.prenom || user?.nom || '';
+  // 🔤 Calcul des initiales à partir du nom complet
+  const fullName = admin?.nom || `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+  const initials = fullName
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word[0].toUpperCase())
+    .join('')
+    .slice(0, 2); // Max 2 lettres
 
   return (
     <nav className="navbar">
+      {/* Logo principal */}
       <div className="navbar-brand">
         <Leaf className="navbar-logo-icon" size={24} />
         <span className="navbar-logo-text">AgriExch</span>
@@ -47,19 +55,28 @@ function NavBar() {
         <NavLink to="/" icon={<Home size={18} />} onClick={closeMenu}>
           Accueil
         </NavLink>
+
         <NavLink to="/produits" icon={<Leaf size={18} />} onClick={closeMenu}>
           Produits
         </NavLink>
+
         <NavLink to="/offres" icon={<HandCoins size={18} />} onClick={closeMenu}>
-          Nos Offres
+          Offres
         </NavLink>
 
+        {/* Lien vers tableau de bord si connecté */}
         {dashboardPath && (
           <NavLink to={dashboardPath} icon={<User size={18} />} onClick={closeMenu}>
-            Mon espace {userName && `- ${userName}`}
+            
+            {initials && (
+              <span className="initials-circle" title={fullName}>
+                {initials}
+              </span>
+            )}
           </NavLink>
         )}
 
+        {/* Connexion ou Déconnexion */}
         {!user && !admin ? (
           <NavLink to="/connexion" icon={<LogIn size={18} />} onClick={closeMenu}>
             Connexion

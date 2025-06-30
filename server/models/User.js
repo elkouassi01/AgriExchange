@@ -4,7 +4,8 @@ const bcrypt = require('bcrypt');
 // =======================
 // 🔄 Sous-schéma productViews
 // =======================
-// Représente une vue d’un produit (productId + date de vue)
+// Représente une vue d’un produit par l'utilisateur
+// Avec date de consultation, pour limiter les vues par période
 const ProductViewSchema = new mongoose.Schema({
   productId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -15,12 +16,12 @@ const ProductViewSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-}, { _id: false });
+}, { _id: false }); // Pas d'ID propre à chaque vue
 
 // =======================
 // 💼 Sous-schéma abonnement
 // =======================
-// Informations liées au forfait choisi par l'utilisateur
+// Informations sur l'abonnement / forfait de l'utilisateur
 const abonnementSchema = new mongoose.Schema({
   formule: {
     type: String,
@@ -123,8 +124,8 @@ const userSchema = new mongoose.Schema({
     default: true
   }
 }, {
-  timestamps: true,
-  toJSON: { virtuals: true },
+  timestamps: true,  // createdAt, updatedAt automatique
+  toJSON: { virtuals: true },  // Inclure les virtuals dans JSON
   toObject: { virtuals: true }
 });
 
@@ -135,7 +136,8 @@ userSchema.pre('save', async function (next) {
   if (!this.isModified('motDePasse')) return next();
 
   try {
-    const salt = await bcrypt.genSalt(12); // plus le chiffre est haut, plus c’est sécurisé (et lent)
+    // Générer un sel puis hacher le mot de passe
+    const salt = await bcrypt.genSalt(12); 
     this.motDePasse = await bcrypt.hash(this.motDePasse, salt);
     next();
   } catch (err) {
@@ -147,6 +149,7 @@ userSchema.pre('save', async function (next) {
 // 🧪 Vérification mot de passe lors de la connexion
 // =======================
 userSchema.methods.verifierMotDePasse = async function (motDePasse) {
+  // Compare le mot de passe fourni avec le hash enregistré
   return bcrypt.compare(motDePasse, this.motDePasse);
 };
 
@@ -184,11 +187,12 @@ userSchema.methods.enregistrerVueProduit = async function (productId) {
   const maintenant = new Date();
   const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
 
+  // Vérifie si ce produit a déjà été vu ce mois
   const dejaVu = this.productViews.some(view =>
     view.productId.equals(productId) && view.viewedAt >= debutMois
   );
 
-  if (dejaVu) return false;
+  if (dejaVu) return false; // Ne pas enregistrer une vue multiple
 
   this.productViews.push({ productId, viewedAt: maintenant });
   await this.save();
@@ -228,4 +232,7 @@ userSchema.methods.joursRestantsAbonnement = function () {
   return diffMs > 0 ? Math.ceil(diffMs / (1000 * 60 * 60 * 24)) : 0;
 };
 
+// =======================
+// Export du modèle User
+// =======================
 module.exports = mongoose.model('User', userSchema);
