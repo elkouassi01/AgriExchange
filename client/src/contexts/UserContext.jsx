@@ -1,11 +1,10 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import axios from 'axios';
 
-// Création du contexte utilisateur
+// Contexte utilisateur
 const UserContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
-  // État utilisateur initialisé à partir du localStorage
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('userData');
     return saved ? JSON.parse(saved) : null;
@@ -13,48 +12,43 @@ export const UserProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
-  // Instance Axios préconfigurée pour toutes les requêtes
+  // Instance Axios configurée
   const api = axios.create({
     baseURL: 'http://localhost:5000/api/v1',
-    withCredentials: true, // Active l'envoi des cookies
+    withCredentials: true,
   });
 
-  // Intercepteur pour gérer les erreurs globalement
+  // Intercepteur de réponse
   api.interceptors.response.use(
-    response => response,
-    error => {
-      // Gestion spécifique des erreurs 401 (Non autorisé)
-      if (error.response?.status === 401) {
+    res => res,
+    err => {
+      if (err.response?.status === 401) {
         clearSession();
-        console.warn('Session expirée - Déconnexion');
+        console.warn('⛔ Session expirée');
       }
-      return Promise.reject(error);
+      return Promise.reject(err);
     }
   );
 
   /**
-   * 🔐 Récupère les informations de l'utilisateur connecté
-   * - Vérifie la session côté serveur
-   * - Met à jour les données locales
+   * 🔐 Récupère l'utilisateur connecté et son abonnement
    */
   const fetchUser = async () => {
     try {
       const res = await api.get('/auth/me');
       const currentUser = res.data.utilisateur;
 
-      if (currentUser) {
-        // Récupération des données d'abonnement
+      if (currentUser && currentUser._id) {
         const abonnement = await fetchUserAbonnement(currentUser._id);
-        const userWithAbonnement = { ...currentUser, ...abonnement };
+        const fullUser = { ...currentUser, ...abonnement };
 
-        // Mise à jour de l'état et du stockage local
-        setUser(userWithAbonnement);
-        localStorage.setItem('userData', JSON.stringify(userWithAbonnement));
+        setUser(fullUser);
+        localStorage.setItem('userData', JSON.stringify(fullUser));
       } else {
         clearSession();
       }
     } catch (err) {
-      console.warn('Erreur fetchUser :', err.message);
+      console.warn('⚠️ Erreur fetchUser :', err.message);
       clearSession();
     } finally {
       setLoading(false);
@@ -62,10 +56,18 @@ export const UserProvider = ({ children }) => {
   };
 
   /**
-   * 📦 Récupère les informations d'abonnement de l'utilisateur
-   * @param {string} userId - ID de l'utilisateur
+   * 📦 Récupère l'abonnement de l'utilisateur
    */
   const fetchUserAbonnement = async (userId) => {
+    if (!userId || typeof userId !== 'string') {
+      console.warn('❌ ID utilisateur manquant pour abonnement');
+      return {
+        formule: null,
+        abonnementActif: false,
+        vuesDetails: { quotaRestant: 0, produitsVus: [] },
+      };
+    }
+
     try {
       const res = await api.get(`/users/${userId}/forfait`);
       const { formule, actif, quotaRestant, produitsVus } = res.data;
@@ -79,7 +81,7 @@ export const UserProvider = ({ children }) => {
         },
       };
     } catch (err) {
-      console.error('Erreur fetchUserAbonnement :', err.message);
+      console.error('❌ Erreur fetchUserAbonnement :', err.message);
       return {
         formule: null,
         abonnementActif: false,
@@ -88,54 +90,38 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  /**
-   * 🔑 Connecte l'utilisateur et met à jour les données
-   * @param {Object} userData - Données utilisateur
-   */
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem('userData', JSON.stringify(userData));
   };
 
-  /**
-   * 🚪 Déconnecte l'utilisateur et nettoie le stockage
-   */
   const logout = () => {
     clearSession();
   };
 
-  /**
-   * 🧹 Nettoie la session utilisateur
-   */
   const clearSession = () => {
     setUser(null);
     localStorage.removeItem('userData');
-    // Optionnel : Appeler une API de déconnexion côté serveur
-    // api.post('/auth/logout');
+    // Optionnel : api.post('/auth/logout');
   };
 
-  /**
-   * 🔄 Rafraîchit les données d'abonnement
-   */
   const refreshUserAbonnement = async () => {
-    if (!user?._id) return;
-    
+    if (!user || !user._id) return;
+
     try {
       const abonnement = await fetchUserAbonnement(user._id);
       const updatedUser = { ...user, ...abonnement };
-      
       setUser(updatedUser);
       localStorage.setItem('userData', JSON.stringify(updatedUser));
-    } catch (error) {
-      console.error('Erreur refreshUserAbonnement:', error);
+    } catch (err) {
+      console.error('Erreur refreshUserAbonnement:', err);
     }
   };
 
-  // Au montage du composant : vérifie la session utilisateur
+  // Lors du montage : récupérer l'utilisateur si cookie/token présent
   useEffect(() => {
-    // Ne tente de récupérer l'utilisateur que si un token existe
-    const tokenExists = document.cookie.includes('token') || localStorage.getItem('userData');
-    if (tokenExists) {
+    const hasToken = document.cookie.includes('token') || localStorage.getItem('userData');
+    if (hasToken) {
       fetchUser();
     } else {
       setLoading(false);
@@ -151,7 +137,7 @@ export const UserProvider = ({ children }) => {
         loading,
         fetchUser,
         refreshUserAbonnement,
-        api // Expose l'instance axios configurée
+        api,
       }}
     >
       {children}
@@ -159,5 +145,5 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// Hook personnalisé pour accéder au contexte
+// Hook personnalisé
 export const useUser = () => useContext(UserContext);
