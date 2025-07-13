@@ -111,7 +111,7 @@ const CategoriePage = () => {
     // 1. Utilisateur non connecté
     if (!user) {
       const confirmRedirect = window.confirm(
-        "Vous devez être connecté pour accéder aux détails du produit. Souhaitez-vous consulter nos offres d'abonnement ?"
+        "Vous n'êtes pas incsrit sur AgriMarket. Souhaitez-vous créer votre compte ?"
       );
       if (confirmRedirect) {
         navigate('/offres');
@@ -122,7 +122,7 @@ const CategoriePage = () => {
     // 2. Utilisateur connecté mais n'est pas consommateur
     if (user.role !== 'consommateur') {
       const confirmRedirect = window.confirm(
-        "Seuls les consommateurs peuvent consulter les détails des produits. Souhaitez-vous consulter les offres d’abonnement adaptées ?"
+        "Seuls nos abonnés peuvent consulter les détails des producteur. Souhaitez-vous consulter les offres d’abonnement adaptées ?"
       );
       if (confirmRedirect) {
         navigate('/offres');

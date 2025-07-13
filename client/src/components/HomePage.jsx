@@ -54,15 +54,15 @@ function HomePage() {
     <div className="home-container">
       {/* En-tête d'accueil */}
       <section className="hero">
-        <h1>Bienvenue sur AgriExchange 🌾</h1>
+        <h1>Bienvenue sur AgriMarket 🌾</h1>
         <p>
-          La plateforme de confiance pour acheter et vendre des produits agricoles en toute simplicité.
+          Votre marché Ivoirien de vivriers et d'élévage, où le client rencontre les agriculteurs.
         </p>
       </section>
 
       {/* Section des produits phares avec carrousel */}
       <section className="sample-products">
-        <h2>Nos produits phares</h2>
+        <h2>Acheter vos aliments favoris en gros a des tarifs bord champ</h2>
 
         {/* Carrousel + boutons de navigation */}
         <div className="carousel-wrapper">
@@ -99,17 +99,11 @@ function HomePage() {
         <Link to="/produits" className="cta-button">
           Voir tous les produits
         </Link>
-        <p className="cta-subtext">Découvrez notre large catalogue et trouvez vos produits préférés.</p>
+        <p className="cta-subtext">Découvrez notre large catalogue et trouvez vos aliments préférés.</p>
       </section>
 
       {/* Section À propos */}
-      <section className="about">
-        <h2>À propos</h2>
-        <p>
-          AgriExchange connecte directement les agriculteurs et les consommateurs. <br />
-          Nos produits sont frais, locaux et respectueux de la nature.
-        </p>
-      </section>
+     
 
       {/* ✅ Bouton WhatsApp flottant */}
       <a

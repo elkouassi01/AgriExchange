@@ -1,0 +1,34 @@
+/* Styles pour la section "À propos" */
+.apropos {
+  background-color: #f8f8f8; /* Fond gris clair */
+  padding: 20px; /* Espace intérieur */
+  border-radius: 8px; /* Coins arrondis */
+  margin-bottom: 20px; /* Espace extérieur au-dessous */
+}
+/* Styles pour le titre "À propos" */
+.apropos h1 {
+  font-size: 2em; /* Taille de police plus grande */
+  color: #333; /* Couleur textuelle sombre */
+  text-align: center; /* Centrer le texte */
+  margin-bottom: 20px; /* Espace au-dessous du titre */
+}
+
+/* Styles pour le texte de la section "À propos" */
+.apropos p {
+  font-size: 1.1em; /* Taille de police normale */
+  line-height: 1.6; /* Espacement des lignes */
+  color: #080808; /* Couleur textuelle */
+  text-align: justify; /* Justifier le texte */
+  margin-bottom: 15px; /* Espace au-dessous du texte */
+  padding-left: 50px;
+  padding-right: 50px;
+}
+/* Styles pour les images dans la section "À propos" */
+.apropos img {
+  max-width: 100%; /* L'image ne dépasse pas la largeur de son conteneur */
+  height: auto; /* Hauteur ajustée automatiquement */
+  border-radius: 4px; /* Coins arrondis */
+  display: block; /* Permet de centrer l'image */
+  margin: 0 auto; /* Centrer l'image horizontalement */
+  margin-bottom: 20px; /* Espace au-dessous de l'image */
+}

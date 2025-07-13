@@ -1,8 +1,9 @@
 /* === CONTAINER GÉNÉRAL === */
+
 .home-container {
   padding: 40px 20px;
-  font-family: Arial, sans-serif;
-  background-color: #fcfef9a0;
+  font-family:Verdana, Geneva, Tahoma, sans-serif;
+  background-color: #fff;
 }
 
 /* === SECTION HERO === */
@@ -127,7 +128,7 @@
 
 /* === BOUTONS DE NAVIGATION CARROUSEL === */
 .carousel-button {
-  background-color: #e8f5e9;
+  background-color: #102212;
   border: 1px solid #a5d6a7;
   border-radius: 50%;
   font-size: 1.5rem;
