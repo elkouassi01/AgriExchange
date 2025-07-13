@@ -21,6 +21,9 @@ import InscriptionPage from './components/InscriptionPage';
 import PaiementPage from './components/PaiementPage';
 import PaiementReussi from './components/PaiementReussi';
 import PaiementEchec from './components/PaiementEchec';
+import TermsPage from './components/TermsPage';
+import ApproposPage from './components/Apropo';
+import NoservicePage from './components/Noservices';
 
 // 👨‍🌾 Agriculteur
 import AddProductForm from './components/AddProductForm';
@@ -107,6 +110,9 @@ const AppContent = () => {
         <Route path="/paiement-reussi" element={<PaiementReussi />} />
         <Route path="/paiement-echec" element={<PaiementEchec />} />
         <Route path="/offres" element={<OffersPage />} />
+        <Route path="/condition" element={<TermsPage />} />
+        <Route path="/Appropos" element={<ApproposPage />} />
+        <Route path="/Noservice" element={<NoservicePage/>} />
 
         {/* 👨‍🌾 Routes agriculteur protégées */}
         <Route

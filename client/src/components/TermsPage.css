@@ -1,0 +1,84 @@
+/* Styles pour la section "À propos" */
+.apropos {
+  background-color: #f9f9f9; /* Fond gris clair */
+  padding: 20px; /* Espace intérieur */
+  border-radius: 8px; /* Coins arrondis */
+  margin-bottom: 20px; /* Espace extérieur au-dessous */
+  resize: both;
+  overflow: hidden;
+  width: min(800px, 90%);
+  justify-self: center;
+}
+.salutation {
+  padding: 20px; /* Espace intérieur */
+  border-radius: 8px; /* Coins arrondis */
+  margin-bottom: 20px;
+  resize: both;
+  overflow: hidden;
+}
+.salutation h1{
+  font-size: 2em; /* Taille de police plus grande */
+  color: #021a0b; /* Couleur textuelle sombre */
+  text-align: center; /* Centrer le texte */
+  margin-bottom: 20px; /* Espace au-dessous du titre */
+}
+.salutation p {
+  font-size: 1.3em; /* Taille de police normale */
+  line-height: 1.6; /* Espacement des lignes */
+  color: #151515; /* Couleur textuelle */
+  text-align: center; /* Justifier le texte */
+  margin-bottom: 15px; /* Espace au-dessous du texte */
+}
+/* Styles pour le titre "À propos" */
+.apropos h2 {
+  font-size: 2em; /* Taille de police plus grande */
+  color: #1b5d37; /* Couleur textuelle sombre */
+  text-align: justify; /* Centrer le texte */
+  margin-bottom: 20px; /* Espace au-dessous du titre */
+  /*padding-left: 200px;*/
+}
+
+/* Styles pour le texte de la section "À propos" */
+.apropos p {
+  font-size: 1.1em; /* Taille de police normale */
+  line-height: 1.6; /* Espacement des lignes */
+  color: #555; /* Couleur textuelle */
+  text-align: justify; /* Justifier le texte */
+  margin-bottom: 15px; /* Espace au-dessous du texte */
+}
+
+/* Styles pour les images dans la section "À propos" */
+.apropos img {
+  max-width: 100%; /* L'image ne dépasse pas la largeur de son conteneur */
+  height: auto; /* Hauteur ajustée automatiquement */
+  border-radius: 4px; /* Coins arrondis */
+  display: block; /* Permet de centrer l'image */
+  margin: 0 auto; /* Centrer l'image horizontalement */
+  margin-bottom: 20px; /* Espace au-dessous de l'image */
+}
+
+/* Styles pour les listes dans la section "À propos" */
+.apropos ul {
+  list-style-type: style type none;; /* Style de liste par défaut */
+  padding-left: 200px; /* Espace intérieur de la liste */
+  color: #151515;
+}
+
+/* Styles pour les éléments de la liste */
+.apropos li {
+  margin-bottom: 5px; /* Espace au-dessous de chaque élément de la liste */
+}
+
+/* Styles pour les liens dans la section "À propos" */
+.apropos a {
+  color: #007bff; /* Couleur du lien */
+  text-decoration: none; /* Retirer le soulignement */
+  transition: color 0.3s ease; /* Transition douce au survol */
+}
+
+/* Styles pour les liens au survol */
+.apropos a:hover {
+  color: #0056b3; /* Couleur du lien au survol */
+}
+
+
