@@ -33,7 +33,6 @@ import FarmerDashboard from './components/FarmerDashboard';
 import ConsumerDashboard from './components/ConsumerDashboard';
 
 // ⚙️ Admin
-import AdminLoginPage from './pages/admin/AdminLoginPage';
 import AdminLayout from './components/admin/AdminLayout';
 import DashboardPage from './pages/admin/DashboardPage';
 import UsersPage from './pages/admin/UsersPage';
@@ -43,26 +42,9 @@ import SettingsPage from './pages/admin/SettingsPage';
 
 // 🧠 Contextes
 import { UserProvider, useUser } from './contexts/UserContext';
-import { AdminAuthProvider, useAdminAuth } from './contexts/AdminAuthContext';
 
-
-// 🔒 Composant pour protéger les routes admin
-const AdminRoute = () => {
-  const { admin, loading } = useAdminAuth();
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
-      </div>
-    );
-  }
-
-  return admin ? <Outlet /> : <Navigate to="/admin/login" replace />;
-};
-
-// 🔐 Composant pour protéger les routes utilisateur connecté (agriculteur ou consommateur)
-const ProtectedRoute = ({ children, requiredRole }) => {
+// 🔐 Composant pour protéger les routes par rôle
+const ProtectedRoute = ({ children, roles }) => {
   const { user, loading } = useUser();
   const location = useLocation();
 
@@ -80,12 +62,12 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/connexion" state={{ from: location }} replace />;
   }
 
-  // Si rôle requis et non autorisé => redirection page d’accueil
-  if (requiredRole && user.role !== requiredRole) {
+  // Si rôle requis et non autorisé => redirection page d'accueil
+  if (roles && !roles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 
-  return children;
+  return children ? children : <Outlet />;
 };
 
 // 🌍 Contenu principal de l'application
@@ -112,13 +94,13 @@ const AppContent = () => {
         <Route path="/offres" element={<OffersPage />} />
         <Route path="/condition" element={<TermsPage />} />
         <Route path="/Appropos" element={<ApproposPage />} />
-        <Route path="/Noservice" element={<NoservicePage/>} />
+        <Route path="/Noservice" element={<NoservicePage />} />
 
         {/* 👨‍🌾 Routes agriculteur protégées */}
         <Route
           path="/ajouter-produit"
           element={
-            <ProtectedRoute requiredRole="agriculteur">
+            <ProtectedRoute roles={['agriculteur']}>
               <AddProductForm />
             </ProtectedRoute>
           }
@@ -126,7 +108,7 @@ const AppContent = () => {
         <Route
           path="/profil-agriculteur"
           element={
-            <ProtectedRoute requiredRole="agriculteur">
+            <ProtectedRoute roles={['agriculteur']}>
               <FarmerDashboard />
             </ProtectedRoute>
           }
@@ -136,25 +118,29 @@ const AppContent = () => {
         <Route
           path="/profil-consommateur"
           element={
-            <ProtectedRoute requiredRole="consommateur">
+            <ProtectedRoute roles={['consommateur']}>
               <ConsumerDashboard />
             </ProtectedRoute>
           }
         />
 
         {/* ⚙️ Routes Admin */}
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin" element={<AdminRoute />}>
-          <Route element={<AdminLayout />}>
+        <Route element={<ProtectedRoute roles={['admin']} />}>
+          <Route path="/admin" element={<AdminLayout />}>
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="subscriptions" element={<SubscriptionsPage />} />
             <Route path="settings" element={<SettingsPage />} />
-            {/* Redirection /admin vers /admin/dashboard */}
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>
+
+        {/* Redirection pour les URLs admin directes */}
+        <Route 
+          path="/admin/dashboard" 
+          element={<Navigate to="/admin/dashboard" replace />} 
+        />
 
         {/* 🌪 Route inconnue => redirection vers l'accueil */}
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -168,9 +154,7 @@ function App() {
   return (
     <Router>
       <UserProvider>
-        <AdminAuthProvider>
-          <AppContent />
-        </AdminAuthProvider>
+        <AppContent />
       </UserProvider>
     </Router>
   );

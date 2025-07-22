@@ -7,7 +7,7 @@ const handleValidationErrors = require('../middlewares/validationMiddleware');
 
 // 🔐 Middleware global de protection et d'authorisation
 router.use(authMiddleware.protect);
-router.use(authMiddleware.authorize('admin')); // Utilise la nouvelle fonction authorize
+router.use(authMiddleware.authorize('admin'));
 
 // ✅ Validation commune
 const validateId = [
@@ -37,7 +37,7 @@ const validateRoleUpdate = [
   handleValidationErrors
 ];
 
-// 🔄 Ajout de la validation pour les updates utilisateur
+// 🔄 Validation pour les updates utilisateur
 const validateUserUpdate = [
   body('nom')
     .optional()
@@ -84,7 +84,7 @@ router.get('/users/:id',
 
 router.put('/users/:id', 
   validateId,
-  validateUserUpdate, // Utilise la validation centralisée
+  validateUserUpdate,
   adminController.updateUser
 );
 
@@ -102,6 +102,11 @@ router.delete('/users/:id',
 router.get('/users/:id/activity',
   validateId,
   adminController.getUserActivity
+);
+
+// 🧹 Nettoyage des champs obsolètes
+router.post('/users/cleanup-obsolete-fields', 
+  adminController.cleanupObsoleteFields  // <-- Correction essentielle
 );
 
 // 💰 Gestion des transactions

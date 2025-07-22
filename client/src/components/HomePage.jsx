@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './HomePage.css';
 import Footer from './Footer';
+import PromoBanner from './PromoBanner'; // Import du composant de bannière promo
 
 // Images de produits
 import tomate from '../assets/tomate.jpg';
@@ -16,10 +17,10 @@ function HomePage() {
     { nom: "Salades Fraîches", image: salade, emoji: "🥬" },
     { nom: "Pommes de Terre", image: pomme_terre, emoji: "🥔" },
     { nom: "Concombres Frais", image: concombre, emoji: "🥒" },
-    { nom: "Autres Tomates", image: tomate, emoji: "🍅" },
-    { nom: "Autres Salades", image: salade, emoji: "🥬" },
-    { nom: "Autres Pommes", image: pomme_terre, emoji: "🥔" },
-    { nom: "Autres Concombres", image: concombre, emoji: "🥒" },
+    { nom: "Tomates Cerises", image: tomate, emoji: "🍅" },
+    { nom: "Laitues Croquantes", image: salade, emoji: "🥬" },
+    { nom: "Patates Douces", image: pomme_terre, emoji: "🥔" },
+    { nom: "Cornichons Frais", image: concombre, emoji: "🥒" },
   ];
 
   const [indexGroupe, setIndexGroupe] = useState(0);
@@ -52,17 +53,20 @@ function HomePage() {
 
   return (
     <div className="home-container">
+      {/* Bannière promotionnelle */}
+      <PromoBanner />
+      
       {/* En-tête d'accueil */}
       <section className="hero">
         <h1>Bienvenue sur AgriMarket 🌾</h1>
         <p>
-          Votre marché Ivoirien de vivriers et d'élévage, où le client rencontre les agriculteurs.
+          Votre marché Ivoirien de vivriers et d'élevage, où le client rencontre les agriculteurs.
         </p>
       </section>
 
       {/* Section des produits phares avec carrousel */}
       <section className="sample-products">
-        <h2>Acheter vos aliments favoris en gros a des tarifs bord champ</h2>
+        <h2>Achetez vos aliments favoris en gros à des tarifs bord champ</h2>
 
         {/* Carrousel + boutons de navigation */}
         <div className="carousel-wrapper">
@@ -102,8 +106,32 @@ function HomePage() {
         <p className="cta-subtext">Découvrez notre large catalogue et trouvez vos aliments préférés.</p>
       </section>
 
+      {/* Section promotion spéciale */}
+      <section className="special-promo">
+        <div className="promo-card">
+          <div className="promo-badge">PROMO</div>
+          <h2>Offre Spéciale de Lancement !</h2>
+          <p className="promo-highlight">🎉 Offre spéciale agriculteurs :<br/> 6 mois d’inscription 100% gratuite ! <strong>🎉</strong></p>
+          <p>Valable jusqu'au 31 Décembre 2025</p>
+          <Link to="/produits" className="promo-button">
+            Profiter de l'offre
+          </Link>
+        </div>
+      </section>
+
       {/* Section À propos */}
-     
+      <section className="about-section">
+        <div className="about-content">
+          <h2>Pourquoi choisir AgriMarket ?</h2>
+          <ul className="benefits-list">
+            <li>✅ Produits frais directement des agriculteurs locaux</li>
+            <li>✅ Prix de gros sans intermédiaire</li>
+            <li>✅ Livraison rapide dans toute la Côte d'Ivoire</li>
+            <li>✅ Paiements sécurisés et multiples options</li>
+            <li>✅ Support client 7j/7</li>
+          </ul>
+        </div>
+      </section>
 
       {/* ✅ Bouton WhatsApp flottant */}
       <a
@@ -111,16 +139,16 @@ function HomePage() {
         className="whatsapp-float"
         target="_blank"
         rel="noopener noreferrer"
-       aria-label="Contacter le support WhatsApp"
+        aria-label="Contacter le support WhatsApp"
       >
-       <div className="whatsapp-content">
-         <img
-           src="https://img.icons8.com/color/48/000000/whatsapp--v1.png"
-           alt="WhatsApp Chat"
-         />
-         <span className="whatsapp-label">Support</span>
+        <div className="whatsapp-content">
+          <img
+            src="https://img.icons8.com/color/48/000000/whatsapp--v1.png"
+            alt="WhatsApp Chat"
+          />
+          <span className="whatsapp-label">Support</span>
         </div>
-     </a>
+      </a>
 
       <Footer />
     </div>

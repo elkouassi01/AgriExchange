@@ -2,8 +2,21 @@ import React, { useState, useEffect } from 'react';
 import './ProductsPage.css';
 import { useNavigate } from 'react-router-dom';
 
-const SERVER_BASE_URL = 'http://localhost:5000';
+// Correction : Utilisation de window pour les variables d'environnement
+const SERVER_BASE_URL = window.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
+
+// Objet de traduction des catégories
+const categoryTranslations = {
+  'Vegetables': 'Légumes',
+  'Fruits': 'Fruits',
+  'Grains': 'Céréales',
+  'Dairy': 'Produits Laitiers',
+  'Meat': 'Viande',
+  'Non classé': 'Non classé',
+  'Uncategorized': 'Non classé',
+  // Ajoutez d'autres traductions au besoin
+};
 
 const ProductImage = ({ src, alt, onClick }) => {
   const [imageSrc, setImageSrc] = useState(DEFAULT_IMAGE);
@@ -53,7 +66,6 @@ function ProductsPage() {
       const res = await fetch(`${SERVER_BASE_URL}/api/v1/products`);
       
       if (!res.ok) {
-        // Essayer d'extraire le message d'erreur du corps de la réponse
         let errorMessage = `Erreur ${res.status}: ${res.statusText}`;
         
         try {
@@ -87,7 +99,6 @@ function ProductsPage() {
         throw new Error("Format de données inattendu de l'API");
       }
     } catch (err) {
-      // Traduction des erreurs techniques en messages conviviaux
       let userMessage = err.message;
       
       if (err.message.includes('Failed to fetch')) {
@@ -128,11 +139,22 @@ function ProductsPage() {
     });
 
     const categoriesArray = Object.entries(groupedByCategory).map(
-      ([nom, produits]) => ({
-        nom,
-        produits,
-        imageUrl: produits.find(p => p.imageUrl)?.imageUrl || ''
-      })
+      ([nomOriginal, produits]) => {
+        // Traduction du nom de catégorie
+        const nomAffichage = categoryTranslations[nomOriginal] || nomOriginal;
+        
+        // Recherche d'une image valide dans la catégorie
+        const validImageProduct = produits.find(p => 
+          p.imageUrl && !p.imageUrl.includes('default') && !p.imageUrl.includes('placeholder')
+        );
+        
+        return {
+          nomOriginal,
+          nomAffichage,
+          produits,
+          imageUrl: validImageProduct?.imageUrl || produits[0]?.imageUrl || ''
+        };
+      }
     );
 
     setCategories(categoriesArray);
@@ -198,21 +220,21 @@ function ProductsPage() {
       ) : (
         <div className="categories-grid">
           {categories.map((cat) => (
-            <div key={cat.nom} className="category-card">
+            <div key={cat.nomOriginal} className="category-card">
               <div className="product-image-container">
                 <ProductImage
                   src={cat.imageUrl}
-                  alt={`Produits de la catégorie ${cat.nom}`}
-                  onClick={() => navigate(`/categories/${encodeURIComponent(cat.nom)}`)}
+                  alt={`Produits de la catégorie ${cat.nomAffichage}`}
+                  onClick={() => navigate(`/categories/${encodeURIComponent(cat.nomOriginal)}`)}
                 />
               </div>
               <div className="product-info">
-                <h3>{cat.nom}</h3>
+                <h3>{cat.nomAffichage}</h3>
                 <p>{cat.produits.length} produit(s)</p>
               </div>
               <button
                 className="product-button"
-                onClick={() => navigate(`/categories/${encodeURIComponent(cat.nom)}`)}
+                onClick={() => navigate(`/categories/${encodeURIComponent(cat.nomOriginal)}`)}
               >
                 Voir les produits
               </button>

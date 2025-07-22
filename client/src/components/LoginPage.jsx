@@ -1,128 +1,189 @@
-import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { useUser } from "../contexts/UserContext"; // ✅ Accès au contexte utilisateur global
-import "./LoginPage.css"; // ✅ Style CSS de la page
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
+import "./LoginPage.css";
+import api from "../services/axiosConfig";
 
 const LoginPage = () => {
-  const { login } = useUser(); // Fonction pour enregistrer l’utilisateur dans le contexte
-  const navigate = useNavigate(); // Permet la redirection après connexion
+  const { user, login } = useUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Récupérer l'URL de redirection après connexion
+  const from = location.state?.from?.pathname || "/";
 
-  // 🎯 États du formulaire
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false); // Pour afficher "Connexion en cours..."
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false); // Pour afficher/masquer le mot de passe
 
-  // 🔐 Fonction de traitement de la connexion
+  // Rediriger si l'utilisateur est déjà connecté
+  useEffect(() => {
+    if (user) {
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, from]);
+
   const handleLogin = async (e) => {
-    e.preventDefault(); // Empêche le rechargement de la page
-    setError(""); // Réinitialise les erreurs
-    setLoading(true); // Active l’état de chargement
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      // 🔄 Envoie les infos de connexion à l'API backend
-      const response = await fetch("http://localhost:5000/api/v1/auth/connexion", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include", // 🔐 Permet l’envoi de cookies httpOnly
-        body: JSON.stringify({ email, motDePasse }), // Doit correspondre au backend
+      const response = await api.post("/auth/connexion", {
+        email,
+        motDePasse
       });
 
-      const data = await response.json(); // ⬅ Récupère la réponse JSON
-
-      // ⚠ Si erreur côté serveur (ex: 401 ou 403)
-      if (!response.ok) {
-        setError(data.message || "Erreur lors de la connexion");
+      // Vérifier le statut de la réponse
+      if (response.status < 200 || response.status >= 300) {
+        setError(response.data?.message || "Erreur lors de la connexion");
         return;
       }
 
-      // ⚠ Cas où la réponse ne contient pas l’utilisateur
-      if (!data.utilisateur) {
+      if (!response.data.utilisateur || !response.data.token) {
         setError("Réponse invalide du serveur");
         return;
       }
 
-      // ✅ Connexion réussie → enregistre dans le contexte
-      login(data.utilisateur);
+      // Enregistrer l'utilisateur dans le contexte
+      login(response.data.utilisateur, response.data.token);
 
-      // 🚀 Redirection automatique selon le rôle
-      switch (data.utilisateur.role) {
-        case "admin":
-          navigate("/admin/dashboard");
-          break;
-        case "agriculteur":
-          navigate("/profil-agriculteur");
-          break;
-        case "consommateur":
-          navigate("/profil-consommateur");
-          break;
-        default:
-          navigate("/");
-      }
+      // Redirection vers la page précédente ou selon le rôle
+      const redirectPath = location.state?.from?.pathname || getRoleRedirect(response.data.utilisateur.role);
+      navigate(redirectPath, { replace: true });
+
     } catch (err) {
-      // ❌ Erreur réseau ou serveur inattendu
-      console.error("Erreur de connexion :", err);
-      setError("Erreur serveur, veuillez réessayer plus tard.");
+      handleLoginError(err);
     } finally {
-      setLoading(false); // 🔄 Fin du chargement
+      setLoading(false);
+    }
+  };
+
+  const getRoleRedirect = (role) => {
+    switch (role) {
+      case "admin": return "/admin/dashboard";
+      case "agriculteur": return "/profil-agriculteur";
+      case "consommateur": return "/profil-consommateur";
+      default: return "/";
+    }
+  };
+
+  const handleLoginError = (err) => {
+    if (err.response) {
+      if (err.response.status === 401) {
+        setError("Email ou mot de passe incorrect");
+      } else if (err.response.status === 403) {
+        setError("Compte désactivé. Contactez le support.");
+      } else if (err.response.status === 429) {
+        setError("Trop de tentatives. Veuillez réessayer plus tard.");
+      } else {
+        setError(err.response.data?.message || `Erreur ${err.response.status}`);
+      }
+    } else if (err.request) {
+      setError("Serveur injoignable. Vérifiez votre connexion internet.");
+    } else {
+      setError("Erreur inattendue: " + err.message);
+    }
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  const handleDemoLogin = async (role) => {
+    setLoading(true);
+    setError("");
+    
+    try {
+      const response = await api.post("/auth/demo", { role });
+      
+      if (response.status < 200 || response.status >= 300) {
+        setError("Échec de la connexion démo");
+        return;
+      }
+
+      login(response.data.utilisateur, response.data.token);
+      navigate(getRoleRedirect(role), { replace: true });
+      
+    } catch (err) {
+      handleLoginError(err);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="login-container">
-      {/* 🧾 Formulaire de connexion */}
       <form className="login-form" onSubmit={handleLogin}>
         <h2>Connexion</h2>
-
-        {/* 🔴 Affichage des erreurs */}
+        
         {error && (
-          <div className="login-error" role="alert" aria-live="assertive">
-            {error}
+          <div className="login-error">
+            <span className="error-icon">⚠️</span> {error}
           </div>
         )}
 
-        {/* ✉️ Champ email */}
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="Adresse e-mail"
-          required
-          disabled={loading}
-          autoComplete="email"
-          aria-label="Adresse e-mail"
-        />
+        <div className="input-group">
+          <label htmlFor="email">Email</label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="exemple@email.com"
+            required
+            disabled={loading}
+            autoComplete="email"
+            aria-label="Adresse e-mail"
+          />
+        </div>
 
-        {/* 🔒 Champ mot de passe */}
-        <input
-          type="password"
-          value={motDePasse}
-          onChange={(e) => setMotDePasse(e.target.value)}
-          placeholder="Mot de passe"
-          required
-          disabled={loading}
-          autoComplete="current-password"
-          aria-label="Mot de passe"
-        />
+        <div className="input-group">
+          <label htmlFor="password">Mot de passe</label>
+          <div className="password-input-container">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              value={motDePasse}
+              onChange={(e) => setMotDePasse(e.target.value)}
+              placeholder="••••••••"
+              required
+              disabled={loading}
+              autoComplete="current-password"
+              aria-label="Mot de passe"
+            />
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={togglePasswordVisibility}
+              aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+            >
+              {showPassword ? "👁️" : "👁️‍🗨️"}
+            </button>
+          </div>
+          <div className="forgot-password">
+            <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
+          </div>
+        </div>
 
-        {/* 🔘 Bouton de connexion */}
-        <button type="submit" disabled={loading} aria-busy={loading}>
+        <button 
+          type="submit" 
+          className="login-button"
+          disabled={loading}
+          aria-busy={loading}
+        >
           {loading ? "Connexion en cours..." : "Se connecter"}
         </button>
-
-        {/* 🔗 Liens vers les inscriptions */}
-        <div className="login-footer">
+          <div className="login-footer">
           <p>Pas encore de compte ?</p>
-          <p>
-            <Link to="/inscription">Créer votre compte Consommateur</Link>
-          </p>
-          <p>
-            <Link to="/inscription?type=agriculteur&formule=BLEU">
-              Créer votre compte Agriculteur
+          <div className="register-links">
+            <Link to="/inscription">Créer un compte Consommateur <br /></Link>
+            <Link to="/inscription?type=agriculteur&formule=?">
+              Créer un compte Agriculteur
             </Link>
-          </p>
+          </div>
         </div>
       </form>
     </div>

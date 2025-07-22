@@ -1,17 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import { useAdminAuth } from '../contexts/AdminAuthContext';
 import {
   Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Rabbit
 } from 'lucide-react';
 import './NavBar.css';
 
-
 function NavBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, logout } = useUser();
-  const { admin } = useAdminAuth();
   const navigate = useNavigate();
 
   const toggleMenu = () => setMenuOpen(!menuOpen);
@@ -23,20 +20,24 @@ function NavBar() {
     closeMenu();
   };
 
-  const dashboardPath =
-    admin ? '/admin/dashboard' :
-    user?.role === 'agriculteur' ? '/profil-agriculteur' :
-    user?.role === 'consommateur' ? '/profil-consommateur' :
-    null;
+  // Déterminer le chemin du dashboard en fonction du rôle
+  const getDashboardPath = () => {
+    if (user?.role === 'admin') return '/admin/dashboard';
+    if (user?.role === 'agriculteur') return '/profil-agriculteur';
+    if (user?.role === 'consommateur') return '/profil-consommateur';
+    return null;
+  };
 
-  // 🔤 Calcul des initiales à partir du nom complet
-  const fullName = admin?.nom || `${user?.prenom || ''} ${user?.nom || ''}`.trim();
+  const dashboardPath = getDashboardPath();
+
+  // Calcul des initiales
+  const fullName = `${user?.prenom || ''} ${user?.nom || ''}`.trim();
   const initials = fullName
     .split(' ')
     .filter(Boolean)
     .map(word => word[0].toUpperCase())
     .join('')
-    .slice(0, 2); // Max 2 lettres
+    .slice(0, 2);
 
   return (
     <nav className="navbar">
@@ -45,7 +46,6 @@ function NavBar() {
         <Leaf className="navbar-logo-icon" size={28} fill='green' />
         <span className="navbar-logo-text">AgriMarket</span>
         <Rabbit className="navbar-logo-icon" size={28} fill='gold'/>
-        
       </div>
 
       {/* Bouton menu mobile */}
@@ -70,17 +70,18 @@ function NavBar() {
         {/* Lien vers tableau de bord si connecté */}
         {dashboardPath && (
           <NavLink to={dashboardPath} icon={<User size={22} color='black' />} onClick={closeMenu}>
-            
-            {initials && (
+            {initials ? (
               <span className="initials-circle" title={fullName}>
                 {initials}
               </span>
+            ) : (
+              <span>Tableau de bord</span>
             )}
           </NavLink>
         )}
 
         {/* Connexion ou Déconnexion */}
-        {!user && !admin ? (
+        {!user ? (
           <NavLink to="/connexion" icon={<LogIn size={22} color='black' />} onClick={closeMenu}>
             Connexion
           </NavLink>

@@ -261,3 +261,122 @@
   background-color: #f9f9f9;
   border-radius: 10px;
 }
+/* Styles pour l'accès refusé */
+.access-denied-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 70vh;
+  padding: 2rem;
+}
+
+.access-denied-card {
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  padding: 2.5rem;
+  text-align: center;
+  max-width: 600px;
+  width: 100%;
+  border: 1px solid #ffebee;
+}
+
+.access-denied-card h2 {
+  color: #c62828;
+  margin: 1.5rem 0 0.5rem;
+}
+
+.access-denied-message {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background-color: #ffebee;
+  border-radius: 8px;
+  border-left: 4px solid #c62828;
+}
+
+.access-denied-message p {
+  font-size: 1.1rem;
+  color: #c62828;
+  margin: 0;
+}
+
+.views-remaining {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 1rem;
+  color: #c62828;
+  font-weight: 500;
+}
+
+.access-denied-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.login-button, .upgrade-button, .back-button {
+  padding: 0.8rem 1.5rem;
+  border-radius: 30px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+  font-size: 1rem;
+}
+
+.login-button {
+  background-color: #27ae60;
+  color: white;
+}
+
+.login-button:hover {
+  background-color: #219653;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.upgrade-button {
+  background-color: #e67e22;
+  color: white;
+}
+
+.upgrade-button:hover {
+  background-color: #d35400;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.3);
+}
+
+.back-button {
+  background-color: #f1f2f6;
+  color: #2d3436;
+}
+
+.back-button:hover {
+  background-color: #dfe4ea;
+  transform: translateY(-2px);
+}
+
+/* Badge de vues */
+.views-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background-color: rgba(39, 174, 96, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Image produit */
+.product-image {
+  position: relative;
+}

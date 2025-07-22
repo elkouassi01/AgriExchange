@@ -1,27 +1,10 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-
-// =======================
-// 🔄 Sous-schéma productViews
-// =======================
-// Représente une vue d’un produit par l'utilisateur
-// Avec date de consultation, pour limiter les vues par période
-const ProductViewSchema = new mongoose.Schema({
-  productId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product',
-    required: true
-  },
-  viewedAt: {
-    type: Date,
-    default: Date.now
-  }
-}, { _id: false }); // Pas d'ID propre à chaque vue
+const moment = require('moment');
 
 // =======================
 // 💼 Sous-schéma abonnement
 // =======================
-// Informations sur l'abonnement / forfait de l'utilisateur
 const abonnementSchema = new mongoose.Schema({
   formule: {
     type: String,
@@ -41,6 +24,7 @@ const abonnementSchema = new mongoose.Schema({
     default: 'inactif',
     index: true
   }
+  // SUPPRIMÉ: vuesUtilisees et derniereVue
 }, { _id: false });
 
 // =======================
@@ -67,7 +51,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Le mot de passe est obligatoire'],
     minlength: 6,
-    select: false // Ne pas renvoyer ce champ dans les requêtes par défaut
+    select: false
   },
   contact: {
     type: String,
@@ -104,10 +88,7 @@ const userSchema = new mongoose.Schema({
   // === Données d'abonnement ===
   abonnement: abonnementSchema,
 
-  // === Historique des produits consultés ===
-  productViews: [ProductViewSchema],
-
-  // === Historique des transactions (paiements) ===
+  // === Historique des transactions ===
   transactions: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Transaction'
@@ -124,8 +105,8 @@ const userSchema = new mongoose.Schema({
     default: true
   }
 }, {
-  timestamps: true,  // createdAt, updatedAt automatique
-  toJSON: { virtuals: true },  // Inclure les virtuals dans JSON
+  timestamps: true,
+  toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
@@ -136,7 +117,6 @@ userSchema.pre('save', async function (next) {
   if (!this.isModified('motDePasse')) return next();
 
   try {
-    // Générer un sel puis hacher le mot de passe
     const salt = await bcrypt.genSalt(12); 
     this.motDePasse = await bcrypt.hash(this.motDePasse, salt);
     next();
@@ -146,10 +126,9 @@ userSchema.pre('save', async function (next) {
 });
 
 // =======================
-// 🧪 Vérification mot de passe lors de la connexion
+// 🧪 Vérification mot de passe
 // =======================
 userSchema.methods.verifierMotDePasse = async function (motDePasse) {
-  // Compare le mot de passe fourni avec le hash enregistré
   return bcrypt.compare(motDePasse, this.motDePasse);
 };
 
@@ -162,7 +141,7 @@ userSchema.methods.ajouterTransaction = function (transactionId) {
 };
 
 // =======================
-// 📅 Créer ou mettre à jour l'abonnement
+// 📅 Créer/mettre à jour l'abonnement
 // =======================
 userSchema.methods.mettreAJourAbonnement = function (formule, montant, dureeMois = 1) {
   const maintenant = new Date();
@@ -181,34 +160,22 @@ userSchema.methods.mettreAJourAbonnement = function (formule, montant, dureeMois
 };
 
 // =======================
-// 👁️ Enregistrer une vue produit (max 1 fois / mois / produit)
+// 🔢 Récupérer le quota de vues mensuel
 // =======================
-userSchema.methods.enregistrerVueProduit = async function (productId) {
-  const maintenant = new Date();
-  const debutMois = new Date(maintenant.getFullYear(), maintenant.getMonth(), 1);
-
-  // Vérifie si ce produit a déjà été vu ce mois
-  const dejaVu = this.productViews.some(view =>
-    view.productId.equals(productId) && view.viewedAt >= debutMois
-  );
-
-  if (dejaVu) return false; // Ne pas enregistrer une vue multiple
-
-  this.productViews.push({ productId, viewedAt: maintenant });
-  await this.save();
-  return true;
+userSchema.methods.getQuotaVues = function () {
+  if (!this.abonnement || !this.abonnement.formule) return 0;
+  
+  const quotas = {
+    BLEU: 1,
+    GOLD: 5,
+    PLATINUM: Infinity
+  };
+  
+  return quotas[this.abonnement.formule] || 0;
 };
 
 // =======================
-// 🔢 Nombre de vues ce mois
-// =======================
-userSchema.methods.nombreVuesMoisCourant = function () {
-  const debutMois = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-  return this.productViews.filter(view => view.viewedAt >= debutMois).length;
-};
-
-// =======================
-// 📆 Vérifier si l'abonnement est encore actif
+// 📆 Vérifier si l'abonnement est actif
 // =======================
 userSchema.methods.isAbonnementActif = function () {
   if (!this.abonnement || !this.abonnement.dateFin) return false;
@@ -224,7 +191,7 @@ userSchema.methods.isAbonnementExpire = function () {
 };
 
 // =======================
-// ⏳ Nombre de jours restants sur l'abonnement
+// ⏳ Jours restants sur l'abonnement
 // =======================
 userSchema.methods.joursRestantsAbonnement = function () {
   if (!this.abonnement || !this.abonnement.dateFin) return 0;

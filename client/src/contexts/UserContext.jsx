@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/axiosConfig'; // Import de l'API configurée
 
 // Contexte utilisateur
 const UserContext = createContext(null);
@@ -12,23 +12,23 @@ export const UserProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
-  // Instance Axios configurée
-  const api = axios.create({
-    baseURL: 'http://localhost:5000/api/v1',
-    withCredentials: true,
-  });
-
-  // Intercepteur de réponse
-  api.interceptors.response.use(
-    res => res,
-    err => {
-      if (err.response?.status === 401) {
-        clearSession();
-        console.warn('⛔ Session expirée');
+  // Intercepteur de réponse global
+  useEffect(() => {
+    const responseInterceptor = api.interceptors.response.use(
+      res => res,
+      err => {
+        if (err.response?.status === 401) {
+          clearSession();
+          console.warn('⛔ Session expirée');
+        }
+        return Promise.reject(err);
       }
-      return Promise.reject(err);
-    }
-  );
+    );
+
+    return () => {
+      api.interceptors.response.eject(responseInterceptor);
+    };
+  }, []);
 
   /**
    * 🔐 Récupère l'utilisateur connecté et son abonnement
@@ -36,11 +36,15 @@ export const UserProvider = ({ children }) => {
   const fetchUser = async () => {
     try {
       const res = await api.get('/auth/me');
-      const currentUser = res.data.utilisateur;
+      const currentUser = res.data.utilisateur || res.data.user;
 
       if (currentUser && currentUser._id) {
         const abonnement = await fetchUserAbonnement(currentUser._id);
-        const fullUser = { ...currentUser, ...abonnement };
+        const fullUser = { 
+          ...currentUser, 
+          abonnement: abonnement.formule ? abonnement : null,
+          vuesDetails: abonnement.vuesDetails
+        };
 
         setUser(fullUser);
         localStorage.setItem('userData', JSON.stringify(fullUser));
@@ -56,43 +60,73 @@ export const UserProvider = ({ children }) => {
   };
 
   /**
-   * 📦 Récupère l'abonnement de l'utilisateur
+   * 📦 Récupère l'abonnement et les vues de l'utilisateur
    */
   const fetchUserAbonnement = async (userId) => {
-    if (!userId || typeof userId !== 'string') {
-      console.warn('❌ ID utilisateur manquant pour abonnement');
-      return {
-        formule: null,
-        abonnementActif: false,
-        vuesDetails: { quotaRestant: 0, produitsVus: [] },
-      };
-    }
-
     try {
       const res = await api.get(`/users/${userId}/forfait`);
-      const { formule, actif, quotaRestant, produitsVus } = res.data;
-
       return {
-        formule,
-        abonnementActif: actif,
+        formule: res.data.formule,
+        statut: res.data.statut || 'inactif',
+        dateFin: res.data.dateFin,
         vuesDetails: {
-          quotaRestant: quotaRestant ?? 0,
-          produitsVus: produitsVus ?? [],
-        },
+          quotaRestant: res.data.quotaRestant ?? 0,
+          produitsVus: res.data.produitsVus ?? [],
+        }
       };
     } catch (err) {
       console.error('❌ Erreur fetchUserAbonnement :', err.message);
       return {
         formule: null,
-        abonnementActif: false,
+        statut: 'inactif',
+        dateFin: null,
         vuesDetails: { quotaRestant: 0, produitsVus: [] },
       };
     }
   };
 
-  const login = (userData) => {
+  /**
+   * 🔄 Actualise les données utilisateur
+   */
+  const refreshUserData = async () => {
+    if (!user?._id) return;
+    
+    try {
+      const [userRes, abonnementRes] = await Promise.all([
+        api.get('/auth/me'),
+        api.get(`/users/${user._id}/forfait`)
+      ]);
+
+      const currentUser = userRes.data.utilisateur || userRes.data.user;
+      const abonnement = {
+        formule: abonnementRes.data.formule,
+        statut: abonnementRes.data.statut || 'inactif',
+        dateFin: abonnementRes.data.dateFin,
+        vuesDetails: {
+          quotaRestant: abonnementRes.data.quotaRestant ?? 0,
+          produitsVus: abonnementRes.data.produitsVus ?? [],
+        }
+      };
+
+      const fullUser = { 
+        ...currentUser, 
+        abonnement: abonnement.formule ? abonnement : null,
+        vuesDetails: abonnement.vuesDetails
+      };
+
+      setUser(fullUser);
+      localStorage.setItem('userData', JSON.stringify(fullUser));
+      return fullUser;
+    } catch (err) {
+      console.error('Erreur refreshUserData:', err);
+      return user;
+    }
+  };
+
+  const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('userData', JSON.stringify(userData));
+    localStorage.setItem('token', token);
   };
 
   const logout = () => {
@@ -102,26 +136,14 @@ export const UserProvider = ({ children }) => {
   const clearSession = () => {
     setUser(null);
     localStorage.removeItem('userData');
-    // Optionnel : api.post('/auth/logout');
+    localStorage.removeItem('token');
+    api.post('/auth/logout').catch(console.error);
   };
 
-  const refreshUserAbonnement = async () => {
-    if (!user || !user._id) return;
-
-    try {
-      const abonnement = await fetchUserAbonnement(user._id);
-      const updatedUser = { ...user, ...abonnement };
-      setUser(updatedUser);
-      localStorage.setItem('userData', JSON.stringify(updatedUser));
-    } catch (err) {
-      console.error('Erreur refreshUserAbonnement:', err);
-    }
-  };
-
-  // Lors du montage : récupérer l'utilisateur si cookie/token présent
+  // Lors du montage : récupérer l'utilisateur si token présent
   useEffect(() => {
-    const hasToken = document.cookie.includes('token') || localStorage.getItem('userData');
-    if (hasToken) {
+    const token = localStorage.getItem('token');
+    if (token) {
       fetchUser();
     } else {
       setLoading(false);
@@ -135,8 +157,7 @@ export const UserProvider = ({ children }) => {
         login,
         logout,
         loading,
-        fetchUser,
-        refreshUserAbonnement,
+        refreshUserData,
         api,
       }}
     >

@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const ProductView = require('../models/ProductView'); // Nouveau modèle
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const moment = require('moment');
@@ -38,7 +39,13 @@ exports.login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    const { motDePasse, ...userData } = user.toObject();
+    // Mettre à jour la dernière connexion
+    user.derniereConnexion = new Date();
+    await user.save();
+
+    // Exclure le mot de passe de la réponse
+    const userData = user.toObject();
+    delete userData.motDePasse;
 
     return res.status(200).json({
       message: "Connexion réussie",
@@ -46,164 +53,213 @@ exports.login = async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error('❌ Erreur login :', err.message);
+    console.error('❌ Erreur login :', err);
     return res.status(500).json({ message: "Erreur serveur lors de la connexion" });
   }
 };
 
 /**
  * 🎫 GET /users/:id/forfait
+ * Récupère les informations d'abonnement et de vues
  */
 exports.getUserForfait = async (req, res) => {
   try {
     const userId = req.params.id;
     const user = await User.findById(userId);
 
-    if (!user || user.role !== 'consommateur') {
-      return res.status(403).json({ message: 'Accès non autorisé' });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier le rôle
+    if (user.role !== 'consommateur') {
+      return res.status(403).json({ message: 'Accès réservé aux consommateurs' });
     }
 
     const abonnement = user.abonnement || {};
     const formule = abonnement.formule || null;
     const dateFin = abonnement.dateFin ? new Date(abonnement.dateFin) : null;
-    const abonnementActif = abonnement.statut === 'actif' && (!dateFin || dateFin > new Date());
+    
+    // Vérifier si l'abonnement est actif
+    const abonnementActif = abonnement.statut === 'actif' && 
+                            dateFin && 
+                            dateFin > new Date();
 
-    const now = moment();
-    const debutMois = now.clone().startOf('month');
+    // Calculer les jours restants
+    const joursRestants = dateFin ? Math.ceil((dateFin - new Date()) / (1000 * 60 * 60 * 24)) : 0;
 
-    const vuesCeMoisFiltrees = (user.productViews || []).filter((vue) => {
-      const date = moment(vue.viewedAt);
-      return date.isSameOrAfter(debutMois) && vue.productId;
-    });
+    // Récupérer les vues du mois en cours
+    const vuesCeMois = abonnement.vuesUtilisees || 0;
 
-    const produitsVus = vuesCeMoisFiltrees.map(v => v.productId.toString());
-    const produitsVusUniquement = [...new Set(produitsVus)];
-
-    let quotaTotal = 0;
-    if (formule === 'BLEU') quotaTotal = 1;
-    else if (formule === 'GOLD') quotaTotal = 5;
-    else if (formule === 'PLATINUM') quotaTotal = Infinity;
-
-    const quotaRestant = quotaTotal === Infinity
-      ? Infinity
-      : Math.max(0, quotaTotal - produitsVusUniquement.length);
+    // Déterminer le quota selon la formule
+    const quotas = {
+      BLEU: 1,
+      GOLD: 5,
+      PLATINUM: Infinity
+    };
+    const quotaTotal = formule ? quotas[formule] || 0 : 0;
+    
+    // Calculer les vues restantes
+    const quotaRestant = quotaTotal === Infinity 
+      ? Infinity 
+      : Math.max(0, quotaTotal - vuesCeMois);
 
     return res.status(200).json({
-      formule,
-      abonnementActif,
-      vuesDetails: {
-        produitsVus: produitsVusUniquement,
-        quotaRestant,
+      abonnement: {
+        formule,
+        dateDebut: abonnement.dateDebut,
+        dateFin: abonnement.dateFin,
+        montant: abonnement.montant,
+        statut: abonnement.statut,
+        joursRestants,
+        vuesUtilisees: vuesCeMois,
+        vuesRestantes: quotaRestant,
+        quotaTotal
       },
+      abonnementActif
     });
   } catch (err) {
-    console.error('❌ Erreur getUserForfait :', err.message);
-    return res.status(500).json({ message: 'Erreur interne serveur' });
+    console.error('❌ Erreur getUserForfait :', err);
+    return res.status(500).json({ 
+      message: 'Erreur interne serveur',
+      error: err.message
+    });
   }
 };
 
 /**
  * 📊 POST /users/:id/consume-view
+ * Enregistre une vue produit
  */
 exports.enregistrerVueProduit = async (req, res) => {
   try {
     const userId = req.params.id;
-    const { produitId } = req.body;
+    const { productId } = req.body;
 
-    if (!produitId) {
+    if (!productId) {
       return res.status(400).json({ message: 'ID produit manquant' });
     }
 
     const user = await User.findById(userId);
-    if (!user || user.role !== 'consommateur') {
-      return res.status(403).json({ message: 'Accès non autorisé' });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
-    const now = moment();
-    const debutMois = now.clone().startOf('month');
+    // Vérifier le rôle
+    if (user.role !== 'consommateur') {
+      return res.status(403).json({ message: 'Action réservée aux consommateurs' });
+    }
 
-    const vuesCeMoisFiltrees = (user.productViews || []).filter((vue) => {
-      const date = moment(vue.viewedAt);
-      return date.isSameOrAfter(debutMois) && vue.productId;
+    // Vérifier si l'abonnement permet une nouvelle vue
+    const abonnement = user.abonnement || {};
+    const formule = abonnement.formule;
+    
+    // Déterminer le quota selon la formule
+    const quotas = {
+      BLEU: 1,
+      GOLD: 5,
+      PLATINUM: Infinity
+    };
+    const quotaTotal = formule ? quotas[formule] || 0 : 0;
+    
+    // Vérifier si le quota est atteint
+    if (quotaTotal !== Infinity && (abonnement.vuesUtilisees || 0) >= quotaTotal) {
+      return res.status(403).json({ 
+        message: 'Quota mensuel dépassé',
+        quotaTotal,
+        vuesUtilisees: abonnement.vuesUtilisees
+      });
+    }
+
+    // Enregistrer la vue dans ProductView
+    const newView = new ProductView({
+      userId: user._id,
+      productId
     });
+    await newView.save();
 
-    const produitsVus = vuesCeMoisFiltrees.map(v => v.productId.toString());
-    const produitDejaVu = produitsVus.includes(produitId.toString());
-
-    if (produitDejaVu) {
-      return res.status(200).json({ message: 'Produit déjà vu ce mois-ci' });
-    }
-
-    const formule = user.abonnement?.formule || null;
-    let quotaTotal = 0;
-    if (formule === 'BLEU') quotaTotal = 1;
-    else if (formule === 'GOLD') quotaTotal = 5;
-    else if (formule === 'PLATINUM') quotaTotal = Infinity;
-
-    const quotaUtilise = produitsVus.length;
-    const quotaRestant = quotaTotal === Infinity ? Infinity : quotaTotal - quotaUtilise;
-
-    if (quotaRestant <= 0) {
-      return res.status(403).json({ message: 'Quota mensuel dépassé' });
-    }
-
-    user.productViews.push({ productId: produitId, viewedAt: new Date() });
+    // Mettre à jour le compteur dans l'utilisateur
+    user.abonnement.vuesUtilisees = (user.abonnement.vuesUtilisees || 0) + 1;
+    user.abonnement.derniereVue = new Date();
     await user.save();
 
-    return res.status(201).json({ message: 'Vue enregistrée avec succès' });
+    return res.status(201).json({ 
+      message: 'Vue enregistrée avec succès',
+      vuesUtilisees: user.abonnement.vuesUtilisees
+    });
   } catch (err) {
-    console.error('❌ Erreur enregistrerVueProduit :', err.message);
-    return res.status(500).json({ message: 'Erreur interne serveur' });
+    console.error('❌ Erreur enregistrerVueProduit :', err);
+    return res.status(500).json({ 
+      message: 'Erreur interne serveur',
+      error: err.message
+    });
   }
 };
 
 /**
  * ✅ GET /users/products/:productId/can-access
+ * Vérifie l'accès à un produit
  */
 exports.verifierAccesProduit = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     const { productId } = req.params;
 
-    if (!user || user.role !== 'consommateur') {
-      return res.status(403).json({ message: 'Accès non autorisé' });
+    if (!user) {
+      return res.status(404).json({ accessGranted: false, message: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier le rôle
+    if (user.role !== 'consommateur') {
+      return res.status(403).json({ accessGranted: false, message: 'Accès réservé aux consommateurs' });
     }
 
     const abonnement = user.abonnement || {};
     const dateFin = abonnement.dateFin ? new Date(abonnement.dateFin) : null;
-    const abonnementActif = abonnement.statut === 'actif' && (!dateFin || dateFin > new Date());
+    
+    // Vérifier si l'abonnement est actif
+    const abonnementActif = abonnement.statut === 'actif' && 
+                            dateFin && 
+                            dateFin > new Date();
 
     if (!abonnementActif) {
-      return res.status(403).json({ accessGranted: false, message: 'Abonnement inactif ou expiré' });
+      return res.status(403).json({ 
+        accessGranted: false, 
+        message: 'Abonnement inactif ou expiré' 
+      });
     }
 
-    const now = moment();
-    const debutMois = now.clone().startOf('month');
+    // Déterminer le quota selon la formule
+    const quotas = {
+      BLEU: 1,
+      GOLD: 5,
+      PLATINUM: Infinity
+    };
+    const quotaTotal = abonnement.formule ? quotas[abonnement.formule] || 0 : 0;
+    
+    // Vérifier si le quota est atteint
+    if (quotaTotal !== Infinity && (abonnement.vuesUtilisees || 0) >= quotaTotal) {
+      return res.status(403).json({ 
+        accessGranted: false, 
+        message: 'Quota mensuel dépassé',
+        quotaTotal,
+        vuesUtilisees: abonnement.vuesUtilisees
+      });
+    }
 
-    const vuesCeMois = (user.productViews || []).filter((vue) => {
-      const date = moment(vue.viewedAt);
-      return date.isSameOrAfter(debutMois) && vue.productId;
+    // Accès autorisé
+    return res.status(200).json({ 
+      accessGranted: true,
+      vuesRestantes: quotaTotal === Infinity 
+        ? 'Illimité' 
+        : quotaTotal - (abonnement.vuesUtilisees || 0)
     });
-
-    const produitsVus = vuesCeMois.map(v => v.productId.toString());
-    const dejaVu = produitsVus.includes(productId);
-
-    const formule = abonnement.formule || null;
-    let quotaTotal = 0;
-    if (formule === 'BLEU') quotaTotal = 1;
-    else if (formule === 'GOLD') quotaTotal = 5;
-    else if (formule === 'PLATINUM') quotaTotal = Infinity;
-
-    const quotaUtilise = [...new Set(produitsVus)].length;
-    const quotaRestant = quotaTotal === Infinity ? Infinity : quotaTotal - quotaUtilise;
-
-    if (dejaVu || quotaRestant > 0) {
-      return res.status(200).json({ accessGranted: true });
-    }
-
-    return res.status(403).json({ accessGranted: false, message: 'Quota atteint' });
   } catch (err) {
-    console.error('❌ Erreur verifierAccesProduit :', err.message);
-    return res.status(500).json({ accessGranted: false, message: 'Erreur serveur' });
+    console.error('❌ Erreur verifierAccesProduit :', err);
+    return res.status(500).json({ 
+      accessGranted: false, 
+      message: 'Erreur serveur',
+      error: err.message
+    });
   }
 };

@@ -238,3 +238,115 @@
     padding: 6px 10px;
   }
 }
+/* Styles pour la section promotion spéciale */
+.special-promo {
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  padding: 40px 20px;
+  margin: 40px 0;
+  border-radius: 16px;
+  text-align: center;
+  color: #333;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.promo-card {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.promo-badge {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  background: #e74c3c;
+  color: white;
+  font-weight: bold;
+  padding: 10px 20px;
+  border-radius: 30px;
+  transform: rotate(15deg);
+  font-size: 1.2rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.promo-highlight {
+  font-size: 1.4rem;
+  margin: 20px 0;
+  background: rgba(255,255,255,0.3);
+  padding: 15px;
+  border-radius: 12px;
+  display: inline-block;
+  font-weight: 700;
+}
+
+.promo-button {
+  display: inline-block;
+  background: #27ae60;
+  color: white;
+  padding: 12px 30px;
+  border-radius: 50px;
+  font-weight: bold;
+  text-decoration: none;
+  margin-top: 15px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.promo-button:hover {
+  background: #2ecc71;
+  transform: translateY(-3px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+}
+
+/* Section À propos */
+.about-section {
+  background-color: #f9f9f9;
+  padding: 50px 20px;
+  margin: 40px 0;
+  border-radius: 16px;
+}
+
+.about-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 30px;
+}
+
+.benefits-list li {
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  background: white;
+  border-left: 4px solid #27ae60;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+  transition: transform 0.3s ease;
+}
+
+.benefits-list li:hover {
+  transform: translateX(10px);
+}
+
+/* Animation pour les cartes produits */
+.animated-slide {
+  animation: fadeIn 0.8s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

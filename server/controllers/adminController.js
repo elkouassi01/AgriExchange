@@ -1,4 +1,3 @@
-// controllers/adminController.js
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Abonnement = require('../models/Abonnement');
@@ -7,7 +6,6 @@ const moment = require('moment');
 // ==================== DASHBOARD STATS ==================== //
 const getDashboardStats = async (req, res) => {
   try {
-    // Exécution parallèle des requêtes
     const [
       totalUsers,
       totalFarmers,
@@ -34,7 +32,6 @@ const getDashboardStats = async (req, res) => {
       Transaction.find().sort({ createdAt: -1 }).limit(5).populate('user', 'nom email')
     ]);
 
-    // Calcul des statistiques de croissance
     const lastMonth = moment().subtract(1, 'month');
     const [lastMonthUsers, lastMonthFarmers, lastMonthConsumers] = await Promise.all([
       User.countDocuments({ createdAt: { $lt: lastMonth.toDate() } }),
@@ -42,7 +39,6 @@ const getDashboardStats = async (req, res) => {
       User.countDocuments({ role: 'consommateur', createdAt: { $lt: lastMonth.toDate() } })
     ]);
 
-    // Calcul des pourcentages de croissance
     const calculateGrowth = (current, previous) => 
       previous > 0 ? ((current - previous) / previous * 100).toFixed(2) : current > 0 ? 100 : 0;
 
@@ -50,9 +46,8 @@ const getDashboardStats = async (req, res) => {
     const farmerGrowth = calculateGrowth(totalFarmers, lastMonthFarmers);
     const consumerGrowth = calculateGrowth(totalConsumers, lastMonthConsumers);
 
-    // Formatage des données
     const totalRevenue = totalRevenueData[0]?.total || 0;
-    
+
     const transactionStatus = {
       success: 0,
       pending: 0,
@@ -63,7 +58,6 @@ const getDashboardStats = async (req, res) => {
       transactionStatus[item._id] = item.count;
     });
 
-    // Activité mensuelle
     const sixMonthsAgo = moment().subtract(6, 'months').startOf('month');
     const monthlyActivity = await Transaction.aggregate([
       {
@@ -199,7 +193,6 @@ const updateUser = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
-    // Champs protégés
     delete updates.motDePasse;
     delete updates.role;
     delete updates.dateCreation;
@@ -267,8 +260,6 @@ const updateUserRole = async (req, res) => {
 const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Désactivation de l'utilisateur
     const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({ 
@@ -277,7 +268,6 @@ const deleteUser = async (req, res) => {
       });
     }
 
-    // Anonymisation
     user.email = `disabled_${Date.now()}_${user.email}`;
     user.status = 'disabled';
     await user.save();
@@ -384,6 +374,34 @@ const getSubscriptions = async (req, res) => {
   }
 };
 
+// ==================== CLEANUP OBSOLETE FIELDS ==================== //
+// ⭐ CRITICAL FIX: Renamed function to match route reference
+const cleanupObsoleteFields = async (req, res) => {
+  try {
+    const result = await User.updateMany(
+      {},
+      {
+        $unset: {
+          "abonnement.vuesUtilisees": "",
+          "abonnement.derniereVue": ""
+        }
+      }
+    );
+
+    res.json({
+      message: '✅ Champs obsolètes supprimés avec succès.',
+      matchedCount: result.matchedCount,
+      modifiedCount: result.modifiedCount
+    });
+  } catch (error) {
+    res.status(500).json({
+      code: 'USER_CLEANUP_ERROR',
+      message: '❌ Erreur lors du nettoyage des champs obsolètes',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -393,5 +411,6 @@ module.exports = {
   deleteUser,
   getUserActivity,
   getTransactions,
-  getSubscriptions
+  getSubscriptions,
+  cleanupObsoleteFields // ⭐ Fixed export name
 };
