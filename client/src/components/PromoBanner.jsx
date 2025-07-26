@@ -6,10 +6,10 @@ const PromoBanner = () => {
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
   
   const promotions = [
-    "🎉 Nouveauté ! -10% sur tous les produits bio avec le code BIO10",
-    "🚚 Livraison gratuite à partir de 15 000 FCFA d'achats !",
-    "🌱 Nouveaux agriculteurs rejoignez-nous : 0% de commission pendant 1 mois !",
-    "⭐ Abonnement GOLD : 3 mois offerts pour tout nouvel abonnement !"
+    "🎉 Nouveauté ! - tous les contacts sont certifés",
+    "🚚 Le consommateur peut discuter de l a livraison lui meme avec le vendeur",
+    "🌱 Eléveurs et Cultivateur rejoignez-nous gratuitement et exposé vos produits librement",
+    "⭐ Abonnement GOLD pour les consommateurs: 3 mois offerts pour tout nouvel abonnement !"
   ];
 
   useEffect(() => {

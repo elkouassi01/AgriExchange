@@ -113,9 +113,10 @@ function HomePage() {
           <h2>Offre Spéciale de Lancement !</h2>
           <p className="promo-highlight">🎉 Offre spéciale agriculteurs :<br/> 6 mois d’inscription 100% gratuite ! <strong>🎉</strong></p>
           <p>Valable jusqu'au 31 Décembre 2025</p>
-          <Link to="/produits" className="promo-button">
+          <Link to="" className="promo-button" >
             Profiter de l'offre
           </Link>
+          
         </div>
       </section>
 

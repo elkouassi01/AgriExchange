@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import './InscriptionPage.css';
+
 
 const formulesTarifs = {
   consommateur: { BLEU: 1000, GOLD: 3000, PLATINUM: 5000 },
@@ -300,7 +302,7 @@ const InscriptionPage = () => {
                 checked={formData.accepteAccord}
                 onChange={handleChange}
               />
-              <label htmlFor="accepteAccord">J'accepte la fiche d'accord de principe</label>
+              <label htmlFor="accepteAccord"><Link to="/condition">J'accepte la fiche d'accord de principe </Link></label>
               {errors.accepteAccord && (
                 <span className="error-message">{errors.accepteAccord}</span>
               )}
@@ -311,8 +313,9 @@ const InscriptionPage = () => {
         <button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Enregistrement...' : 'Créer mon compte'}
         </button>
-      </form>
+      </form>      
     </div>
+    
   );
 };
 
