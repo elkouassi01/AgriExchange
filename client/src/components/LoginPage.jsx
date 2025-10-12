@@ -8,23 +8,36 @@ const LoginPage = () => {
   const { user, login } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Récupérer l'URL de redirection après connexion
-  const from = location.state?.from?.pathname || "/";
 
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // Pour afficher/masquer le mot de passe
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Rediriger si l'utilisateur est déjà connecté
+  // 🔁 Détermine la page de redirection selon le rôle
+  const getRoleRedirect = (role) => {
+    switch (role) {
+      case "admin":
+        return "/admin/dashboard";
+      case "agriculteur":
+        return "/profil-agriculteur";
+      case "consommateur":
+        return "/profil-consommateur";
+      default:
+        return "/";
+    }
+  };
+
+  // 🔐 Si déjà connecté → redirige selon le rôle
   useEffect(() => {
     if (user) {
-      navigate(from, { replace: true });
+      const roleRedirect = getRoleRedirect(user.role);
+      navigate(roleRedirect, { replace: true });
     }
-  }, [user, navigate, from]);
+  }, [user, navigate]);
 
+  // 🧠 Gestion de la soumission du formulaire
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -33,25 +46,25 @@ const LoginPage = () => {
     try {
       const response = await api.post("/auth/connexion", {
         email,
-        motDePasse
+        motDePasse,
       });
 
-      // Vérifier le statut de la réponse
       if (response.status < 200 || response.status >= 300) {
         setError(response.data?.message || "Erreur lors de la connexion");
         return;
       }
 
-      if (!response.data.utilisateur || !response.data.token) {
+      const { utilisateur, token } = response.data;
+      if (!utilisateur || !token) {
         setError("Réponse invalide du serveur");
         return;
       }
 
-      // Enregistrer l'utilisateur dans le contexte
-      login(response.data.utilisateur, response.data.token);
+      // ✅ Connexion réussie : enregistre l'utilisateur dans le contexte
+      login(utilisateur, token);
 
-      // Redirection vers la page précédente ou selon le rôle
-      const redirectPath = location.state?.from?.pathname || getRoleRedirect(response.data.utilisateur.role);
+      // Redirection automatique selon le rôle
+      const redirectPath = getRoleRedirect(utilisateur.role);
       navigate(redirectPath, { replace: true });
 
     } catch (err) {
@@ -61,15 +74,7 @@ const LoginPage = () => {
     }
   };
 
-  const getRoleRedirect = (role) => {
-    switch (role) {
-      case "admin": return "/admin/dashboard";
-      case "agriculteur": return "/profil-agriculteur";
-      case "consommateur": return "/profil-consommateur";
-      default: return "/";
-    }
-  };
-
+  // 🧩 Gestion des erreurs
   const handleLoginError = (err) => {
     if (err.response) {
       if (err.response.status === 401) {
@@ -88,37 +93,16 @@ const LoginPage = () => {
     }
   };
 
+  // 👁️ Afficher / cacher le mot de passe
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
-  };
-
-  const handleDemoLogin = async (role) => {
-    setLoading(true);
-    setError("");
-    
-    try {
-      const response = await api.post("/auth/demo", { role });
-      
-      if (response.status < 200 || response.status >= 300) {
-        setError("Échec de la connexion démo");
-        return;
-      }
-
-      login(response.data.utilisateur, response.data.token);
-      navigate(getRoleRedirect(role), { replace: true });
-      
-    } catch (err) {
-      handleLoginError(err);
-    } finally {
-      setLoading(false);
-    }
   };
 
   return (
     <div className="login-container">
       <form className="login-form" onSubmit={handleLogin}>
         <h2>Connexion</h2>
-        
+
         {error && (
           <div className="login-error">
             <span className="error-icon">⚠️</span> {error}
@@ -158,28 +142,34 @@ const LoginPage = () => {
               type="button"
               className="password-toggle"
               onClick={togglePasswordVisibility}
-              aria-label={showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"}
+              aria-label={
+                showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"
+              }
             >
               {showPassword ? "👁️" : "👁️‍🗨️"}
             </button>
           </div>
+
           <div className="forgot-password">
             <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
           </div>
         </div>
 
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           className="login-button"
           disabled={loading}
           aria-busy={loading}
         >
           {loading ? "Connexion en cours..." : "Se connecter"}
         </button>
-          <div className="login-footer">
+
+        <div className="login-footer">
           <p>Pas encore de compte ?</p>
           <div className="register-links">
-            <Link to="/inscription">Créer un compte Consommateur <br /></Link>
+            <Link to="/inscription">
+              Créer un compte Consommateur <br />
+            </Link>
             <Link to="/inscription?type=agriculteur&formule=?">
               Créer un compte Agriculteur
             </Link>

@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../services/axiosConfig'; // Import de l'API configurée
+import api from '../services/axiosConfig'; // Axios déjà configuré
 
-// Contexte utilisateur
+// 🧩 Création du contexte utilisateur
 const UserContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
@@ -12,14 +12,14 @@ export const UserProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
-  // Intercepteur de réponse global
+  // 🛡️ Intercepteur global pour gérer les erreurs 401 (session expirée)
   useEffect(() => {
     const responseInterceptor = api.interceptors.response.use(
       res => res,
       err => {
         if (err.response?.status === 401) {
           clearSession();
-          console.warn('⛔ Session expirée');
+          console.warn('⛔ Session expirée — déconnexion automatique.');
         }
         return Promise.reject(err);
       }
@@ -30,9 +30,7 @@ export const UserProvider = ({ children }) => {
     };
   }, []);
 
-  /**
-   * 🔐 Récupère l'utilisateur connecté et son abonnement
-   */
+  // 🔐 Récupère l’utilisateur connecté via le token
   const fetchUser = async () => {
     try {
       const res = await api.get('/auth/me');
@@ -40,10 +38,10 @@ export const UserProvider = ({ children }) => {
 
       if (currentUser && currentUser._id) {
         const abonnement = await fetchUserAbonnement(currentUser._id);
-        const fullUser = { 
-          ...currentUser, 
+        const fullUser = {
+          ...currentUser,
           abonnement: abonnement.formule ? abonnement : null,
-          vuesDetails: abonnement.vuesDetails
+          vuesDetails: abonnement.vuesDetails,
         };
 
         setUser(fullUser);
@@ -59,9 +57,7 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  /**
-   * 📦 Récupère l'abonnement et les vues de l'utilisateur
-   */
+  // 📦 Récupère les infos d’abonnement
   const fetchUserAbonnement = async (userId) => {
     try {
       const res = await api.get(`/users/${userId}/forfait`);
@@ -72,7 +68,7 @@ export const UserProvider = ({ children }) => {
         vuesDetails: {
           quotaRestant: res.data.quotaRestant ?? 0,
           produitsVus: res.data.produitsVus ?? [],
-        }
+        },
       };
     } catch (err) {
       console.error('❌ Erreur fetchUserAbonnement :', err.message);
@@ -85,16 +81,14 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  /**
-   * 🔄 Actualise les données utilisateur
-   */
+  // 🔄 Rafraîchit les données utilisateur + abonnement
   const refreshUserData = async () => {
     if (!user?._id) return;
-    
+
     try {
       const [userRes, abonnementRes] = await Promise.all([
         api.get('/auth/me'),
-        api.get(`/users/${user._id}/forfait`)
+        api.get(`/users/${user._id}/forfait`),
       ]);
 
       const currentUser = userRes.data.utilisateur || userRes.data.user;
@@ -105,13 +99,13 @@ export const UserProvider = ({ children }) => {
         vuesDetails: {
           quotaRestant: abonnementRes.data.quotaRestant ?? 0,
           produitsVus: abonnementRes.data.produitsVus ?? [],
-        }
+        },
       };
 
-      const fullUser = { 
-        ...currentUser, 
+      const fullUser = {
+        ...currentUser,
         abonnement: abonnement.formule ? abonnement : null,
-        vuesDetails: abonnement.vuesDetails
+        vuesDetails: abonnement.vuesDetails,
       };
 
       setUser(fullUser);
@@ -123,27 +117,34 @@ export const UserProvider = ({ children }) => {
     }
   };
 
+  // 🔑 Connexion — enregistre le token et l’utilisateur
   const login = (userData, token) => {
     setUser(userData);
     localStorage.setItem('userData', JSON.stringify(userData));
     localStorage.setItem('token', token);
+
+    // 🔐 Injecte le token dans Axios pour toutes les requêtes suivantes
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   };
 
+  // 🚪 Déconnexion
   const logout = () => {
     clearSession();
   };
 
+  // 🧹 Nettoyage de la session (sans route logout)
   const clearSession = () => {
     setUser(null);
     localStorage.removeItem('userData');
     localStorage.removeItem('token');
-    api.post('/auth/logout').catch(console.error);
+    delete api.defaults.headers.common['Authorization']; // Important
   };
 
-  // Lors du montage : récupérer l'utilisateur si token présent
+  // 🧭 Au chargement : restaure la session si token valide
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       fetchUser();
     } else {
       setLoading(false);
@@ -166,5 +167,5 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// Hook personnalisé
+// 🪶 Hook personnalisé pour accéder au contexte
 export const useUser = () => useContext(UserContext);

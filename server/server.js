@@ -24,6 +24,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const cinetpayNotifyRoutes = require('./routes/cinetpayNotify');
 const chatRoutes = require('./routes/chatRoutes'); // <-- assure-toi que ce fichier exporte bien un Router Express
 const userRoutes = require('./routes/userRoutes'); // 🔒 Sécurisé
+const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -95,6 +96,7 @@ app.use('/uploads', (req, res, next) => {
 // Routes publiques
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/utilisateurs', utilisateursRoutes);
+app.use('/api', inscriptionGratuiteRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/paiement', paiementRoutes);
 app.use('/api/v1/contact', contactRoutes);

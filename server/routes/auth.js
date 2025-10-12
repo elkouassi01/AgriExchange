@@ -1,141 +1,143 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/User');
-const { generateToken, protect } = require('../middlewares/auth');
+const { protect } = require('../middlewares/auth');
+const sendSms = require('../utils/sendSms');
 
 // =============================================
 // 🔐 CONNEXION UTILISATEUR
 // =============================================
 router.post('/connexion', async (req, res) => {
-  // ✅ Journalisation utile pour debug
-  console.log('🔍 Tentative de connexion - req.body:', req.body);
-
-  // ✅ Vérification existence de req.body
-  if (!req.body || typeof req.body !== 'object') {
-    return res.status(400).json({
-      success: false,
-      message: 'Données manquantes ou invalides dans la requête'
-    });
-  }
-
   const { email, motDePasse } = req.body;
-
-  // ✅ Validation des champs obligatoires
-  if (!email || !motDePasse) {
-    return res.status(400).json({
-      success: false,
-      message: 'Email et mot de passe requis'
-    });
-  }
+  if (!email || !motDePasse) return res.status(400).json({ success: false, message: 'Email et mot de passe requis' });
 
   try {
-    // 🔎 Recherche de l'utilisateur avec sélection explicite du mot de passe
     const user = await User.findOne({ email }).select('+motDePasse');
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Identifiants invalides'
-      });
-    }
+    if (!user) return res.status(401).json({ success: false, message: 'Identifiants invalides' });
 
-    // 🔐 Vérification du mot de passe
     const passwordMatch = await bcrypt.compare(motDePasse, user.motDePasse);
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'Mot de passe incorrect'
-      });
-    }
+    if (!passwordMatch) return res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
 
-    // ❌ Vérification si le compte est désactivé
-    if (!user.estActif) {
-      return res.status(403).json({
-        success: false,
-        message: 'Compte désactivé. Contactez l\'administrateur.'
-      });
-    }
+    if (!user.estActif) return res.status(403).json({ success: false, message: "Compte désactivé." });
 
-    // ✅ Génération du token
-    const token = generateToken(user);
-
-    // 🍪 Définition du cookie sécurisé (optionnel)
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-      maxAge: 60 * 60 * 1000, // 1h
-      domain: process.env.NODE_ENV === 'production' ? '.votredomaine.com' : undefined
-    });
-
-    // ✅ Réponse utilisateur (sans mot de passe)
-    const userData = {
-      id: user._id,
-      nom: user.nom,
-      email: user.email,
-      role: user.role,
-      estActif: user.estActif
-    };
+    // ✅ Générer token JWT
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     return res.status(200).json({
       success: true,
       message: 'Connexion réussie',
-      utilisateur: userData,
+      utilisateur: {
+        id: user._id,
+        nom: user.nom,
+        prenom: user.prenom,
+        email: user.email,
+        role: user.role,
+        estActif: user.estActif,
+        isVerified: user.isVerified
+      },
       token
     });
-
   } catch (error) {
-    console.error('❌ [Connexion] Erreur serveur :', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur serveur',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('[Connexion] Erreur serveur :', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur interne' });
   }
 });
 
 // =============================================
-// ✅ INFOS DE L’UTILISATEUR CONNECTÉ
+// ✅ VERIFICATION OTP SMS
+// =============================================
+router.post('/verify-otp', async (req, res) => {
+  const { telephone, otp } = req.body;
+  if (!telephone || !otp) return res.status(400).json({ message: 'Téléphone et OTP requis' });
+
+  try {
+    const user = await User.findOne({ contact: telephone });
+    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+
+    if (user.otp !== otp) return res.status(400).json({ message: 'OTP incorrect' });
+    if (user.otpExpire < Date.now()) return res.status(400).json({ message: 'OTP expiré' });
+
+    user.isVerified = true;
+    user.otp = null;
+    user.otpExpire = null;
+    await user.save();
+
+    res.status(200).json({ message: 'Compte vérifié avec succès !' });
+  } catch (error) {
+    console.error('[Verify OTP] Erreur serveur :', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =============================================
+// 🔁 RENVOI OTP
+// =============================================
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
+
+router.post('/resend-otp', async (req, res) => {
+  const { telephone } = req.body;
+  if (!telephone) return res.status(400).json({ message: 'Téléphone requis' });
+
+  try {
+    const user = await User.findOne({ contact: telephone });
+    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+
+    const otp = generateOtp();
+    user.otp = otp;
+    user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 min
+    await user.save();
+
+    await sendSms(telephone, `Votre code OTP est : ${otp}`);
+
+    res.status(200).json({ message: 'Nouveau code OTP envoyé !' });
+  } catch (error) {
+    console.error('[Resend OTP] Erreur serveur :', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// =============================================
+// ✅ INFOS UTILISATEUR CONNECTÉ
 // =============================================
 router.get('/me', protect, async (req, res) => {
   try {
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Session expirée ou invalide'
-      });
-    }
+    if (!req.user) return res.status(401).json({ success: false, message: 'Session expirée' });
+    const user = await User.findById(req.user.id).select('-motDePasse');
+    if (!user) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
 
-    const userData = {
-      id: req.user._id,
-      nom: req.user.nom,
-      email: req.user.email,
-      role: req.user.role,
-      estActif: req.user.estActif
-    };
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
-      utilisateur: userData
+      utilisateur: {
+        id: user._id,
+        nom: user.nom,
+        prenom: user.prenom,
+        email: user.email,
+        role: user.role,
+        estActif: user.estActif,
+        isVerified: user.isVerified
+      }
     });
   } catch (error) {
     console.error('[Me] Erreur serveur :', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur serveur'
-    });
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
 // =============================================
-// ✅ TEST DISPONIBILITÉ DE L'API AUTH
+// 🚪 DECONNEXION UTILISATEUR
+// =============================================
+router.post('/logout', (req, res) => {
+  res.status(200).json({ success: true, message: 'Déconnexion réussie (client-side uniquement)' });
+});
+
+// =============================================
+// ✅ TEST DISPONIBILITE DE L'API AUTH
 // =============================================
 router.get('/', (req, res) => {
-  res.json({
-    status: 'active',
-    message: 'API Auth opérationnelle',
-    timestamp: new Date().toISOString()
-  });
+  res.json({ status: 'active', message: 'API Auth opérationnelle', timestamp: new Date().toISOString() });
+
 });
 
 module.exports = router;

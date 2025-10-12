@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Link } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import './InscriptionPage.css';
 
-
+// 💰 Tarifs des formules
 const formulesTarifs = {
   consommateur: { BLEU: 1000, GOLD: 3000, PLATINUM: 5000 },
   agriculteur: { BLEU: 500, GOLD: 1500, PLATINUM: 3000 },
 };
+
+// 🎁 Date de fin de la promo gratuite (modifiable)
+const promoFin = new Date('2026-04-01');
+
+// 🌍 URL du backend depuis .env
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const InscriptionPage = () => {
   const location = useLocation();
@@ -23,7 +28,7 @@ const InscriptionPage = () => {
     confirmerMotDePasse: '',
     localisation: '',
     typeExploitation: '',
-    ferme: '',
+    fermeNom: '',
     contact: '',
     accepteAccord: false,
   });
@@ -31,7 +36,7 @@ const InscriptionPage = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Gestion des inputs
+  // 🔄 Gestion des champs
   const handleChange = (e) => {
     const { name, value, type: inputType, checked } = e.target;
     setFormData((prev) => ({
@@ -40,74 +45,80 @@ const InscriptionPage = () => {
     }));
   };
 
-  // Validation du formulaire
+  // ✅ Validation du formulaire
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nom.trim()) {
-      newErrors.nom = 'Nom requis';
-    } else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(formData.nom)) {
+    if (!formData.nom.trim()) newErrors.nom = 'Nom requis';
+    else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(formData.nom))
       newErrors.nom = 'Le nom ne doit contenir que des lettres, espaces, tirets ou apostrophes';
-    }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email requis';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    if (!formData.email.trim()) newErrors.email = 'Email requis';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Email invalide';
-    }
 
-    if (!formData.contact.trim()) {
-      newErrors.contact = 'Contact requis';
-    }
-
-    if (formData.motDePasse.length < 6) {
+    if (!formData.contact.trim()) newErrors.contact = 'Contact requis';
+    else if (/[^0-9]+/.test(formData.contact)) newErrors.contact = 'Seulement des chiffres';
+    else if (formData.contact.length !== 10) newErrors.contact = '10 chiffres requis';
+    
+    if (formData.motDePasse.length < 6)
       newErrors.motDePasse = 'Le mot de passe doit contenir au moins 6 caractères';
-    }
-
-    if (formData.motDePasse !== formData.confirmerMotDePasse) {
+    if (formData.motDePasse !== formData.confirmerMotDePasse)
       newErrors.confirmerMotDePasse = 'Les mots de passe ne correspondent pas';
-    }
 
     if (type === 'agriculteur') {
-      if (!formData.ferme.trim()) {
-        newErrors.ferme = 'Nom de ferme requis';
-      }
-      if (!formData.localisation.trim()) {
-        newErrors.localisation = 'Localisation requise';
-      }
-      if (!formData.typeExploitation.trim()) {
-        newErrors.typeExploitation = 'Type d\'exploitation requis';
-      }
-      if (!formData.accepteAccord) {
-        newErrors.accepteAccord = 'Vous devez accepter l\'accord';
-      }
+      if (!formData.fermeNom.trim()) newErrors.fermeNom = 'Nom de ferme requis';
+      if (!formData.localisation.trim()) newErrors.localisation = 'Localisation requise';
+      if (!formData.typeExploitation.trim())
+        newErrors.typeExploitation = "Type d'exploitation requis";
+      if (!formData.accepteAccord)
+        newErrors.accepteAccord = 'Vous devez accepter les conditions';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // Soumission du formulaire
+  // 🚀 Soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
-    if (!formulesTarifs[type] || !formulesTarifs[type][formule]) {
-      alert(`Formule ${formule} non disponible pour le type ${type}`);
-      return;
-    }
-
     setIsSubmitting(true);
+    const maintenant = new Date();
 
     try {
-      // Préparation du montant et transaction id
+      // 🟢 Cas 1 : Promo active → inscription gratuite
+      if (type === 'agriculteur' && maintenant < promoFin) {
+        const res = await fetch(`${API_URL}/api/inscription-gratuite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...formData,
+            type,
+            formule,
+            gratuit: true,
+            promoExpireLe: promoFin,
+          }),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          // Stocker le téléphone pour OTP
+          localStorage.setItem('pendingPhone', formData.contact);
+          // Rediriger vers la page OTP
+          navigate('/verify-otp', { state: { telephone: formData.contact } });
+        } else {
+          alert(data.message || 'Erreur lors de l’inscription.');
+        }
+        return;
+      }
+
+      // 🟡 Cas 2 : Inscription payante via CinetPay
       const montant = formulesTarifs[type][formule];
       const transaction_id = `CP${Date.now()}`;
-
-      // Nettoyage du contact (seulement chiffres)
       const contactClean = formData.contact.replace(/\D/g, '');
 
-      // Données de paiement pour CinetPay
       const paymentData = {
         apikey: '8937149296838988c80faf0.18612017',
         site_id: '105896693',
@@ -118,7 +129,7 @@ const InscriptionPage = () => {
         customer_name: formData.nom.substring(0, 50),
         customer_email: formData.email,
         customer_phone_number: contactClean,
-        notify_url: 'https://votre-backend.com/api/cinetpay-notify',
+        notify_url: `${API_URL}/api/cinetpay-notify`,
         return_url: `${window.location.origin}/paiement-reussi`,
         cancel_url: `${window.location.origin}/paiement-echec`,
         channels: 'ALL',
@@ -130,38 +141,33 @@ const InscriptionPage = () => {
         lang: 'fr',
       };
 
-      // Envoi vers l’API CinetPay
       const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify(paymentData),
       });
 
       const result = await response.json();
-
       if (result.code === '201' && result.data?.payment_url) {
+        // Redirection vers paiement
         window.location.href = result.data.payment_url;
       } else {
-        console.error('Réponse API inattendue:', result);
-        alert(result.message || result.description || 'Erreur lors de la création du paiement');
+        console.error('Réponse inattendue:', result);
+        alert(result.message || 'Erreur lors de la création du paiement');
       }
     } catch (error) {
-      console.error('Erreur de paiement:', error);
-      alert(`Erreur lors du paiement : ${error.message || error}`);
+      console.error('Erreur:', error);
+      alert(`Erreur : ${error.message || error}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Récupère les détails tarifaires pour l’affichage
   const getFormuleDetails = () => {
     const formules = {
       BLEU: { price: type === 'agriculteur' ? '500 FCFA/mois' : '1 000 FCFA/mois' },
-      GOLD: { price: type === 'agriculteur' ? '1 500 FCFA/3mois' : '3 000 FCFA/mois' },
-      PLATINUM: { price: type === 'agriculteur' ? '3 000 FCFA/6mois' : '5 000 FCFA/mois' },
+      GOLD: { price: type === 'agriculteur' ? '1 500 FCFA/3 mois' : '3 000 FCFA/mois' },
+      PLATINUM: { price: type === 'agriculteur' ? '3 000 FCFA/6 mois' : '5 000 FCFA/mois' },
     };
     return formules[formule] || {};
   };
@@ -175,147 +181,107 @@ const InscriptionPage = () => {
             Formule {formule} • {getFormuleDetails().price}
           </div>
         )}
+        {type === 'agriculteur' && new Date() < promoFin && (
+          <div className="promo-banner">
+            🎉 Promo spéciale : inscription gratuite jusqu’au {promoFin.toLocaleDateString()}
+          </div>
+        )}
       </div>
 
+      {/* 🧾 Formulaire */}
       <form className="inscription-form" onSubmit={handleSubmit} noValidate>
-        <div className="form-group">
-          <label htmlFor="nom">Nom complet</label>
-          <input
-            id="nom"
-            type="text"
-            name="nom"
-            value={formData.nom}
-            onChange={handleChange}
-            className={errors.nom ? 'error' : ''}
-            autoComplete="name"
-          />
-          {errors.nom && <span className="error-message">{errors.nom}</span>}
-        </div>
+        <input
+          type="text"
+          name="nom"
+          placeholder="Nom complet"
+          value={formData.nom}
+          onChange={handleChange}
+        />
+        {errors.nom && <p className="error">{errors.nom}</p>}
 
-        <div className="form-group">
-          <label htmlFor="email">Adresse email</label>
-          <input
-            id="email"
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className={errors.email ? 'error' : ''}
-            autoComplete="email"
-          />
-          {errors.email && <span className="error-message">{errors.email}</span>}
-        </div>
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          value={formData.email}
+          onChange={handleChange}
+        />
+        {errors.email && <p className="error">{errors.email}</p>}
 
-        <div className="form-group">
-          <label htmlFor="contact">Contact (téléphone/WhatsApp)</label>
-          <input
-            id="contact"
-            type="text"
-            name="contact"
-            value={formData.contact}
-            onChange={handleChange}
-            className={errors.contact ? 'error' : ''}
-            autoComplete="tel"
-          />
-          {errors.contact && <span className="error-message">{errors.contact}</span>}
-        </div>
+        <input
+          type="text"
+          name="contact"
+          placeholder="Numéro de téléphone"
+          value={formData.contact}
+          onChange={handleChange}
+        />
+        {errors.contact && <p className="error">{errors.contact}</p>}
 
-        <div className="form-group">
-          <label htmlFor="motDePasse">Mot de passe</label>
-          <input
-            id="motDePasse"
-            type="password"
-            name="motDePasse"
-            value={formData.motDePasse}
-            onChange={handleChange}
-            className={errors.motDePasse ? 'error' : ''}
-            autoComplete="new-password"
-          />
-          {errors.motDePasse && <span className="error-message">{errors.motDePasse}</span>}
-        </div>
+        <input
+          type="password"
+          name="motDePasse"
+          placeholder="Mot de passe"
+          value={formData.motDePasse}
+          onChange={handleChange}
+        />
+        {errors.motDePasse && <p className="error">{errors.motDePasse}</p>}
 
-        <div className="form-group">
-          <label htmlFor="confirmerMotDePasse">Confirmer le mot de passe</label>
-          <input
-            id="confirmerMotDePasse"
-            type="password"
-            name="confirmerMotDePasse"
-            value={formData.confirmerMotDePasse}
-            onChange={handleChange}
-            className={errors.confirmerMotDePasse ? 'error' : ''}
-            autoComplete="new-password"
-          />
-          {errors.confirmerMotDePasse && (
-            <span className="error-message">{errors.confirmerMotDePasse}</span>
-          )}
-        </div>
+        <input
+          type="password"
+          name="confirmerMotDePasse"
+          placeholder="Confirmer le mot de passe"
+          value={formData.confirmerMotDePasse}
+          onChange={handleChange}
+        />
+        {errors.confirmerMotDePasse && <p className="error">{errors.confirmerMotDePasse}</p>}
 
         {type === 'agriculteur' && (
           <>
-            <div className="form-group">
-              <label htmlFor="ferme">Nom de la ferme</label>
-              <input
-                id="ferme"
-                type="text"
-                name="ferme"
-                value={formData.ferme}
-                onChange={handleChange}
-                className={errors.ferme ? 'error' : ''}
-              />
-              {errors.ferme && <span className="error-message">{errors.ferme}</span>}
-            </div>
+            <input
+              type="text"
+              name="fermeNom"
+              placeholder="Nom de la ferme"
+              value={formData.fermeNom}
+              onChange={handleChange}
+            />
+            {errors.fermeNom && <p className="error">{errors.fermeNom}</p>}
 
-            <div className="form-group">
-              <label htmlFor="typeExploitation">Type d'exploitation</label>
-              <input
-                id="typeExploitation"
-                type="text"
-                name="typeExploitation"
-                value={formData.typeExploitation}
-                onChange={handleChange}
-                placeholder="ex: maraîchage, élevage..."
-                className={errors.typeExploitation ? 'error' : ''}
-              />
-              {errors.typeExploitation && (
-                <span className="error-message">{errors.typeExploitation}</span>
-              )}
-            </div>
+            <input
+              type="text"
+              name="localisation"
+              placeholder="Localisation"
+              value={formData.localisation}
+              onChange={handleChange}
+            />
+            {errors.localisation && <p className="error">{errors.localisation}</p>}
 
-            <div className="form-group">
-              <label htmlFor="localisation">Localisation</label>
-              <input
-                id="localisation"
-                type="text"
-                name="localisation"
-                value={formData.localisation}
-                onChange={handleChange}
-                className={errors.localisation ? 'error' : ''}
-              />
-              {errors.localisation && <span className="error-message">{errors.localisation}</span>}
-            </div>
+            <input
+              type="text"
+              name="typeExploitation"
+              placeholder="Type d’exploitation"
+              value={formData.typeExploitation}
+              onChange={handleChange}
+            />
+            {errors.typeExploitation && <p className="error">{errors.typeExploitation}</p>}
 
-            <div className={`form-group checkbox-group ${errors.accepteAccord ? 'error' : ''}`}>
+            <label className="checkbox-label">
               <input
-                id="accepteAccord"
                 type="checkbox"
                 name="accepteAccord"
                 checked={formData.accepteAccord}
                 onChange={handleChange}
               />
-              <label htmlFor="accepteAccord"><Link to="/condition">J'accepte la fiche d'accord de principe </Link></label>
-              {errors.accepteAccord && (
-                <span className="error-message">{errors.accepteAccord}</span>
-              )}
-            </div>
+              <Link to="/condition">J’accepte les conditions d’utilisation</Link>
+            </label>
+            {errors.accepteAccord && <p className="error">{errors.accepteAccord}</p>}
           </>
         )}
 
         <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Enregistrement...' : 'Créer mon compte'}
+          {isSubmitting ? 'Traitement...' : 'Valider mon inscription'}
         </button>
-      </form>      
+      </form>
     </div>
-    
   );
 };
 

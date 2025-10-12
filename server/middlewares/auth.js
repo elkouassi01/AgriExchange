@@ -2,8 +2,8 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // 🔧 Durées de validité des tokens
-const TOKEN_EXPIRATION = process.env.JWT_EXPIRE || '1h';
-const REFRESH_EXPIRATION = process.env.REFRESH_EXPIRE || '7d';
+const TOKEN_EXPIRATION = process.env.JWT_EXPIRE || '7d';
+const REFRESH_EXPIRATION = process.env.REFRESH_EXPIRE || '30d';
 
 /**
  * 🔐 Middleware : Vérifie le token et injecte l'utilisateur dans req.user
@@ -21,8 +21,9 @@ const protect = async (req, res, next) => {
       token = req.query.token;
     }
 
-    // 🚫 2. Token manquant
+    // 🚫 2. Aucun token fourni
     if (!token) {
+      console.warn('🚫 Aucun token détecté');
       return res.status(401).json({
         success: false,
         code: 'NO_TOKEN',
@@ -33,8 +34,12 @@ const protect = async (req, res, next) => {
     // ✅ 3. Vérification du token JWT
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      decoded = jwt.verify(token, process.env.JWT_SECRET, {
+        issuer: 'AgriExchange API',
+        audience: 'agriexchange-client'
+      });
     } catch (error) {
+      console.warn('⚠️ Erreur de vérification du token:', error.name);
       return res.status(401).json({
         success: false,
         code: error.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN',
@@ -44,7 +49,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // 🔎 4. Récupération de l'utilisateur
+    // 🔎 4. Recherche de l'utilisateur
     const user = await User.findById(decoded.id).select('-motDePasse');
     if (!user) {
       return res.status(401).json({
@@ -54,12 +59,12 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // 🚫 5. Vérification du statut actif
-    if (!user.estActif) {
+    // 🚫 5. Vérification si le compte est actif
+    if (user.estActif === false) {
       return res.status(403).json({
         success: false,
         code: 'ACCOUNT_INACTIVE',
-        message: 'Compte désactivé. Contactez l\'administrateur.'
+        message: "Compte désactivé. Contactez l'administrateur."
       });
     }
 
@@ -72,14 +77,13 @@ const protect = async (req, res, next) => {
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de l\'authentification'
+      message: 'Erreur serveur lors de l’authentification.'
     });
   }
 };
 
 /**
  * 🔐 Middleware : Autorisation par rôle(s)
- * @param {string | string[]} roles - Rôle(s) autorisés
  */
 const authorize = (roles = []) => {
   if (typeof roles === 'string') roles = [roles];
@@ -102,7 +106,6 @@ const authorize = (roles = []) => {
 
 /**
  * 🔑 Génère un token JWT (accès)
- * @param {Object} user - utilisateur MongoDB
  */
 const generateToken = (user) => {
   return jwt.sign(
@@ -133,8 +136,6 @@ const generateRefreshToken = (user) => {
 
 /**
  * ✅ Vérifie un token JWT (accès ou refresh)
- * @param {string} token
- * @param {boolean} isRefresh
  */
 const verifyToken = (token, isRefresh = false) => {
   try {

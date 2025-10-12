@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import "./AddProductForm.css";
+//import "./AddProductForm.css";
 import { useUser } from "../contexts/UserContext";
 
 const AddProductForm = () => {
@@ -122,7 +122,7 @@ const AddProductForm = () => {
       {error && <p className="error-message">❌ {error}</p>}
       {success && <p className="success-message">✅ Produit ajouté avec succès !</p>}
 
-      <form onSubmit={handleSubmit}>
+      <form className="product-form-container" onSubmit={handleSubmit}>
         <label>
           Nom du produit:
           <input type="text" name="nom" value={formData.nom} onChange={handleChange} required />

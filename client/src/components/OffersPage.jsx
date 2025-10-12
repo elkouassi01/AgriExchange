@@ -1,6 +1,6 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import './OffersPage.css';
+import { useNavigate, Link } from "react-router-dom";
+import "./OffersPage.css";
 
 const OffersPage = () => {
   const navigate = useNavigate();
@@ -11,18 +11,29 @@ const OffersPage = () => {
 
   return (
     <div className="offers-container">
+      {/* 🔶 Bande défilante promo */}
+      <div className="promo-banner-scroll">
+        <div className="scroll-text">
+          🎉 Offre spéciale AGRICULTEURS : 6 mois d’abonnement GRATUITS jusqu’au
+          31 Décembre 2025 ! 🌾
+        </div>
+      </div>
+
       <header className="offers-header">
         <h1>🎯 Nos Offres d'Abonnement</h1>
-        <p className="subtitle">Choisissez l'abonnement qui correspond à vos besoins</p>
+        <p className="subtitle">
+          Choisissez l'abonnement qui correspond à vos besoins
+        </p>
       </header>
 
       <div className="offers-grid">
+        {/* ---------------- Consommateurs ---------------- */}
         <section className="offer-category">
           <div className="category-header">
             <div className="icon">👤</div>
             <h2>Offres Consommateurs</h2>
           </div>
-          
+
           <div className="offer-cards">
             <div className="offer-card blue">
               <div className="offer-badge">BLEU</div>
@@ -83,12 +94,28 @@ const OffersPage = () => {
           </div>
         </section>
 
+        {/* ---------------- Agriculteurs ---------------- */}
         <section className="offer-category">
           <div className="category-header">
             <div className="icon">🌾</div>
             <h2>Offres Agriculteurs</h2>
           </div>
-          
+
+          {/* 🔸 Section promotion spéciale */}
+          <div className="promo-card special-offer">
+            <div className="promo-badge">PROMO</div>
+            <p className="promo-highlight">
+              6 mois d’inscription <strong>100% gratuite</strong> !
+            </p>
+            <p>Valable jusqu'au 31 Décembre 2025</p>
+            <Link
+              to="/inscription?type=agriculteur&formule=OFFRE_GRATUITE"
+              className="promo-button"
+            >
+              Profiter de l'offre
+            </Link>
+          </div>
+
           <div className="offer-cards">
             <div className="offer-card blue">
               <div className="offer-badge">BLEU</div>
@@ -98,7 +125,8 @@ const OffersPage = () => {
                 <li>Statistiques de base</li>
               </ul>
               <div className="offer-price">
-                <span className="price">500 FCFA</span>
+                <span className="old-price">500 FCFA</span>
+                <span className="new-price">0 FCFA</span>
                 <span className="period">/mois</span>
               </div>
               <button
@@ -117,7 +145,8 @@ const OffersPage = () => {
                 <li>Statistiques avancées</li>
               </ul>
               <div className="offer-price">
-                <span className="price">1 500 FCFA</span>
+                <span className="old-price">1 500 FCFA</span>
+                <span className="new-price">0 FCFA</span>
                 <span className="period">/3 mois</span>
               </div>
               <button
@@ -136,7 +165,8 @@ const OffersPage = () => {
                 <li>Analyses complètes</li>
               </ul>
               <div className="offer-price">
-                <span className="price">3 000 FCFA</span>
+                <span className="old-price">3 000 FCFA</span>
+                <span className="new-price">0 FCFA</span>
                 <span className="period">/6 mois</span>
               </div>
               <button
