@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import "./LoginPage.css";
 import api from "../services/axiosConfig";
@@ -7,7 +7,6 @@ import api from "../services/axiosConfig";
 const LoginPage = () => {
   const { user, login } = useUser();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [email, setEmail] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
@@ -15,7 +14,14 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // 🔁 Détermine la page de redirection selon le rôle
+  // 🧭 Redirige automatiquement si déjà connecté
+  useEffect(() => {
+    if (user) {
+      navigate(getRoleRedirect(user.role), { replace: true });
+    }
+  }, [user, navigate]);
+
+  // 🔀 Fonction de redirection selon le rôle
   const getRoleRedirect = (role) => {
     switch (role) {
       case "admin":
@@ -29,15 +35,7 @@ const LoginPage = () => {
     }
   };
 
-  // 🔐 Si déjà connecté → redirige selon le rôle
-  useEffect(() => {
-    if (user) {
-      const roleRedirect = getRoleRedirect(user.role);
-      navigate(roleRedirect, { replace: true });
-    }
-  }, [user, navigate]);
-
-  // 🧠 Gestion de la soumission du formulaire
+  // 🔐 Soumission du formulaire de connexion
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -49,23 +47,16 @@ const LoginPage = () => {
         motDePasse,
       });
 
-      if (response.status < 200 || response.status >= 300) {
-        setError(response.data?.message || "Erreur lors de la connexion");
-        return;
-      }
-
-      const { utilisateur, token } = response.data;
-      if (!utilisateur || !token) {
+      if (!response.data?.utilisateur || !response.data?.token) {
         setError("Réponse invalide du serveur");
         return;
       }
 
-      // ✅ Connexion réussie : enregistre l'utilisateur dans le contexte
-      login(utilisateur, token);
+      // ✅ Connexion réussie
+      login(response.data.utilisateur, response.data.token);
 
-      // Redirection automatique selon le rôle
-      const redirectPath = getRoleRedirect(utilisateur.role);
-      navigate(redirectPath, { replace: true });
+      // 🚀 Rediriger selon le rôle
+      navigate(getRoleRedirect(response.data.utilisateur.role), { replace: true });
 
     } catch (err) {
       handleLoginError(err);
@@ -74,7 +65,7 @@ const LoginPage = () => {
     }
   };
 
-  // 🧩 Gestion des erreurs
+  // ⚠️ Gestion des erreurs serveur
   const handleLoginError = (err) => {
     if (err.response) {
       if (err.response.status === 401) {
@@ -89,13 +80,36 @@ const LoginPage = () => {
     } else if (err.request) {
       setError("Serveur injoignable. Vérifiez votre connexion internet.");
     } else {
-      setError("Erreur inattendue: " + err.message);
+      setError("Erreur inattendue : " + err.message);
     }
   };
 
-  // 👁️ Afficher / cacher le mot de passe
+  // 👁️‍🗨️ Afficher / cacher le mot de passe
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
+  };
+
+  // 🧪 Connexion démo rapide (si tu veux la garder)
+  const handleDemoLogin = async (role) => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await api.post("/auth/demo", { role });
+
+      if (!response.data?.utilisateur || !response.data?.token) {
+        setError("Échec de la connexion démo");
+        return;
+      }
+
+      login(response.data.utilisateur, response.data.token);
+      navigate(getRoleRedirect(role), { replace: true });
+
+    } catch (err) {
+      handleLoginError(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -120,7 +134,6 @@ const LoginPage = () => {
             required
             disabled={loading}
             autoComplete="email"
-            aria-label="Adresse e-mail"
           />
         </div>
 
@@ -136,20 +149,15 @@ const LoginPage = () => {
               required
               disabled={loading}
               autoComplete="current-password"
-              aria-label="Mot de passe"
             />
             <button
               type="button"
               className="password-toggle"
               onClick={togglePasswordVisibility}
-              aria-label={
-                showPassword ? "Cacher le mot de passe" : "Afficher le mot de passe"
-              }
             >
               {showPassword ? "👁️" : "👁️‍🗨️"}
             </button>
           </div>
-
           <div className="forgot-password">
             <Link to="/mot-de-passe-oublie">Mot de passe oublié ?</Link>
           </div>
@@ -159,7 +167,6 @@ const LoginPage = () => {
           type="submit"
           className="login-button"
           disabled={loading}
-          aria-busy={loading}
         >
           {loading ? "Connexion en cours..." : "Se connecter"}
         </button>
@@ -167,9 +174,7 @@ const LoginPage = () => {
         <div className="login-footer">
           <p>Pas encore de compte ?</p>
           <div className="register-links">
-            <Link to="/inscription">
-              Créer un compte Consommateur <br />
-            </Link>
+            <Link to="/inscription">Créer un compte Consommateur</Link>
             <Link to="/inscription?type=agriculteur&formule=?">
               Créer un compte Agriculteur
             </Link>
