@@ -1,0 +1,29 @@
+/* Fireworks.css */
+.fireworks-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  background: transparent !important;
+}
+
+/* Pour renforcer la visibilité des couleurs */
+.fireworks-canvas {
+  filter: 
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.8))
+    contrast(1.2)
+    saturate(1.3);
+}
+
+/* Optionnel : Ajouter une animation de pulsation pour plus d'effet */
+@keyframes fireworks-pulse {
+  0%, 100% { filter: contrast(1.2) saturate(1.3); }
+  50% { filter: contrast(1.4) saturate(1.5) brightness(1.1); }
+}
+
+.fireworks-canvas {
+  animation: fireworks-pulse 2s ease-in-out infinite;
+}
