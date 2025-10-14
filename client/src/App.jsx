@@ -28,6 +28,9 @@ import NoservicePage from './components/Noservices';
 // 👨‍🌾 Agriculteur
 import AddProductForm from './components/AddProductForm';
 import FarmerDashboard from './components/FarmerDashboard';
+import MesProduits from './components/MesProduits';
+import GestionAbonnes from './components/GestionAbonnes';
+import ProfilUtilisateur from './components/ProfilUtilisateur';
 
 // 👤 Consommateur
 import ConsumerDashboard from './components/ConsumerDashboard';
@@ -95,6 +98,9 @@ const AppContent = () => {
         <Route path="/condition" element={<TermsPage />} />
         <Route path="/Appropos" element={<ApproposPage />} />
         <Route path="/Noservice" element={<NoservicePage />} />
+        <Route path="/mes-produits" element={<MesProduits />} />
+        <Route path="/abonne" element={<GestionAbonnes />} />
+        <Route path="/profil" element={<ProfilUtilisateur />} />
 
         {/* 👨‍🌾 Routes agriculteur protégées */}
         <Route
