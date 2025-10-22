@@ -217,7 +217,7 @@ const AddProductForm = () => {
       console.log("📦 Données finales envoyées à l'API:", productData);
 
       const res = await axios.post(
-        "http://localhost:5000/api/v1/products/add", 
+        "http://localhost:5000/api/v1/products", 
         productData, 
         {
           withCredentials: true,

@@ -2,11 +2,11 @@
 
 /* Variables CSS pour une cohérence globale */
 :root {
-  --primary-glow: #0c471e;
-  --secondary-glow: #14661f;
-  --error-glow: #ff4d4d;
-  --success-glow: #00ff88;
-  --warning-glow: #ffaa00;
+  --primary-glow: #dd9907;
+  --secondary-glow: #983c07;
+  --error-glow: #cd0707;
+  --success-glow: #64694f;
+  --warning-glow: #c2ac7f;
   --glass-bg: rgba(255, 255, 255, 0.9);
   --glass-border: rgba(0, 0, 0, 0.2);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
@@ -183,7 +183,7 @@ body {
   padding: 2rem;
   background: rgba(255, 255, 255, 0.6);
   box-shadow: 
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 1px 0 rgba(37, 35, 35, 0.8),
     0 4px 25px rgba(0, 0, 0, 0.05);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
