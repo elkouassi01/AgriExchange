@@ -1,0 +1,63 @@
+/* Conteneur principal */
+.page-transactions {
+  padding: 24px;
+}
+
+/* En-tête */
+.entete-transactions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* Titre */
+.titre-transactions {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* Sous-titre */
+.sous-titre-transactions {
+  color: #6c757d;
+  font-size: 0.95rem;
+}
+
+/* Boutons d'action */
+.actions-transactions button {
+  margin-right: 8px;
+}
+
+/* Barre de filtres */
+.filtres-transactions {
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Email utilisateur */
+.email-user {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Erreur */
+.erreur-transactions {
+  padding: 24px;
+  background-color: #fdecea;
+  border-radius: 8px;
+  color: #d32f2f;
+  text-align: center;
+}
+
+/* Spinner */
+.spinner-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+}

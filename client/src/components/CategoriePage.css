@@ -1,0 +1,231 @@
+/* Variables CSS globales pour les couleurs, ombres, rayons, transitions */
+:root {
+  --primary: #2ecc71;               /* Couleur principale (vert clair) */
+  --primary-dark: #27ae60;          /* Vert foncé pour hover et accents */
+  --text-dark: #2c3e50;             /* Texte principal sombre */
+  --text-light: #7f8c8d;            /* Texte secondaire clair */
+  --background: #f4fef7;            /* Fond général clair et doux */
+  --card-bg: #ffffff;               /* Fond des cartes produit */
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);  /* Ombre légère pour cartes */
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.12); /* Ombre accentuée au hover */
+  --radius-md: 10px;                /* Rayon moyen pour arrondir coins */
+  --radius-lg: 14px;                /* Rayon plus important pour certains éléments */
+  --transition: all 0.25s ease-in-out; /* Transition douce pour effets */
+}
+
+/* Conteneur principal centré, max-width et padding */
+.category-container {
+  max-width: 1200px;               /* Largeur maximale pour éviter trop large */
+  margin: 0 auto;                  /* Centre horizontalement */
+  padding: 2rem 1rem;              /* Espace intérieur vertical et horizontal */
+  background-color: var(--background);
+  min-height: 100vh;               /* Remplit au minimum la hauteur de la fenêtre */
+}
+
+/* En-tête de la page catégorie : titre centré avec marge en bas */
+.category-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+.category-header h1 {
+  font-size: 2.2rem;               /* Taille du titre */
+  color: var(--text-dark);
+  margin-bottom: 0.5rem;
+}
+
+/* Badge indiquant le nombre de produits */
+/* Fond vert translucide, texte vert, arrondi, padding */
+.product-count {
+  display: inline-block;
+  background-color: rgba(46, 204, 113, 0.1);
+  color: var(--primary);
+  padding: 0.5rem 1.2rem;
+  border-radius: 20px;
+  font-weight: 600;
+}
+
+/* Grille responsive des produits */
+/* repeat(auto-fill, minmax(220px, 1fr)) : autant de colonnes que possible, min 220px chacune */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.2rem;    /* Espace entre cartes */
+  padding: 1rem;
+}
+
+/* Carte produit : blanc, arrondi, ombre légère, flex colonne */
+.product-card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;               /* Contenu ne dépasse pas les bords arrondis */
+  display: flex;
+  flex-direction: column;         /* Colonne pour empiler contenu verticalement */
+  font-size: 0.9rem;
+  transition: var(--transition);
+}
+/* Animation au survol : remonter légèrement et ombre plus visible */
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Conteneur de l'image produit */
+/* Hauteur fixe, fond dégradé doux, masque le débordement */
+.image-container {
+  height: 150px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%);
+  overflow: hidden;
+}
+
+/* Image produit : couvre tout le conteneur, zoom progressif au hover */
+.product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+.product-card:hover .product-image {
+  transform: scale(1.06);
+}
+
+/* Bloc info texte et bouton */
+/* Flex colonne avec espacement et bouton en bas */
+.product-info {
+  padding: 0.8rem 1rem;
+  flex-grow: 1;                   /* Prend tout l’espace vertical restant */
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;                   /* Espacement vertical entre éléments */
+  text-align: center;
+}
+
+/* Titre produit */
+.product-info h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-dark);
+}
+
+/* Description produit : plus petite, couleur claire, pousse bouton en bas */
+.product-description {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  line-height: 1.3;
+  margin: 0;
+  flex-grow: 1;                  /* Occupe l’espace possible */
+}
+
+/* Prix produit : gras et rouge vif pour attirer l’attention */
+.product-price {
+  font-weight: 700;
+  color: #e74c3c !important; /* Rouge vif */
+  font-size: 1rem;
+  margin: 0.3rem 0;
+}
+
+/* Bouton "Voir Fournisseur" */
+/* Largeur 100%, padding confortable, texte centré, arrondi, transition */
+.product-button {
+  width: 100%;
+  padding: 0.55rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: white;
+  background-color: var(--primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  white-space: nowrap;          /* Empêche retour à la ligne */
+  overflow: hidden;
+  text-overflow: ellipsis;      /* Ajoute "..." si texte trop long */
+  transition: var(--transition);
+  margin-top: auto;             /* Pousse le bouton en bas du bloc */
+  text-align: center;
+}
+.product-button:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+/* Conteneur chargement : centrage vertical et horizontal */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+}
+
+/* Spinner animation de chargement */
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Conteneurs erreur et message "vide" */
+/* Centré, padding, arrondi, max-width pour pas trop étirer */
+.error-container,
+.empty-container {
+  text-align: center;
+  padding: 2rem;
+  border-radius: var(--radius-md);
+  margin: 2rem auto;
+  max-width: 600px;
+}
+
+/* Fond rouge clair pour erreur */
+.error-container {
+  background: rgba(231, 76, 60, 0.1);
+}
+
+/* Fond gris clair pour message vide */
+.empty-container {
+  background: rgba(149, 165, 166, 0.1);
+}
+
+/* Boutons retry et retour */
+/* Vert, padding confortable, arrondi, curseur pointer, transition douce */
+.retry-button,
+.back-button {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+}
+.retry-button:hover,
+.back-button:hover {
+  background-color: var(--primary-dark);
+}
+
+/* Responsive : petits écrans */
+/* Ajustement titre, grille 1 colonne, image plus petite, bouton plus grand */
+@media (max-width: 768px) {
+  .category-header h1 {
+    font-size: 1.6rem;
+  }
+  .products-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .image-container {
+    height: 140px;
+  }
+  .product-button {
+    white-space: normal;       /* Autorise retour à la ligne */
+    font-size: 1rem;           /* Taille plus confortable */
+    padding: 0.6rem 0;
+  }
+}

@@ -1,0 +1,719 @@
+/* AddProductForm.css */
+
+/* Variables CSS pour une cohérence globale */
+:root {
+  --primary-glow: #0c471e;
+  --secondary-glow: #14661f;
+  --error-glow: #ff4d4d;
+  --success-glow: #00ff88;
+  --warning-glow: #ffaa00;
+  --glass-bg: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(0, 0, 0, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --text-muted: #666666;
+  --bg-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 50%, #dee2e6 100%);
+}
+
+/* Reset et styles de base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-gradient);
+  min-height: 100vh;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text-primary);
+}
+
+/* Conteneur principal avec effet glassmorphism */
+.add-product-form {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 2.5rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 
+    var(--glass-shadow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  animation: formAppear 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Effet de bordure lumineuse */
+.add-product-form::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent, 
+    var(--primary-glow), 
+    transparent
+  );
+  animation: borderGlow 3s ease-in-out infinite;
+}
+
+@keyframes formAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* En-tête du formulaire */
+.form-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(12, 71, 30, 0.3);
+  position: relative;
+}
+
+.form-header h2 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 
+    0 0 30px rgba(12, 71, 30, 0.3),
+    0 0 60px rgba(12, 71, 30, 0.1);
+  letter-spacing: -0.5px;
+}
+
+.form-subtitle {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Alertes */
+.alert {
+  padding: 1.2rem 1.5rem;
+  border-radius: 16px;
+  font-weight: 600;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(10px);
+  border: 1px solid;
+  position: relative;
+  overflow: hidden;
+  animation: slideDown 0.4s ease-out;
+  color: var(--text-primary);
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(0, 0, 0, 0.1), 
+    transparent
+  );
+  animation: shimmer 2.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+.alert.error {
+  background: rgba(255, 50, 50, 0.1);
+  border-color: rgba(255, 0, 0, 0.3);
+  color: #d32f2f;
+  box-shadow: 0 4px 20px rgba(255, 0, 0, 0.05);
+}
+
+.alert.success {
+  background: rgba(0, 255, 136, 0.1);
+  border-color: rgba(0, 255, 136, 0.3);
+  color: #2e7d32;
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.05);
+}
+
+/* Conteneur du formulaire */
+.product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* Sections du formulaire */
+.form-section {
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 2rem;
+  background: rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 4px 25px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.form-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, 
+    var(--primary-glow), 
+    var(--secondary-glow)
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.form-section:hover {
+  border-color: rgba(12, 71, 30, 0.4);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 8px 32px rgba(12, 71, 30, 0.1);
+  transform: translateY(-2px);
+}
+
+.form-section:hover::before {
+  opacity: 1;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.section-icon {
+  font-size: 1.8rem;
+  filter: drop-shadow(0 0 10px rgba(12, 71, 30, 0.4));
+  animation: iconFloat 3s ease-in-out infinite;
+}
+
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+.section-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+/* Grille de formulaire responsive */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Labels */
+.form-group label {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.label-required::after {
+  content: '*';
+  color: var(--error-glow);
+  font-weight: 700;
+  margin-left: 0.25rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Champs de formulaire */
+.form-control {
+  padding: 1rem 1.25rem;
+  border: 1.5px solid var(--glass-border);
+  border-radius: 14px;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  font-family: inherit;
+}
+
+.form-control::placeholder {
+  color: var(--text-muted);
+  transition: color 0.3s ease;
+}
+
+.form-control:hover {
+  border-color: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.form-control:focus {
+  border-color: var(--primary-glow);
+  box-shadow: 
+    0 0 0 3px rgba(12, 71, 30, 0.1),
+    0 0 25px rgba(12, 71, 30, 0.1);
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+}
+
+.form-control:focus::placeholder {
+  color: var(--text-muted);
+}
+
+/* Champs spéciaux */
+textarea.form-control {
+  min-height: 120px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+select.form-control {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='%230c471e' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1.25rem center;
+  background-size: 1.25rem;
+  cursor: pointer;
+}
+
+/* Upload d'image */
+.image-upload-area {
+  border: 2px dashed rgba(12, 71, 30, 0.4);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  background: rgba(12, 71, 30, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.image-upload-area::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(12, 71, 30, 0.1), 
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
+.image-upload-area:hover {
+  border-color: var(--primary-glow);
+  background: rgba(12, 71, 30, 0.08);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(12, 71, 30, 0.1);
+}
+
+.image-upload-area:hover::before {
+  left: 100%;
+}
+
+.upload-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 0 15px rgba(12, 71, 30, 0.4));
+  animation: iconFloat 3s ease-in-out infinite;
+}
+
+.upload-text {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.upload-hint {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+/* Aperçu d'image */
+.image-preview-container {
+  margin-top: 1.5rem;
+  text-align: center;
+  animation: fadeIn 0.6s ease-out;
+}
+
+.image-preview {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 14px;
+  object-fit: cover;
+  border: 2px solid var(--primary-glow);
+  box-shadow: 
+    0 0 25px rgba(12, 71, 30, 0.2),
+    0 8px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.image-preview:hover {
+  transform: scale(1.05);
+  box-shadow: 
+    0 0 35px rgba(12, 71, 30, 0.3),
+    0 12px 35px rgba(0, 0, 0, 0.15);
+}
+
+/* Actions du formulaire */
+.form-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Boutons */
+.btn {
+  padding: 1.1rem 2.5rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border-radius: 16px;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  background: linear-gradient(135deg, var(--primary-glow), var(--secondary-glow));
+  box-shadow: 
+    0 6px 20px rgba(12, 71, 30, 0.3),
+    0 0 25px rgba(12, 71, 30, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-width: 200px;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent
+  );
+  transition: left 0.6s ease;
+}
+
+.btn:hover::before {
+  left: 100%;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 
+    0 10px 30px rgba(12, 71, 30, 0.4),
+    0 0 40px rgba(12, 71, 30, 0.2);
+}
+
+.btn:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #6d4c41, #8d6e63);
+  box-shadow: 
+    0 6px 20px rgba(109, 76, 65, 0.3),
+    0 0 25px rgba(141, 110, 99, 0.1);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  box-shadow: 
+    0 10px 30px rgba(109, 76, 65, 0.4),
+    0 0 40px rgba(141, 110, 99, 0.2);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Messages d'erreur */
+.field-error {
+  color: var(--error-glow);
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Indicateur de chargement */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.loading-spinner {
+  width: 60px;
+  height: 60px;
+  border: 3px solid rgba(12, 71, 30, 0.3);
+  border-top: 3px solid var(--primary-glow);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 20px rgba(12, 71, 30, 0.2);
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Spinner intégré dans les boutons */
+.btn .loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  margin: 0;
+  box-shadow: none;
+}
+
+/* Aide du formulaire */
+.form-help {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 1.5rem;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* Conteneur d'erreur */
+.error-container {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  max-width: 500px;
+  margin: 2rem auto;
+  box-shadow: var(--glass-shadow);
+}
+
+.error-container h2 {
+  color: var(--error-glow);
+  margin-bottom: 1rem;
+  font-size: 1.8rem;
+}
+
+.error-container p {
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+/* État de chargement global */
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.2rem;
+  color: var(--primary-glow);
+  font-weight: 600;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .add-product-form {
+    margin: 1rem;
+    padding: 1.5rem;
+    border-radius: 20px;
+  }
+
+  .form-header h2 {
+    font-size: 1.8rem;
+  }
+
+  .form-subtitle {
+    font-size: 1rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .form-section {
+    padding: 1.5rem;
+    border-radius: 16px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 1.2rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .btn {
+    width: 100%;
+    min-width: auto;
+    padding: 1rem 2rem;
+  }
+
+  .form-control {
+    padding: 0.875rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-product-form {
+    padding: 1.25rem;
+    margin: 0.75rem;
+    border-radius: 16px;
+  }
+
+  .form-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .form-section {
+    padding: 1.25rem;
+  }
+
+  .form-control {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
+  }
+}
+
+/* Effets de focus accessibles */
+.form-control:focus-visible {
+  outline: 2px solid var(--primary-glow);
+  outline-offset: 2px;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--primary-glow);
+  outline-offset: 2px;
+}
+
+/* Support du mode réduit de mouvement */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Amélioration de la sélection de texte */
+::selection {
+  background: rgba(12, 71, 30, 0.2);
+  color: var(--text-primary);
+}
+
+::-moz-selection {
+  background: rgba(12, 71, 30, 0.2);
+  color: var(--text-primary);
+}

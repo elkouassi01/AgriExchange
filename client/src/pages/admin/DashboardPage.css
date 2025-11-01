@@ -1,0 +1,332 @@
+/* == Reset & base == */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #e0f2f1 0%, #a7f3d0 100%);
+  color: #111;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Conteneurs principaux */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Titres globaux */
+h1, h2, h3, h4, h5 {
+  font-weight: 900;
+  color: #111;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+  text-shadow: 0 0 5px rgba(0,0,0,0.05);
+}
+
+/* Paragraphes */
+p {
+  color: #333;
+  font-weight: 500;
+  font-size: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+/* Boutons */
+button,
+.btn {
+  display: inline-block;
+  background: #22c55e;
+  color: white;
+  font-weight: 700;
+  padding: 0.65rem 1.5rem;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 6px 10px rgba(34, 197, 94, 0.4);
+  font-size: 1rem;
+  user-select: none;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  text-align: center;
+}
+
+button:hover,
+.btn:hover {
+  background: #16a34a;
+  box-shadow: 0 8px 18px rgba(22, 163, 74, 0.6);
+}
+
+/* Inputs & champs de formulaire */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  border: 2px solid #22c55e;
+  font-weight: 600;
+  font-size: 1rem;
+  color: #111;
+  background: #f9fefb;
+  transition: border-color 0.3s ease;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+  border-color: #16a34a;
+  outline: none;
+  box-shadow: 0 0 8px rgba(22, 163, 74, 0.4);
+}
+
+/* Listes */
+ul {
+  list-style: inside disc;
+  color: #333;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+a {
+  color: #22c55e;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: #16a34a;
+  text-decoration: underline;
+}
+
+/* Cartes statistiques */
+.stat-card {
+  padding: 2.5rem 2rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(22px);
+  border-radius: 28px;
+  box-shadow: 
+    0 16px 40px -12px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.3);
+  transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  position: relative;
+  overflow: hidden;
+  max-width: 340px;
+  margin: 2rem auto;
+  cursor: default;
+  color: #111;
+}
+
+.stat-card:hover {
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 
+    0 25px 60px -15px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 2.5px rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -50%;
+  right: -50%;
+  height: 6px;
+  background: linear-gradient(270deg, #16a34a, #22c55e, #65a30d, #16a34a);
+  background-size: 400% 400%;
+  animation: gradientFlow 8s ease-in-out infinite;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
+  z-index: 1;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.stat-card .icon-container {
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 2;
+}
+
+.stat-card .icon-large {
+  width: 80px;
+  height: 80px;
+  font-size: 2.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(255 255 255 / 0.2), rgba(255 255 255 / 0.07));
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  margin: 0 auto;
+  transition: all 0.35s ease;
+  color: #22c55e;
+  user-select: none;
+}
+
+.stat-card:hover .icon-large {
+  background: linear-gradient(135deg, #22c55e, #65a30d);
+  color: #f0fdf4;
+  box-shadow: 0 8px 24px #22c55eaa;
+}
+
+.stat-card h3 {
+  font-weight: 900;
+  font-size: 1.75rem;
+  color: #111111;
+  text-shadow: 0 0 5px rgba(0,0,0,0.07);
+  margin-bottom: 1.2rem;
+  position: relative;
+  z-index: 2;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.stat-card .value {
+  font-weight: 900;
+  font-size: 3.2rem;
+  color: #166534;
+  letter-spacing: 3px;
+  text-shadow: 0 0 8px rgba(22, 101, 52, 0.25);
+  margin-bottom: 1.6rem;
+  position: relative;
+  z-index: 2;
+  font-family: 'Segoe UI Black', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.stat-card .change-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8rem;
+  position: relative;
+  z-index: 2;
+}
+
+.stat-card .change-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0.4rem 1.2rem;
+  border-radius: 30px;
+  background: rgba(52, 211, 153, 0.15);
+  box-shadow: 0 3px 12px rgba(52, 211, 153, 0.25);
+  color: #15803d;
+  user-select: none;
+  transition: background-color 0.3s ease;
+}
+
+.stat-card .positive {
+  background-color: rgba(52, 211, 153, 0.3);
+  color: #15803d;
+}
+
+.stat-card .negative {
+  background-color: rgba(239, 68, 68, 0.3);
+  color: #b91c1c;
+}
+
+.stat-card .description {
+  font-size: 0.95rem;
+  color: #134e4a;
+  margin-top: 0.45rem;
+  position: relative;
+  z-index: 2;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  font-style: italic;
+}
+
+/* Grid simple responsive */
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+}
+
+/* Header & Navbar simplifié */
+header {
+  background: #22c55e;
+  padding: 1rem 2rem;
+  color: white;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  font-size: 1.5rem;
+  box-shadow: 0 6px 12px rgba(34, 197, 94, 0.7);
+  user-select: none;
+}
+
+/* Footer simple */
+footer {
+  background: #166534;
+  color: #d1fae5;
+  padding: 1.5rem 2rem;
+  text-align: center;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-top: 4rem;
+  user-select: none;
+}
+
+/* Liens bouton dans la navigation */
+.nav-link {
+  color: white;
+  font-weight: 700;
+  margin-right: 1.5rem;
+  text-transform: uppercase;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: #a7f3d0;
+  text-decoration: underline;
+}
+
+/* Utilitaire pour texte centré */
+.text-center {
+  text-align: center;
+}
+
+/* Utilitaire pour margin bottom */
+.mb-2 {
+  margin-bottom: 0.5rem;
+}
+.mb-4 {
+  margin-bottom: 1.5rem;
+}
+
+/* Animation simple d'apparition */
+.fade-in {
+  animation: fadeInUp 0.8s ease forwards;
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

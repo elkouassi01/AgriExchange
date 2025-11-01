@@ -1,0 +1,124 @@
+/* Structure générale */
+.users-page {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  color: #111827;
+}
+
+/* En-tête */
+.users-header {
+  margin-bottom: 24px;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Barre de recherche */
+.users-search-bar {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Chargement */
+.users-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+  font-size: 1.25rem;
+  color: #6b7280;
+}
+
+/* Erreur */
+.users-error {
+  padding: 24px;
+  background-color: #fdecea;
+  border-radius: 8px;
+  color: #d32f2f;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* Tableau */
+.users-table {
+  height: 70vh;
+  width: 100%;
+  flex-grow: 1;
+}
+
+/* Colonnes personnalisées */
+
+/* Colonne "Nom" */
+.user-nom {
+  display: flex;
+  align-items: center;
+  gap: 0px;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 0.9rem;
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Nom principal */
+.user-nom-principal {
+  font-weight: 600;
+  color: #111827;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+/* Email (sous-texte) */
+.user-email {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Contact */
+.user-contact {
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+/* Actions */
+.user-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.user-actions button {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.user-actions button:hover {
+  background-color: #059669;
+}

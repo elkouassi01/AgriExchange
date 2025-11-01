@@ -1,0 +1,109 @@
+/* ===== Conteneur principal du ChatBox ===== */
+.chatbox-container {
+  border: 1px solid #ccc;               /* Bordure grise claire autour du chat */
+  border-radius: 16px;                  /* Coins arrondis pour un look moderne */
+  display: flex;                       /* Flexbox vertical */
+  flex-direction: column;              /* Les éléments enfants s'empilent verticalement */
+  height: 450px;                      /* Hauteur fixe pour contenir la zone messages + input */
+  max-width: 600px;                   /* Largeur max, limite l'étirement sur grands écrans */
+  margin: 0 auto;                     /* Centre horizontalement dans son conteneur parent */
+  background-color: #ffffff;          /* Fond blanc */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);  /* Ombre légère portée pour relief */
+  overflow: hidden;                   /* Cache les débordements hors du cadre */
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Police claire et lisible */
+}
+
+/* ===== En-tête du chat ===== */
+.chatbox-header {
+  background-color: #2ecc71;          /* Vert vif principal */
+  color: white;                       /* Texte blanc pour contraste */
+  padding: 14px;                      /* Espacement intérieur confortable */
+  font-size: 18px;                   /* Taille de texte lisible */
+  font-weight: bold;                 /* Texte en gras */
+  text-align: center;                /* Centrage horizontal */
+  border-bottom: 1px solid #27ae60; /* Ligne de séparation plus foncée */
+}
+
+/* ===== Liste des messages (scrollable) ===== */
+.chatbox-messages {
+  flex: 1;                          /* Prend tout l’espace restant vertical */
+  padding: 12px;                   /* Espacement interne */
+  overflow-y: auto;                /* Scroll vertical si dépassement */
+  display: flex;                   /* Flexbox pour aligner messages */
+  flex-direction: column;          /* Messages empilés verticalement */
+  gap: 10px;                      /* Espace entre chaque message */
+}
+
+/* ===== Bulle de message ===== */
+.chatbox-bubble {
+  max-width: 75%;                  /* Largeur max 75% du conteneur pour lisibilité */
+  padding: 10px 14px;             /* Espacement interne des messages */
+  border-radius: 16px;            /* Coins arrondis */
+  font-size: 14px;                /* Taille texte */
+  line-height: 1.4;               /* Hauteur de ligne pour lisibilité */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); /* Ombre légère pour relief */
+  word-wrap: break-word;          /* Coupe les mots longs pour éviter débordement */
+}
+
+/* ===== Bulle message utilisateur connecté ===== */
+.chatbox-bubble.user {
+  align-self: flex-end;           /* Aligne la bulle à droite */
+  background-color: #dcf8c6;      /* Vert clair, style WhatsApp */
+  border-bottom-right-radius: 4px; /* Petit angle carré en bas à droite */
+}
+
+/* ===== Bulle message autre utilisateur ===== */
+.chatbox-bubble.other {
+  align-self: flex-start;          /* Aligne la bulle à gauche */
+  background-color: #f1f0f0;       /* Gris clair */
+  border-bottom-left-radius: 4px;  /* Petit angle carré en bas à gauche */
+}
+
+/* ===== Meta infos sous chaque message (heure, nom) ===== */
+.chatbox-meta {
+  font-size: 11px;                /* Petit texte */
+  color: #888;                   /* Gris moyen */
+  margin-top: 4px;               /* Petit espace au dessus */
+}
+
+/* ===== Pied de page contenant input + bouton ===== */
+.chatbox-footer {
+  display: flex;                 /* Horizontal: input + bouton */
+  border-top: 1px solid #ddd;   /* Ligne de séparation au-dessus */
+  padding: 10px;                /* Padding interne */
+  background-color: #fafafa;    /* Fond très clair */
+}
+
+/* ===== Zone de saisie texte ===== */
+.chatbox-input {
+  flex: 1;                      /* Prend tout l’espace possible */
+  border: 1px solid #ccc;       /* Bordure grise claire */
+  border-radius: 20px;          /* Coins très arrondis pour un style moderne */
+  padding: 8px 14px;            /* Padding confortable */
+  font-size: 14px;              /* Taille texte */
+  outline: none;                /* Pas de contour bleu au focus */
+  transition: border 0.3s ease; /* Transition douce sur la bordure */
+}
+
+/* ===== Effet focus sur la zone input ===== */
+.chatbox-input:focus {
+  border-color: #2ecc71;        /* Bordure verte quand focus */
+}
+
+/* ===== Bouton envoyer ===== */
+.chatbox-send {
+  background-color: #2ecc71;    /* Vert vif */
+  color: white;                 /* Texte blanc */
+  border: none;                 /* Pas de bordure */
+  border-radius: 20px;          /* Coins arrondis */
+  padding: 8px 16px;            /* Padding confortable */
+  margin-left: 10px;            /* Espace à gauche du bouton */
+  font-weight: bold;            /* Texte en gras */
+  cursor: pointer;              /* Curseur main au survol */
+  transition: background-color 0.3s ease; /* Transition couleur douce */
+}
+
+/* ===== Hover sur le bouton envoyer ===== */
+.chatbox-send:hover {
+  background-color: #27ae60;    /* Vert plus foncé */
+}

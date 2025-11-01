@@ -1,0 +1,51 @@
+/* src/components/PaiementPage.css */
+.paiement-container {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.paiement-details {
+  background: #f8f9fa;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.cinetpay-button {
+  background: #0066cc;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+.cinetpay-button:hover {
+  background: #0052a3;
+}
+
+.cinetpay-button:disabled {
+  background: #cccccc;
+}
+
+.payment-methods {
+  display: flex;
+  justify-content: space-around;
+  margin: 1rem 0;
+}
+
+.payment-methods img {
+  height: 40px;
+}
+
+.security-info {
+  color: #666;
+  font-size: 0.9rem;
+  text-align: center;
+}

@@ -1,0 +1,134 @@
+/* src/components/admin/StatCard.css */
+
+.stat-card {
+  background: linear-gradient(145deg, #ffffff, #f8fafc);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 
+    0 10px 15px -3px rgba(0, 0, 0, 0.05),
+    0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  border: 1px solid rgba(241, 245, 249, 0.8);
+  overflow: hidden;
+  position: relative;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.08),
+    0 10px 10px -5px rgba(0, 0, 0, 0.03);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background-size: 300% 300%;
+  animation: gradientBorder 3s ease infinite;
+}
+
+@keyframes gradientBorder {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.card-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  box-shadow: 
+    0 4px 6px -1px rgba(59, 130, 246, 0.3),
+    0 2px 4px -1px rgba(59, 130, 246, 0.1);
+}
+
+.card-title {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.card-value {
+  color: #1e293b;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(to right, #1e293b, #334155);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(203, 213, 225, 0.4);
+}
+
+.positive .change-indicator {
+  color: #10b981;
+}
+
+.negative .change-indicator {
+  color: #ef4444;
+}
+
+.change-indicator {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background: rgba(16, 185, 129, 0.1);
+}
+
+.negative .change-indicator {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.change-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  stroke-width: 2.5;
+}
+
+.card-description {
+  color: #94a3b8;
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+/* Animation pour le changement de valeur */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.card-value {
+  animation: pulse 1s ease;
+}

@@ -1,0 +1,65 @@
+/* SubscriptionsPage.css */
+
+/* Conteneur principal */
+.page-abonnements {
+  padding: 24px;
+}
+
+/* En-tête de la page */
+.en-tete-abonnements {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+/* Titre principal */
+.titre-page {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
+
+/* Sous-titre */
+.sous-titre-page {
+  color: #6c757d;
+  font-size: 0.95rem;
+}
+
+/* Section des actions (exporter, refresh) */
+.actions-abonnements button {
+  margin-right: 8px;
+}
+
+/* Barre de filtres */
+.filtres-abonnements {
+  padding: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Cellule email utilisateur */
+.cellule-email {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+/* Zone erreur */
+.message-erreur {
+  padding: 24px;
+  background-color: #fdecea;
+  border-radius: 8px;
+  color: #d32f2f;
+  text-align: center;
+}
+
+/* Alignement centré pour le spinner */
+.spinner-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+}
