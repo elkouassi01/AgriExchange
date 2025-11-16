@@ -170,6 +170,16 @@ button:disabled {
   cursor: not-allowed;
   box-shadow: none;
 }
+.contact-row {
+  display: flex;
+  gap: 10px;
+}
+
+.indicatif-select {
+  width: 140px;
+  padding: 10px;
+  font-size: 16px;
+}
 
 @media (max-width: 768px) {
   .inscription-container {

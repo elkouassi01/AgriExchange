@@ -2,16 +2,28 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import './InscriptionPage.css';
 
-// 💰 Tarifs des formules
+// 🌍 Indicatifs avec drapeaux
+const indicatifs = [
+  { code: '+225', pays: 'Côte d’Ivoire', drapeau: '🇨🇮' },
+  { code: '+33', pays: 'France', drapeau: '🇫🇷' },
+  { code: '+241', pays: 'Gabon', drapeau: '🇬🇦' },
+  { code: '+242', pays: 'Congo', drapeau: '🇨🇬' },
+  { code: '+243', pays: 'RDC', drapeau: '🇨🇩' },
+  { code: '+221', pays: 'Sénégal', drapeau: '🇸🇳' },
+  { code: '+223', pays: 'Mali', drapeau: '🇲🇱' },
+  { code: '+224', pays: 'Guinée', drapeau: '🇬🇳' },
+  { code: '+229', pays: 'Bénin', drapeau: '🇧🇯' },
+  { code: '+228', pays: 'Togo', drapeau: '🇹🇬' },
+];
+
+// 💰 Tarifs
 const formulesTarifs = {
   consommateur: { BLEU: 1000, GOLD: 3000, PLATINUM: 5000 },
   agriculteur: { BLEU: 500, GOLD: 1500, PLATINUM: 3000 },
 };
 
-// 🎁 Date de fin de la promo gratuite (modifiable)
+// 🎁 Promo
 const promoFin = new Date('2026-04-01');
-
-// 🌍 URL du backend depuis .env
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const InscriptionPage = () => {
@@ -33,10 +45,10 @@ const InscriptionPage = () => {
     accepteAccord: false,
   });
 
+  const [indicatif, setIndicatif] = useState('+225');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🔄 Gestion des champs
   const handleChange = (e) => {
     const { name, value, type: inputType, checked } = e.target;
     setFormData((prev) => ({
@@ -45,50 +57,46 @@ const InscriptionPage = () => {
     }));
   };
 
-  // ✅ Validation du formulaire
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.nom.trim()) newErrors.nom = 'Nom requis';
     else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(formData.nom))
-      newErrors.nom = 'Le nom ne doit contenir que des lettres, espaces, tirets ou apostrophes';
+      newErrors.nom = 'Nom invalide';
 
     if (!formData.email.trim()) newErrors.email = 'Email requis';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
       newErrors.email = 'Email invalide';
 
-    if (!formData.contact.trim()) newErrors.contact = 'Contact requis';
-    else if (/[^0-9]+/.test(formData.contact)) newErrors.contact = 'Seulement des chiffres';
-    else if (formData.contact.length !== 10) newErrors.contact = '10 chiffres requis';
-    
+    if (!formData.contact.trim()) newErrors.contact = 'Numéro requis';
+    else if (/[^0-9]+/.test(formData.contact)) newErrors.contact = 'Chiffres uniquement';
+    else if (formData.contact.length < 8) newErrors.contact = 'Numéro trop court';
+
     if (formData.motDePasse.length < 6)
-      newErrors.motDePasse = 'Le mot de passe doit contenir au moins 6 caractères';
+      newErrors.motDePasse = 'Min 6 caractères';
     if (formData.motDePasse !== formData.confirmerMotDePasse)
-      newErrors.confirmerMotDePasse = 'Les mots de passe ne correspondent pas';
+      newErrors.confirmerMotDePasse = 'Mots de passe différents';
 
     if (type === 'agriculteur') {
       if (!formData.fermeNom.trim()) newErrors.fermeNom = 'Nom de ferme requis';
       if (!formData.localisation.trim()) newErrors.localisation = 'Localisation requise';
-      if (!formData.typeExploitation.trim())
-        newErrors.typeExploitation = "Type d'exploitation requis";
-      if (!formData.accepteAccord)
-        newErrors.accepteAccord = 'Vous devez accepter les conditions';
+      if (!formData.typeExploitation.trim()) newErrors.typeExploitation = 'Type requis';
+      if (!formData.accepteAccord) newErrors.accepteAccord = 'Conditions requises';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // 🚀 Soumission du formulaire
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setIsSubmitting(true);
     const maintenant = new Date();
+    const fullPhone = indicatif + formData.contact;
 
     try {
-      // 🟢 Cas 1 : Promo active → inscription gratuite
       if (type === 'agriculteur' && maintenant < promoFin) {
         const res = await fetch(`${API_URL}/api/inscription-gratuite`, {
           method: 'POST',
@@ -99,25 +107,23 @@ const InscriptionPage = () => {
             formule,
             gratuit: true,
             promoExpireLe: promoFin,
+            contact: fullPhone,
           }),
         });
 
         const data = await res.json();
         if (res.ok) {
-          // Stocker le téléphone pour OTP
-          localStorage.setItem('pendingPhone', formData.contact);
-          // Rediriger vers la page OTP
-          navigate('/verify-otp', { state: { telephone: formData.contact } });
+          localStorage.setItem('pendingPhone', fullPhone);
+          navigate('/verify-otp', { state: { telephone: fullPhone } });
         } else {
-          alert(data.message || 'Erreur lors de l’inscription.');
+          alert(data.message || 'Erreur');
         }
         return;
       }
 
-      // 🟡 Cas 2 : Inscription payante via CinetPay
       const montant = formulesTarifs[type][formule];
       const transaction_id = `CP${Date.now()}`;
-      const contactClean = formData.contact.replace(/\D/g, '');
+      const contactClean = fullPhone.replace(/\D/g, '');
 
       const paymentData = {
         apikey: '8937149296838988c80faf0.18612017',
@@ -149,15 +155,12 @@ const InscriptionPage = () => {
 
       const result = await response.json();
       if (result.code === '201' && result.data?.payment_url) {
-        // Redirection vers paiement
         window.location.href = result.data.payment_url;
       } else {
-        console.error('Réponse inattendue:', result);
-        alert(result.message || 'Erreur lors de la création du paiement');
+        alert(result.message || 'Erreur paiement');
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      alert(`Erreur : ${error.message || error}`);
+      alert(`Erreur : ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -183,12 +186,11 @@ const InscriptionPage = () => {
         )}
         {type === 'agriculteur' && new Date() < promoFin && (
           <div className="promo-banner">
-            🎉 Promo spéciale : inscription gratuite jusqu’au {promoFin.toLocaleDateString()}
+            🎉 Inscription gratuite jusqu’au {promoFin.toLocaleDateString()}
           </div>
         )}
       </div>
 
-      {/* 🧾 Formulaire */}
       <form className="inscription-form" onSubmit={handleSubmit} noValidate>
         <input
           type="text"
@@ -208,13 +210,26 @@ const InscriptionPage = () => {
         />
         {errors.email && <p className="error">{errors.email}</p>}
 
-        <input
-          type="text"
-          name="contact"
-          placeholder="Numéro de téléphone"
-          value={formData.contact}
-          onChange={handleChange}
-        />
+        <div className="contact-row">
+          <select
+            value={indicatif}
+            onChange={(e) => setIndicatif(e.target.value)}
+            className="indicatif-select"
+          >
+            {indicatifs.map((item) => (
+              <option key={item.code} value={item.code}>
+                {item.drapeau} {item.code}
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            name="contact"
+            placeholder="Numéro de téléphone"
+            value={formData.contact}
+            onChange={handleChange}
+          />
+        </div>
         {errors.contact && <p className="error">{errors.contact}</p>}
 
         <input
