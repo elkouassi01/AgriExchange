@@ -1,28 +1,14 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
+import Select from 'react-select';
 import './InscriptionPage.css';
+import useCallingCodes from '../hooks/useCallingCodes';
 
-// 🌍 Indicatifs avec drapeaux
-const indicatifs = [
-  { code: '+225', pays: 'Côte d’Ivoire', drapeau: '🇨🇮' },
-  { code: '+33', pays: 'France', drapeau: '🇫🇷' },
-  { code: '+241', pays: 'Gabon', drapeau: '🇬🇦' },
-  { code: '+242', pays: 'Congo', drapeau: '🇨🇬' },
-  { code: '+243', pays: 'RDC', drapeau: '🇨🇩' },
-  { code: '+221', pays: 'Sénégal', drapeau: '🇸🇳' },
-  { code: '+223', pays: 'Mali', drapeau: '🇲🇱' },
-  { code: '+224', pays: 'Guinée', drapeau: '🇬🇳' },
-  { code: '+229', pays: 'Bénin', drapeau: '🇧🇯' },
-  { code: '+228', pays: 'Togo', drapeau: '🇹🇬' },
-];
-
-// 💰 Tarifs
 const formulesTarifs = {
   consommateur: { BLEU: 1000, GOLD: 3000, PLATINUM: 5000 },
   agriculteur: { BLEU: 500, GOLD: 1500, PLATINUM: 3000 },
 };
 
-// 🎁 Promo
 const promoFin = new Date('2026-04-01');
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -48,6 +34,8 @@ const InscriptionPage = () => {
   const [indicatif, setIndicatif] = useState('+225');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { callingCodes, loading: loadingCodes, error: errorCodes } = useCallingCodes();
 
   const handleChange = (e) => {
     const { name, value, type: inputType, checked } = e.target;
@@ -97,6 +85,7 @@ const InscriptionPage = () => {
     const fullPhone = indicatif + formData.contact;
 
     try {
+      // Inscription gratuite si agriculteur et promo active
       if (type === 'agriculteur' && maintenant < promoFin) {
         const res = await fetch(`${API_URL}/api/inscription-gratuite`, {
           method: 'POST',
@@ -121,6 +110,7 @@ const InscriptionPage = () => {
         return;
       }
 
+      // Paiement classique
       const montant = formulesTarifs[type][formule];
       const transaction_id = `CP${Date.now()}`;
       const contactClean = fullPhone.replace(/\D/g, '');
@@ -175,6 +165,17 @@ const InscriptionPage = () => {
     return formules[formule] || {};
   };
 
+  // Options pour react-select avec drapeau
+  const selectOptions = callingCodes.map((item) => ({
+    value: item.code,
+    label: (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <img src={item.drapeau} alt={item.pays} width="20" height="14" />
+        <span>{item.code} - {item.pays}</span>
+      </div>
+    ),
+  }));
+
   return (
     <div className="inscription-container">
       <div className="inscription-header">
@@ -211,17 +212,21 @@ const InscriptionPage = () => {
         {errors.email && <p className="error">{errors.email}</p>}
 
         <div className="contact-row">
-          <select
-            value={indicatif}
-            onChange={(e) => setIndicatif(e.target.value)}
-            className="indicatif-select"
-          >
-            {indicatifs.map((item) => (
-              <option key={item.code} value={item.code}>
-                {item.drapeau} {item.code}
-              </option>
-            ))}
-          </select>
+          {loadingCodes ? (
+            <div className="loading-indicator">Chargement indicatifs...</div>
+          ) : errorCodes ? (
+            <p className="country-load-warning">Erreur chargement indicatifs</p>
+          ) : (
+            <Select
+              className="react-select-container"
+              classNamePrefix="react-select"
+              options={selectOptions}
+              value={selectOptions.find((o) => o.value === indicatif)}
+              onChange={(selected) => setIndicatif(selected.value)}
+              placeholder="Indicatif"
+            />
+          )}
+
           <input
             type="text"
             name="contact"
@@ -230,7 +235,7 @@ const InscriptionPage = () => {
             onChange={handleChange}
           />
         </div>
-        {errors.contact && <p className="error">{errors.contact}</p>}
+        {errors.contact && <p className="error contact-error">{errors.contact}</p>}
 
         <input
           type="password"
