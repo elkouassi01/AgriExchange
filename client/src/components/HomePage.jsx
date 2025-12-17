@@ -58,7 +58,7 @@ function HomePage() {
       
       {/* En-tête d'accueil */}
       <section className="hero">
-        <h1>Bienvenue sur AgriMarket 🌾</h1>
+        <h1>Bienvenue sur VivriMarket 🌾</h1>
         <p>Votre marché Ivoirien de vivriers et d'élevage, où le client rencontre les agriculteurs.</p>
       </section>
 
@@ -100,7 +100,7 @@ function HomePage() {
       {/* Section à propos */}
       <section className="about-section">
         <div className="about-content">
-          <h2>Pourquoi choisir AgriMarket ?</h2>
+          <h2>Pourquoi choisir VivriMarket ?</h2>
           <ul className="benefits-list">
             <li>✅ Produits frais directement des agriculteurs locaux</li>
             <li>✅ Prix de gros sans intermédiaire</li>

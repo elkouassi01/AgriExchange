@@ -9,6 +9,11 @@ export default defineConfig({
   // Plugins utilisés, ici React via le plugin officiel
   plugins: [react()],
 
+  // build file 
+    build: {
+    chunkSizeWarningLimit: Infinity, // Sets the limit to 1000 KiB
+  },
+
   // Configuration pour les tests unitaires avec Vitest
   test: {
     globals: true,               // Active les fonctions globales (describe, it, expect) sans import
@@ -60,5 +65,6 @@ export default defineConfig({
         path.resolve(__dirname, 'node_modules') // Autorise node_modules (pour importer CSS etc.)
       ]
     }
-  }
+
+     }
 });

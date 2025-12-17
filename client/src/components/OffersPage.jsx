@@ -1,6 +1,7 @@
 import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./OffersPage.css";
+import Footer from "./Footer";
 
 const OffersPage = () => {
   const navigate = useNavigate();
@@ -179,6 +180,7 @@ const OffersPage = () => {
           </div>
         </section>
       </div>
+      <Footer />
     </div>
   );
 };

@@ -1,9 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import {
-  Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Rabbit
-} from 'lucide-react';
+import {   Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Rabbit, Banana } from 'lucide-react';
 import './NavBar.css';
 
 function NavBar() {
@@ -42,10 +40,10 @@ function NavBar() {
   return (
     <nav className="navbar">
       {/* Logo principal */}
-      <div className="navbar-brand">
-        <Leaf className="navbar-logo-icon" size={28} fill='green' />
-        <span className="navbar-logo-text">AgriMarket</span>
-        <Rabbit className="navbar-logo-icon" size={28} fill='gold'/>
+      <div className="navbar-brand">        
+        <Banana className="navbar-logo-icon" size={28} fill='gold' color='black'/>        
+        <span className="navbar-logo-text">Vivri<Rabbit className="navbar-logo-icon" size={28} fill='brown' color='black'/>Market</span>
+        <Leaf className="navbar-logo-icon" size={28} fill='green' color='black'/>
       </div>
 
       {/* Bouton menu mobile */}
@@ -59,11 +57,11 @@ function NavBar() {
           Accueil
         </NavLink>
 
-        <NavLink to="/produits" icon={<Leaf size={22} color='gold' />} onClick={closeMenu}>
+        <NavLink to="/produits" icon={<Leaf size={22} color='green' />} onClick={closeMenu}>
           Étals
         </NavLink>
 
-        <NavLink to="/offres" icon={<HandCoins size={22} />} onClick={closeMenu}>
+        <NavLink to="/offres" icon={<HandCoins size={22} fill='gold' />} onClick={closeMenu}>
           Forfaits
         </NavLink>
 

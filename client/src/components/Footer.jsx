@@ -4,7 +4,7 @@ import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEnvelope } from '@fortawesome/free-solid-svg-icons';
 import { Link } from 'react-router-dom';
-import { FaYoutube, FaFacebook } from 'react-icons/fa';
+import { FaYoutube, FaFacebook, FaInstagram, FaPhone } from 'react-icons/fa';
 import './Footer.css';
 
 function Footer() {
@@ -39,17 +39,16 @@ function Footer() {
           <div className="footer-col">
             <h4>suivez nous</h4>
             <div className="social-links">
-              <a href="#"><FaFacebook className="icon facebook" /></a>
-              <a href="#"><FaYoutube className="icon youtube" /></a>
-              <a href="#"><FontAwesomeIcon icon={faEnvelope} className="icon" /></a>
-            </div>
+              <a href="URL_OF_YOUR_FACEBOOK_PAGE"><FaFacebook className="icon facebook" /></a>
+              <a href="URL_OF_YOUR_INSTAGRAM_PAGE"><FaInstagram className="icon instagram" /></a>
+              <a href="mailto:information@vivrimarket.com"><FontAwesomeIcon icon={faEnvelope} className="icon" /></a>
+              <a href="tel:"><FaPhone className="icon instagram" /></a>
+              </div>
+                  &copy;2025 VivriMarket CI, tout droit Réservé 
           </div>
-        </div>
-        
+        </div>        
         <div className="footer-col footer-bottom">
-          <ul>
-            <li>&copy;2025 AgriMarket CI, tout droit Réservé</li>
-          </ul>
+         <p> &copy;2025 VivriMarket CI, tout droit Réservé</p>
         </div>
       </div>
     </footer>
