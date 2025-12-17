@@ -194,11 +194,14 @@ app.use(errorHandler);
 const server = app.listen(PORT, () => {
   const mode = process.env.NODE_ENV === 'production' ? 'production' : 'développement';
   console.log(`🚀 Serveur lancé sur le port ${PORT} (mode ${mode})`);
-  console.log(`🌍 Origines CORS autorisées: ${getCorsOrigins().join(', ')}`);
+  console.log(`🌍 Origines CORS autorisées: http://localhost:5173, http://localhost:3000, https://vivrimarket.com, https://www.vivrimarket.com`);
   console.log(`📡 Cloudinary config – Cloud : ${process.env.CLD_CLOUD || 'Non configuré'}`);
+  
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('🛠 Mode développement activé');
+  }
 });
 
-// Gestion propre de l'arrêt
 process.on('SIGTERM', () => {
   console.log('🛑 Arrêt du serveur...');
   server.close(() => {
