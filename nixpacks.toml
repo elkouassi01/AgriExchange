@@ -1,0 +1,6 @@
+# nixpacks.toml
+[phases.setup]
+cmds = ["npm install --legacy-peer-deps"]
+
+[start]
+cmd = "node server/server.js"
