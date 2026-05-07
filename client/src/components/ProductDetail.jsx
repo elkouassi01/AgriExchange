@@ -314,8 +314,8 @@ function ProductDetail() {
                           {loginLoading ? 'Connexion...' : 'Se connecter et payer 150 FCFA'}
                         </button>
                       </form>
-                      <button className="login-modal-skip" onClick={() => setModalStep('visitor')}>
-                        Continuer sans compte — 300 FCFA
+                      <button className="login-modal-btn" onClick={() => setModalStep('visitor')}>
+                        Continuer sans compte
                       </button>
                       <a href="/inscription?type=consommateur" className="login-modal-register">
                         Pas encore de compte ? S'inscrire gratuitement
@@ -346,8 +346,8 @@ function ProductDetail() {
                           {paymentLoading ? 'Redirection...' : 'Payer 300 FCFA →'}
                         </button>
                       </form>
-                      <button className="login-modal-skip" onClick={() => setModalStep('login')}>
-                        ← Retour / Se connecter (150 FCFA)
+                      <button className="login-modal-btn" onClick={() => setModalStep('login')}>
+                        Retour / Se connecter
                       </button>
                     </>
                   )}
