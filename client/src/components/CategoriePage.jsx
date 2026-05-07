@@ -101,7 +101,9 @@ const CategoriePage = () => {
       <div className="products-grid">
         {produits.map((produit) => (
           <div key={produit._id} className="product-card">
-            <ProductImage src={produit.imageUrl} alt={produit.nom} />
+            <div className="image-container">
+              <ProductImage src={produit.imageUrl} alt={produit.nom} />
+            </div>
             <h3>{produit.nom}</h3>
             {produit.description && <p>{produit.description}</p>}
             <p className="product-price">{produit.prix}</p>

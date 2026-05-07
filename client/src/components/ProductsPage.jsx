@@ -151,11 +151,13 @@ function ProductsPage() {
           <div className="categories-grid">
             {categories.map((category) => (
               <div key={category.nomOriginal} className="category-card">
-                <ProductImage
-                  src={category.imageUrl}
-                  alt={category.nomAffichage}
-                  onClick={() => handleCategoryClick(category.nomOriginal)}
-                />
+                <div className="product-image-container">
+                  <ProductImage
+                    src={category.imageUrl}
+                    alt={category.nomAffichage}
+                    onClick={() => handleCategoryClick(category.nomOriginal)}
+                  />
+                </div>
                 <div className="product-info">
                   <h3>{category.nomAffichage}</h3>
                   <p>{category.produits.length} produit(s)</p>
