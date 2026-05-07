@@ -1,7 +1,7 @@
-/* 🌿 Variables principales */
+/* ===== Variables ===== */
 :root {
-  --primary: #2ecc71;
-  --primary-dark: #27ae60;
+  --primary: #ff8c00;
+  --primary-dark: #e67600;
   --blue: #3498db;
   --gold: #f1c40f;
   --platinum: #95a5a6;
@@ -17,7 +17,7 @@
 
 /* ===== Bande défilante ===== */
 .promo-banner-scroll {
-  background: linear-gradient(90deg, #27ae60, #2ecc71);
+  background: linear-gradient(90deg, #ffd700, #ff8c00);
   color: white;
   font-weight: 600;
   overflow: hidden;
@@ -50,6 +50,18 @@
 .offers-header {
   text-align: center;
   margin: 3rem 0 2.5rem;
+  background: linear-gradient(135deg, #ff8a00, #da1b60);
+  border-radius: var(--radius-md);
+  padding: 2.5rem 1.5rem;
+  color: white;
+}
+
+.offers-header h1 {
+  color: white !important;
+}
+
+.offers-header .subtitle {
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .offers-header h1 {
@@ -71,7 +83,7 @@
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 3.5rem;
-  background: linear-gradient(135deg, #f0fdf4, #e8f5e9);
+  background: linear-gradient(135deg, #fff8e1, #fff3cd);
   border-radius: var(--radius-md);
   padding: 2.5rem 1.5rem;
 }
@@ -116,7 +128,7 @@
 
 .section-label {
   display: inline-block;
-  background: #e8f5e9;
+  background: #fff3cd;
   color: var(--primary-dark);
   font-weight: 700;
   font-size: 0.85rem;
@@ -150,7 +162,7 @@
 .buyer-price {
   font-size: 3rem;
   font-weight: 800;
-  color: #e67e22;
+  color: var(--primary);
   line-height: 1;
 }
 
@@ -183,7 +195,7 @@
 }
 
 .browse-button {
-  background: linear-gradient(135deg, #27ae60, #2ecc71);
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
   color: white;
   border: none;
   padding: 0.85rem 2rem;
@@ -192,18 +204,18 @@
   font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
-  box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+  box-shadow: 0 4px 12px rgba(255, 140, 0, 0.35);
   width: 100%;
 }
 
 .browse-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(39, 174, 96, 0.4);
+  box-shadow: 0 6px 18px rgba(255, 140, 0, 0.5);
 }
 
 /* ===== Section agriculteurs ===== */
 .farmer-section {
-  border-top: 2px solid #e8f5e9;
+  border-top: 2px solid #fff3cd;
   padding-top: 3rem;
 }
 
@@ -313,6 +325,10 @@
 .offer-price {
   text-align: center;
   margin: 1rem 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .price {
@@ -327,9 +343,28 @@
   margin-left: 4px;
 }
 
+.price-old {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #aaa;
+  text-decoration: line-through;
+}
+
+.period-old {
+  font-size: 0.85rem;
+  margin-left: 3px;
+}
+
+.price-free {
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: #da1b60;
+  letter-spacing: 0.04em;
+}
+
 /* ===== Bouton abonnement ===== */
 .subscribe-button {
-  background-color: var(--primary);
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
   color: white;
   border: none;
   padding: 0.8rem;
@@ -339,16 +374,18 @@
   cursor: pointer;
   transition: var(--transition);
   width: 100%;
+  box-shadow: 0 3px 10px rgba(255, 140, 0, 0.3);
 }
 
 .subscribe-button:hover {
-  background-color: var(--primary-dark);
+  background: linear-gradient(135deg, #ffca00, #e67600);
   transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 140, 0, 0.45);
 }
 
 /* ===== Promo agriculteur ===== */
 .promo-card {
-  background: linear-gradient(135deg, #27ae60, #1a8a47);
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
   border-radius: var(--radius-md);
   padding: 2rem;
   text-align: center;
@@ -358,7 +395,7 @@
 }
 
 .promo-badge {
-  background: rgba(255,255,255,0.25);
+  background: rgba(255, 255, 255, 0.25);
   color: white;
   padding: 5px 14px;
   border-radius: 20px;
@@ -385,11 +422,11 @@
   text-decoration: none;
   font-weight: 700;
   transition: var(--transition);
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
 }
 
 .promo-button:hover {
-  background: #f0fdf4;
+  background: #fff8e1;
   transform: translateY(-2px);
 }
 

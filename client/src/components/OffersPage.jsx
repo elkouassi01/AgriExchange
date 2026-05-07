@@ -107,11 +107,11 @@ const OffersPage = () => {
               <li>Statistiques de base</li>
             </ul>
             <div className="offer-price">
-              <span className="price">500 FCFA</span>
-              <span className="period">/mois</span>
+              <span className="price-old">500 FCFA<span className="period-old">/mois</span></span>
+              <span className="price-free">GRATUIT</span>
             </div>
             <button className="subscribe-button" onClick={() => handleSubscription("agriculteur", "BLEU")}>
-              Choisir BLEU
+              S'inscrire gratuitement
             </button>
           </div>
 
@@ -124,11 +124,11 @@ const OffersPage = () => {
               <li>Statistiques avancées</li>
             </ul>
             <div className="offer-price">
-              <span className="price">1 500 FCFA</span>
-              <span className="period">/3 mois</span>
+              <span className="price-old">1 500 FCFA<span className="period-old">/3 mois</span></span>
+              <span className="price-free">GRATUIT</span>
             </div>
             <button className="subscribe-button" onClick={() => handleSubscription("agriculteur", "GOLD")}>
-              Choisir GOLD
+              S'inscrire gratuitement
             </button>
           </div>
 
@@ -141,11 +141,11 @@ const OffersPage = () => {
               <li>Analyses complètes</li>
             </ul>
             <div className="offer-price">
-              <span className="price">3 000 FCFA</span>
-              <span className="period">/6 mois</span>
+              <span className="price-old">3 000 FCFA<span className="period-old">/6 mois</span></span>
+              <span className="price-free">GRATUIT</span>
             </div>
             <button className="subscribe-button" onClick={() => handleSubscription("agriculteur", "PLATINUM")}>
-              Choisir PLATINUM
+              S'inscrire gratuitement
             </button>
           </div>
         </div>

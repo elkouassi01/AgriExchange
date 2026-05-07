@@ -26,6 +26,9 @@ const chatRoutes = require('./routes/chatRoutes');
 const userRoutes = require('./routes/userRoutes');
 const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
 const productPaymentsRoutes = require('./routes/productPayments');
+const contactRequestsRoutes = require('./routes/contactRequests');
+const { startContactRequestCron } = require('./routes/contactRequests');
+const { getClient: initWhatsApp } = require('./utils/whatsappClient');
 
 console.log('Cloudinary cloud:', process.env.CLD_CLOUD || 'not configured');
 
@@ -221,6 +224,7 @@ app.use('/api/v1/chat', chatRoutes);
 
 app.use('/api/v1/users', protect, userRoutes);
 app.use('/api/v1/product-payments', productPaymentsRoutes);
+app.use('/api/v1/contact-requests', contactRequestsRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({
@@ -264,6 +268,12 @@ const startServer = async () => {
       console.log(`Database provider: ${DATABASE_PROVIDER}`);
       console.log(`Allowed CORS origins: ${getCorsOrigins().join(', ')}`);
       console.log(`Cloudinary cloud: ${process.env.CLD_CLOUD || 'not configured'}`);
+
+      // WhatsApp + cron (ne bloque pas le démarrage)
+      if (process.env.WHATSAPP_ENABLED !== 'false') {
+        initWhatsApp();
+        startContactRequestCron();
+      }
     });
   } catch (err) {
     console.error(`Server startup failed: ${err.message}`);

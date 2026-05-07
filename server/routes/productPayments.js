@@ -3,12 +3,14 @@ const router = express.Router();
 const { isMysql } = require('../utils/authHelpers');
 const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
+const mysqlContactRequestRepository = require('../repositories/mysqlContactRequestRepository');
+const { sendWhatsApp } = require('../utils/whatsappClient');
 
 const CINETPAY_APIKEY = process.env.CINETPAY_APIKEY || '8937149296838988c80faf0.18612017';
 const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
 const VIEW_PRICE = 300;
 
-// POST /api/v1/product-payments/webhook  — CinetPay notification (must be before /:productId routes)
+// POST /api/v1/product-payments/webhook — CinetPay notification
 router.post('/webhook', async (req, res) => {
   const data = req.body;
   console.log('[ProductPayment] Webhook:', JSON.stringify(data));
@@ -94,7 +96,7 @@ router.post('/:productId/initiate', async (req, res) => {
 // GET /api/v1/product-payments/:productId/check?tx_id=xxx
 router.get('/:productId/check', async (req, res) => {
   const { productId } = req.params;
-  const { tx_id } = req.query;
+  const { tx_id, buyer_phone } = req.query;
 
   if (!tx_id) {
     return res.status(400).json({ success: false, message: 'tx_id requis' });
@@ -115,18 +117,45 @@ router.get('/:productId/check', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Produit non trouvé' });
     }
 
-    return res.json({
-      success: true,
-      paid: true,
-      seller: {
-        nom: product.vendeur?.nom || null,
-        email: product.vendeur?.email || null,
-        contact: product.vendeur?.contact || null,
-        fermeNom: product.vendeur?.fermeNom || null,
-        adresse: product.vendeur?.adresse || null,
-        typeExploitation: product.vendeur?.description || null,
-      },
-    });
+    const seller = {
+      nom: product.vendeur?.nom || null,
+      email: product.vendeur?.email || null,
+      contact: product.vendeur?.contact || null,
+      fermeNom: product.vendeur?.fermeNom || null,
+      adresse: product.vendeur?.adresse || null,
+      typeExploitation: product.vendeur?.description || null,
+    };
+
+    // Envoyer WhatsApp au vendeur (une seule fois par paiement)
+    if (seller.contact) {
+      const existing = await mysqlContactRequestRepository.findPendingBySellerPhone(seller.contact);
+      if (!existing) {
+        await mysqlContactRequestRepository.ensureTables();
+        await mysqlContactRequestRepository.createContactRequest({
+          paymentId: tx_id,
+          productId,
+          productNom: product.nom,
+          sellerId: product.sellerId,
+          sellerPhone: seller.contact,
+          buyerPhone: buyer_phone || null,
+        });
+
+        const ferme = seller.fermeNom || seller.nom || 'vendeur';
+        const msg =
+          `🛒 *VivriMarket* — Nouveau contact !\n\n` +
+          `Bonjour *${ferme}* 👋\n\n` +
+          `Un acheteur est intéressé par votre produit :\n` +
+          `📦 *${product.nom}*\n\n` +
+          `Répondez *OUI* pour confirmer votre disponibilité.\n` +
+          `⏰ Vous avez *24 heures* pour répondre.\n\n` +
+          `_Sans réponse, votre étale sera suspendu et l'acheteur remboursé._\n` +
+          `— VivriMarket 🌾`;
+
+        sendWhatsApp(seller.contact, msg).catch(console.error);
+      }
+    }
+
+    return res.json({ success: true, paid: true, seller });
   } catch (err) {
     console.error('[ProductPayment] Check error:', err);
     return res.status(500).json({ success: false, message: 'Erreur serveur' });

@@ -240,15 +240,15 @@
 }
 /* Styles pour la section promotion spéciale */
 .special-promo {
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  background: linear-gradient(135deg, #ff8a00, #da1b60);
   padding: 40px 20px;
   margin: 40px 0;
   border-radius: 16px;
   text-align: center;
-  color: #333;
+  color: white;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 20px rgba(218,27,96,0.25);
 }
 
 .promo-card {
@@ -284,8 +284,8 @@
 
 .promo-button {
   display: inline-block;
-  background: #27ae60;
-  color: white;
+  background: white;
+  color: #da1b60;
   padding: 12px 30px;
   border-radius: 50px;
   font-weight: bold;
@@ -296,7 +296,7 @@
 }
 
 .promo-button:hover {
-  background: #2ecc71;
+  background: #fff0f5;
   transform: translateY(-3px);
   box-shadow: 0 6px 15px rgba(0,0,0,0.3);
 }

@@ -86,7 +86,7 @@ const baseSelect = `
     u.localisation  AS seller_localisation,
     u.type_exploitation AS seller_type_exploitation
   FROM products p
-  JOIN users u ON u.id = p.seller_id
+  JOIN users u ON u.id = p.seller_id AND (u.suspended IS NULL OR u.suspended = 0)
 `;
 
 const buildFilters = (params, values, options = {}) => {
