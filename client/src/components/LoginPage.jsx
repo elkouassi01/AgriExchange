@@ -153,10 +153,8 @@ const LoginPage = () => {
         <div className="login-footer">
           <p>Pas encore de compte ?</p>
           <div className="register-links">
-            <Link to="/inscription">Créer un compte Consommateur</Link>
-            <Link to="/inscription?type=agriculteur&formule=?">
-              Créer un compte Agriculteur
-            </Link>
+            <Link to="/offres">Créer un compte Consommateur</Link>
+            <Link to="/offres">Créer un compte Agriculteur</Link>
           </div>
         </div>
       </form>

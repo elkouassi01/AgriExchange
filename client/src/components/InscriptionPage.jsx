@@ -109,6 +109,13 @@ const InscriptionPage = () => {
         return;
       }
 
+      // Vérifier que type et formule sont valides
+      if (!type || !formule || !formulesTarifs[type]?.[formule]) {
+        alert('Veuillez choisir une formule depuis la page des offres.');
+        navigate('/offres');
+        return;
+      }
+
       // Paiement classique
       const montant = formulesTarifs[type][formule];
       const transaction_id = `CP${Date.now()}`;
