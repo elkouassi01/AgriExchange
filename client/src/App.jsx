@@ -22,6 +22,7 @@ import PaiementPage from './components/PaiementPage';
 import PaiementReussi from './components/PaiementReussi';
 import PaiementEchec from './components/PaiementEchec';
 import TermsPage from './components/TermsPage';
+import ForgotPassword from './components/ForgotPassword';
 import ApproposPage from './components/Apropo';
 import NoservicePage from './components/Noservices';
 
@@ -98,6 +99,7 @@ const AppContent = () => {
         <Route path="/condition" element={<TermsPage />} />
         <Route path="/Appropos" element={<ApproposPage />} />
         <Route path="/Noservice" element={<NoservicePage />} />
+        <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
         <Route path="/mes-produits" element={<MesProduits />} />
         <Route path="/abonne" element={<GestionAbonnes />} />
         <Route path="/profil" element={<ProfilUtilisateur />} />

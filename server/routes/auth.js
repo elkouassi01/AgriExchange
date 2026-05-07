@@ -1,12 +1,36 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middlewares/auth');
 const sendSms = require('../utils/sendSms');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { isMysql, sanitizeUser } = require('../utils/authHelpers');
+
+const otpRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 3,
+  keyGenerator: (req) => req.body.telephone || req.ip,
+  handler: (req, res) => {
+    res.status(429).json({
+      message: 'Trop de demandes OTP. Réessayez dans 10 minutes.',
+    });
+  },
+  skipSuccessfulRequests: false,
+});
+
+const verifyOtpRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.body.telephone || req.ip,
+  handler: (req, res) => {
+    res.status(429).json({
+      message: 'Trop de tentatives. Réessayez dans 10 minutes.',
+    });
+  },
+});
 
 router.post('/connexion', async (req, res) => {
   const { email, motDePasse } = req.body;
@@ -55,7 +79,7 @@ router.post('/connexion', async (req, res) => {
   }
 });
 
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', verifyOtpRateLimit, async (req, res) => {
   const { telephone, otp } = req.body;
   if (!telephone || !otp) {
     return res.status(400).json({ message: 'Telephone et OTP requis' });
@@ -96,7 +120,7 @@ router.post('/verify-otp', async (req, res) => {
 
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
 
-router.post('/resend-otp', async (req, res) => {
+router.post('/resend-otp', otpRateLimit, async (req, res) => {
   const { telephone } = req.body;
   if (!telephone) {
     return res.status(400).json({ message: 'Telephone requis' });
