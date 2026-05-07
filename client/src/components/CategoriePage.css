@@ -211,22 +211,231 @@
   background-color: var(--primary-dark);
 }
 
+/* ── Barre de recherche ── */
+.search-bar {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.search-input {
+  flex: 1;
+  min-width: 200px;
+  padding: 0.6rem 1rem;
+  border: 1.5px solid #dde3e9;
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-input:focus {
+  border-color: var(--primary);
+}
+.search-btn {
+  padding: 0.6rem 1.2rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.search-btn:hover { background: var(--primary-dark); }
+
+.filters-toggle-btn {
+  padding: 0.6rem 1.2rem;
+  background: white;
+  color: var(--text-dark);
+  border: 1.5px solid #dde3e9;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: var(--transition);
+}
+.filters-toggle-btn:hover,
+.filters-toggle-btn.has-filters {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.filter-badge {
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* ── Panneau filtres avancés ── */
+.filters-panel {
+  background: white;
+  border: 1.5px solid #e8f0e9;
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.filter-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-light);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.filter-group select,
+.filter-group input {
+  padding: 0.5rem 0.8rem;
+  border: 1.5px solid #dde3e9;
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+  outline: none;
+  background: white;
+  transition: border-color 0.2s;
+}
+.filter-group select:focus,
+.filter-group input:focus {
+  border-color: var(--primary);
+}
+.reset-btn {
+  margin-top: 1rem;
+  background: none;
+  border: 1.5px solid #e74c3c;
+  color: #e74c3c;
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+}
+.reset-btn:hover {
+  background: #e74c3c;
+  color: white;
+}
+
+/* ── Chips filtres actifs ── */
+.active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(46, 204, 113, 0.1);
+  color: var(--primary-dark);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: 20px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+.filter-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--primary-dark);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  font-weight: 700;
+}
+.filter-chip button:hover { color: #e74c3c; }
+
+/* ── Badge état ── */
+.etat-badge {
+  display: inline-block;
+  background: rgba(46, 204, 113, 0.12);
+  color: var(--primary-dark);
+  border-radius: 12px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  align-self: center;
+}
+
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.2rem;
+  margin: 2rem 0 1rem;
+}
+.pagination button {
+  padding: 0.5rem 1.2rem;
+  border: 1.5px solid var(--primary);
+  background: white;
+  color: var(--primary);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.pagination button:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
+}
+.pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.pagination span {
+  font-weight: 600;
+  color: var(--text-dark);
+}
+
+/* ── Pied de page ── */
+.category-footer {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.category-footer button {
+  padding: 0.5rem 1.2rem;
+  background: white;
+  color: var(--text-dark);
+  border: 1.5px solid #dde3e9;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  transition: var(--transition);
+}
+.category-footer button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
 /* Responsive : petits écrans */
 /* Ajustement titre, grille 1 colonne, image plus petite, bouton plus grand */
 @media (max-width: 768px) {
-  .category-header h1 {
-    font-size: 1.6rem;
-  }
-  .products-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  .image-container {
-    height: 140px;
-  }
-  .product-button {
-    white-space: normal;       /* Autorise retour à la ligne */
-    font-size: 1rem;           /* Taille plus confortable */
-    padding: 0.6rem 0;
-  }
+  .category-header h1 { font-size: 1.6rem; }
+  .products-grid { grid-template-columns: 1fr; gap: 1rem; }
+  .image-container { height: 140px; }
+  .product-button { white-space: normal; font-size: 1rem; padding: 0.6rem 0; }
+  .filters-grid { grid-template-columns: 1fr 1fr; }
+  .search-bar { flex-direction: column; }
+  .search-input { width: 100%; }
 }
