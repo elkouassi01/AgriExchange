@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 const { isMysql } = require('../utils/authHelpers');
 const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
@@ -8,7 +9,19 @@ const { sendWhatsApp } = require('../utils/whatsappClient');
 
 const CINETPAY_APIKEY = process.env.CINETPAY_APIKEY || '8937149296838988c80faf0.18612017';
 const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
-const VIEW_PRICE = 300;
+const PRICE_VISITOR = 300;
+const PRICE_CONSUMER = 150;
+
+// Vérifie optionnellement le JWT — retourne le payload ou null
+const optionalAuth = (req) => {
+  const auth = req.headers.authorization;
+  if (!auth || !auth.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET);
+  } catch {
+    return null;
+  }
+};
 
 // POST /api/v1/product-payments/webhook — CinetPay notification
 router.post('/webhook', async (req, res) => {
@@ -43,6 +56,11 @@ router.post('/:productId/initiate', async (req, res) => {
       }
     }
 
+    // Tarif selon le statut du demandeur
+    const decoded = optionalAuth(req);
+    const isConsumer = decoded?.role === 'consommateur';
+    const amount = isConsumer ? PRICE_CONSUMER : PRICE_VISITOR;
+
     const transactionId = `PV${Date.now()}`;
     const origin = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
@@ -51,7 +69,7 @@ router.post('/:productId/initiate', async (req, res) => {
       apikey: CINETPAY_APIKEY,
       site_id: CINETPAY_SITE_ID,
       transaction_id: transactionId,
-      amount: VIEW_PRICE,
+      amount,
       currency: 'XOF',
       description: `Coordonnées vendeur - Produit #${productId}`,
       customer_name: (req.body.customer_name || 'Visiteur').substring(0, 50),
@@ -80,6 +98,7 @@ router.post('/:productId/initiate', async (req, res) => {
         success: true,
         payment_url: result.data.payment_url,
         transaction_id: transactionId,
+        amount,
       });
     }
 

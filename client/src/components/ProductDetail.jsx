@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './ProductDetail.css';
 import api from '../services/axiosConfig';
 import { buildUploadUrl } from '../config/api';
+import { useUser } from '../contexts/UserContext';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
 
@@ -15,15 +16,25 @@ function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user, login } = useUser();
+
+  const isConsumer = user?.role === 'consommateur';
+  const price = isConsumer ? 150 : 300;
 
   const [produit, setProduit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const [seller, setSeller] = useState(null);
-  const [accessState, setAccessState] = useState('idle'); // idle | checking | granted | denied
+  const [accessState, setAccessState] = useState('idle');
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+
+  // Modal connexion
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', motDePasse: '' });
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
 
   const checkAccess = useCallback(async (txId) => {
     setAccessState('checking');
@@ -85,12 +96,13 @@ function ProductDetail() {
     }
   }, [id, checkAccess, searchParams, setSearchParams]);
 
-  const handlePay = async () => {
+  const initiatePayment = async () => {
     setPaymentLoading(true);
     setPaymentError('');
     try {
       const res = await api.post(`/product-payments/${id}/initiate`, {
-        customer_name: 'Visiteur',
+        customer_name: user?.nom || 'Visiteur',
+        customer_email: user?.email || 'guest@vivrimarket.com',
       });
       if (res.data.success && res.data.payment_url) {
         window.location.href = res.data.payment_url;
@@ -101,6 +113,35 @@ function ProductDetail() {
       setPaymentError(err.response?.data?.message || "Erreur lors de l'initialisation du paiement");
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const handlePay = () => {
+    if (!user) {
+      setShowLoginModal(true);
+    } else {
+      initiatePayment();
+    }
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+    try {
+      const res = await api.post('/auth/connexion', loginForm);
+      if (res.data.success) {
+        login(res.data.utilisateur, res.data.token);
+        setShowLoginModal(false);
+        // Le token est maintenant dans les headers, le backend applique 150 FCFA
+        setTimeout(initiatePayment, 100);
+      } else {
+        setLoginError(res.data.message || 'Identifiants incorrects');
+      }
+    } catch (err) {
+      setLoginError(err.response?.data?.message || 'Identifiants incorrects');
+    } finally {
+      setLoginLoading(false);
     }
   };
 
@@ -203,20 +244,61 @@ function ProductDetail() {
                 <p className="paywall-desc">
                   Obtenez les coordonnées complètes du vendeur et de sa ferme pour le contacter directement.
                 </p>
-                <div className="paywall-price">300 FCFA</div>
-                <p className="paywall-hint">Paiement unique — sans création de compte</p>
-                <p className="paywall-signup-hint">
-                  Consommateur inscrit ? Payez seulement <strong>150 FCFA</strong> —{' '}
-                  <a href="/inscription" className="paywall-signup-link">Créer un compte gratuit</a>
+                <div className="paywall-price">
+                  {isConsumer ? '150 FCFA' : '300 FCFA'}
+                </div>
+                <p className="paywall-hint">
+                  {isConsumer ? 'Tarif consommateur inscrit' : 'Paiement unique — sans création de compte'}
                 </p>
+                {!user && (
+                  <p className="paywall-signup-hint">
+                    Payez seulement <strong>150 FCFA</strong> —{' '}
+                    <a href="/inscription" className="paywall-signup-link">Créer un compte gratuit</a>
+                  </p>
+                )}
                 {paymentError && <p className="paywall-error">{paymentError}</p>}
-                <button
-                  className="paywall-btn"
-                  onClick={handlePay}
-                  disabled={paymentLoading}
-                >
-                  {paymentLoading ? 'Redirection...' : 'Voir les coordonnées — 300 FCFA'}
+                <button className="paywall-btn" onClick={handlePay} disabled={paymentLoading}>
+                  {paymentLoading ? 'Redirection...' : `Voir les coordonnées — ${isConsumer ? '150' : '300'} FCFA`}
                 </button>
+              </div>
+            )}
+
+            {/* Modal connexion */}
+            {showLoginModal && (
+              <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
+                <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+                  <h3>Connectez-vous pour payer 150 FCFA</h3>
+                  <p className="login-modal-sub">Compte consommateur requis</p>
+                  <form onSubmit={handleLogin}>
+                    <input
+                      type="email"
+                      placeholder="Adresse email"
+                      value={loginForm.email}
+                      onChange={(e) => setLoginForm((f) => ({ ...f, email: e.target.value }))}
+                      required
+                    />
+                    <input
+                      type="password"
+                      placeholder="Mot de passe"
+                      value={loginForm.motDePasse}
+                      onChange={(e) => setLoginForm((f) => ({ ...f, motDePasse: e.target.value }))}
+                      required
+                    />
+                    {loginError && <p className="login-modal-error">{loginError}</p>}
+                    <button type="submit" className="login-modal-btn" disabled={loginLoading}>
+                      {loginLoading ? 'Connexion...' : 'Se connecter et payer 150 FCFA'}
+                    </button>
+                  </form>
+                  <button
+                    className="login-modal-skip"
+                    onClick={() => { setShowLoginModal(false); initiatePayment(); }}
+                  >
+                    Continuer sans compte — 300 FCFA
+                  </button>
+                  <a href="/inscription?type=consommateur" className="login-modal-register">
+                    Pas encore de compte ? S'inscrire gratuitement
+                  </a>
+                </div>
               </div>
             )}
           </div>
