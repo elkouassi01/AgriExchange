@@ -75,7 +75,7 @@ const baseSelect = `
   SELECT
     p.*,
     (
-      SELECT JSON_ARRAYAGG(url ORDER BY created_at)
+      SELECT JSON_ARRAYAGG(url)
       FROM product_images
       WHERE product_id = p.id
     ) AS images,
