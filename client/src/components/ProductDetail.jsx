@@ -205,6 +205,10 @@ function ProductDetail() {
                 </p>
                 <div className="paywall-price">300 FCFA</div>
                 <p className="paywall-hint">Paiement unique — sans création de compte</p>
+                <p className="paywall-signup-hint">
+                  Consommateur inscrit ? Payez seulement <strong>150 FCFA</strong> —{' '}
+                  <a href="/inscription" className="paywall-signup-link">Créer un compte gratuit</a>
+                </p>
                 {paymentError && <p className="paywall-error">{paymentError}</p>}
                 <button
                   className="paywall-btn"
