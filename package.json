@@ -1,20 +1,17 @@
 {
   "name": "agriexchange-backend",
   "version": "1.0.0",
-  "description": "AgriExchange Backend API - Marketplace agricole",
+  "private": true,
   "main": "server/server.js",
   "scripts": {
     "start": "node server/server.js",
     "dev": "nodemon server/server.js",
     "test": "echo \"No tests\"",
-    "build": "echo \"No build step required\""
+    "db:mysql:init": "node server/scripts/initMysql.js",
+    "db:mysql:migrate": "node server/scripts/migrate-to-mysql.js"
   },
-  "keywords": ["agriculture", "marketplace", "nodejs", "express"],
-  "author": "",
-  "license": "ISC",
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": "18.x"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
@@ -33,6 +30,7 @@
     "mongoose-paginate-v2": "^1.7.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.22.3",
     "sharp": "^0.33.4",
     "twilio": "^5.0.3"
   },

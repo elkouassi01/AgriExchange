@@ -10,7 +10,7 @@ import { fetchDashboardStats } from '../../services/adminService';
 const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { admin, logout } = useAdminAuth();
+  const { admin } = useAdminAuth();
 
   useEffect(() => {
     const loadStats = async () => {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import './UsersPage.css';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { fetchUsers, updateUserStatus, deleteUser } from '../../services/adminService';
 import { 
   DataGrid, 
@@ -35,7 +34,6 @@ import {
 } from '@mui/icons-material';
 
 const UsersPage = () => {
-  const { admin } = useAdminAuth();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [loading, setLoading] = useState(true);

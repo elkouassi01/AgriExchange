@@ -104,10 +104,10 @@ router.get('/users/:id/activity',
   adminController.getUserActivity
 );
 
-// 🧹 Nettoyage des champs obsolètes
-router.post('/users/cleanup-obsolete-fields', 
-  adminController.cleanupObsoleteFields  // <-- Correction essentielle
-);
+// 🧹 Nettoyage des champs obsolètes (fonction non implémentée)
+// router.post('/users/cleanup-obsolete-fields', 
+//   adminController.cleanupObsoleteFields
+// );
 
 // 💰 Gestion des transactions
 router.get('/transactions', 

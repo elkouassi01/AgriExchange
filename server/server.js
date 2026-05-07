@@ -1,4 +1,4 @@
-require('dotenv').config(); // 1. tout charger AVANT les autres require
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const express = require('express');
 const mongoose = require('mongoose');
@@ -9,12 +9,11 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const { testMysqlConnection } = require('./config/mysql');
 
-// Middlewares perso
 const errorHandler = require('./middlewares/errorHandler');
 const { protect } = require('./middlewares/auth');
 
-// Routes
 const authRoutes = require('./routes/auth');
 const utilisateursRoutes = require('./routes/utilisateurs');
 const productsRoutes = require('./routes/products');
@@ -27,190 +26,268 @@ const chatRoutes = require('./routes/chatRoutes');
 const userRoutes = require('./routes/userRoutes');
 const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
 
-// Vérification Cloudinary
-console.log('📡 Cloudinary config – Cloud :', process.env.CLD_CLOUD);
+console.log('Cloudinary cloud:', process.env.CLD_CLOUD || 'not configured');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
+const DATABASE_PROVIDER = (process.env.DATABASE_PROVIDER || 'mysql').toLowerCase();
 
-// ====================== CONFIGURATION CORS ======================
-// Configuration CORS dynamique pour plusieurs origines
 const getCorsOrigins = () => {
   const origins = [];
-  
-  // Origines par défaut pour le développement
+
   if (process.env.NODE_ENV !== 'production') {
     origins.push('http://localhost:5173', 'http://localhost:3000');
   }
-  
-  // Ajouter les origines depuis la variable d'environnement
+
   if (process.env.CORS_ORIGIN) {
-    const envOrigins = process.env.CORS_ORIGIN.split(',').map(origin => origin.trim());
-    origins.push(...envOrigins);
+    const envOrigins = process.env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+    origins.push(...envOrigins.filter((origin) => !origins.includes(origin)));
   }
-  
-  // Ajouter vivrimarket.com (avec et sans www)
+
   origins.push('https://vivrimarket.com', 'https://www.vivrimarket.com');
-  
-  return origins;
+
+  return [...new Set(origins)];
 };
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Autoriser les requêtes sans origine (Postman, curl, serveur à serveur)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = getCorsOrigins();
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log(`⚠️ Origine bloquée par CORS: ${origin}`);
-      console.log(`Origines autorisées: ${allowedOrigins.join(', ')}`);
-      callback(new Error('Not allowed by CORS'));
+  origin(origin, callback) {
+    if (!origin) {
+      return callback(null, true);
     }
+
+    const allowedOrigins = getCorsOrigins();
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.log(`Blocked by CORS: ${origin}`);
+    console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
+    'Content-Type',
+    'Authorization',
     'X-Requested-With',
     'Accept',
     'Origin',
     'Access-Control-Request-Method',
-    'Access-Control-Request-Headers'
+    'Access-Control-Request-Headers',
   ],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 86400 // Cache les préflight requests pendant 24h
+  maxAge: 86400,
 };
 
+app.set('trust proxy', 1);
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Pour les requêtes preflight
+app.options('*', cors(corsOptions));
 
-// ====================== SECURITE ======================
 app.use(helmet({
-  contentSecurityPolicy: false, // Désactiver si vous avez des problèmes avec les ressources externes
-  crossOriginResourcePolicy: { policy: "cross-origin" } // Important pour les images Cloudinary
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 app.use(hpp());
 app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ====================== LOGGING ======================
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
-  console.log('🛠 Mode développement activé');
+  console.log('Development mode enabled');
 } else {
   app.use(morgan('combined'));
-  console.log('🚀 Mode production');
+  console.log('Production mode enabled');
 }
 
-// Rate limiter
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limite chaque IP à 100 requêtes par windowMs
-  message: { 
-    success: false, 
-    message: '🚫 Trop de requêtes depuis cette IP, réessayez dans 15 minutes.' 
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: {
+    success: false,
+    message: 'Too many requests from this IP. Please retry in 15 minutes.',
   },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.use('/api/', limiter); // Appliquer le rate limiter à toutes les routes API
+app.use('/api/', limiter);
 
-// ====================== MONGODB ======================
-mongoose.connect(process.env.MONGO_URI || process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB Atlas connecté'))
-  .catch((err) => {
-    console.error('❌ Erreur de connexion MongoDB :', err.message);
-    process.exit(1);
-  });
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// ====================== STATIQUES ======================
+const explainMongoError = (message) => {
+  if (message.includes('querySrv')) {
+    return 'DNS lookup failed for MongoDB Atlas. Try again, change DNS to 8.8.8.8 or 1.1.1.1, and verify Atlas network access.';
+  }
+
+  if (message.includes('Authentication failed')) {
+    return 'MongoDB credentials look invalid. Recheck the username, password, and database user permissions in Atlas.';
+  }
+
+  if (message.includes('ECONNREFUSED') || message.includes('ETIMEDOUT')) {
+    return 'Network access to MongoDB Atlas failed. Check your internet connection and Atlas IP allowlist.';
+  }
+
+  return null;
+};
+
+const connectToMongo = async () => {
+  if (!MONGO_URI) {
+    throw new Error('Missing MONGO_URI or MONGODB_URI in .env');
+  }
+
+  const maxAttempts = process.env.NODE_ENV === 'production' ? 3 : 5;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await mongoose.connect(MONGO_URI, {
+        serverSelectionTimeoutMS: 10000,
+      });
+      console.log('MongoDB Atlas connected');
+      return;
+    } catch (err) {
+      const hint = explainMongoError(err.message);
+      console.error(`MongoDB connection error (${attempt}/${maxAttempts}): ${err.message}`);
+      if (hint) {
+        console.error(`Hint: ${hint}`);
+      }
+
+      // En mode développement, si la connexion échoue, on logue un avertissement mais continue
+      // pour permettre de tester l'architecture PostgreSQL qui est la cible de la migration
+      if (attempt === maxAttempts) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('⚠️ MongoDB non disponible - Démarrage en mode dégradé (PostgreSQL ready)');
+          // On ne throw pas pour permettre au serveur de démarrer
+          return;
+        } else {
+          throw err;
+        }
+      }
+
+      await wait(3000);
+    }
+  }
+};
+
+const connectToMysql = async () => {
+  await testMysqlConnection();
+  console.log('MySQL connected');
+};
+
+const connectToDatabase = async () => {
+  if (DATABASE_PROVIDER === 'mysql') {
+    try {
+      await connectToMysql();
+    } catch (err) {
+      console.warn(`⚠️ MySQL indisponible: ${err.message}`);
+    }
+    return;
+  }
+
+  if (DATABASE_PROVIDER === 'mongo') {
+    try {
+      await connectToMongo();
+    } catch (err) {
+      console.warn(`⚠️ MongoDB indisponible: ${err.message}`);
+    }
+    return;
+  }
+
+  console.warn(`⚠️ DATABASE_PROVIDER inconnu: ${DATABASE_PROVIDER}`);
+};
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
   maxAge: '7d',
   setHeaders: (res, filePath) => {
     if (/\.(jpg|jpeg|png|gif|webp)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=604800');
     }
-    // Headers CORS pour les fichiers statiques
     res.setHeader('Access-Control-Allow-Origin', '*');
-  }
+  },
 }));
 
-// ====================== ROUTES ======================
-// Publiques
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/utilisateurs', utilisateursRoutes);
-app.use('/api', inscriptionGratuiteRoutes);
+app.use('/api/v1/inscription-gratuite', inscriptionGratuiteRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/paiement', paiementRoutes);
 app.use('/api/v1/contact', contactRoutes);
 app.use('/api/v1/forfaits', forfaitsRoutes);
 app.use('/api/v1/admin', adminRoutes);
-app.use('/api', cinetpayNotifyRoutes);
+app.use('/api/v1/cinetpay-notify', cinetpayNotifyRoutes);
 app.use('/api/v1/chat', chatRoutes);
 
-// Sécurisées
 app.use('/api/v1/users', protect, userRoutes);
 
-// Santé
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({
-    status: 'OK',
-    env: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
+      status: 'OK',
+      databaseProvider: DATABASE_PROVIDER,
+      env: process.env.NODE_ENV || 'development',
+      timestamp: new Date().toISOString(),
     corsOrigins: getCorsOrigins(),
-    domain: 'vivrimarket.com'
+    domain: 'vivrimarket.com',
   });
 });
 
-// Test CORS - utile pour déboguer
 app.get('/api/v1/cors-test', (req, res) => {
   res.status(200).json({
-    message: 'CORS test réussi!',
-    origin: req.headers.origin || 'Aucune origine',
-    allowedOrigins: getCorsOrigins()
+    message: 'CORS test succeeded',
+    origin: req.headers.origin || 'No origin',
+    allowedOrigins: getCorsOrigins(),
   });
 });
 
-// 404
 app.use((req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: 'Route non trouvée',
+  res.status(404).json({
+    success: false,
+    message: 'Route not found',
     path: req.path,
-    method: req.method
+    method: req.method,
   });
 });
 
-// Erreurs
 app.use(errorHandler);
 
-// ====================== SERVEUR ======================
-const server = app.listen(PORT, () => {
-  const mode = process.env.NODE_ENV === 'production' ? 'production' : 'développement';
-  console.log(`🚀 Serveur lancé sur le port ${PORT} (mode ${mode})`);
-  console.log(`🌍 Origines CORS autorisées: http://localhost:5173, http://localhost:3000, https://vivrimarket.com, https://www.vivrimarket.com`);
-  console.log(`📡 Cloudinary config – Cloud : ${process.env.CLD_CLOUD || 'Non configuré'}`);
-  
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('🛠 Mode développement activé');
+let server;
+
+const startServer = async () => {
+  try {
+    await connectToDatabase();
+
+    server = app.listen(PORT, () => {
+      const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
+      console.log(`Server listening on port ${PORT} (${mode})`);
+      console.log(`Database provider: ${DATABASE_PROVIDER}`);
+      console.log(`Allowed CORS origins: ${getCorsOrigins().join(', ')}`);
+      console.log(`Cloudinary cloud: ${process.env.CLD_CLOUD || 'not configured'}`);
+    });
+  } catch (err) {
+    console.error(`Server startup failed: ${err.message}`);
+    process.exit(1);
   }
-});
+};
+
+startServer();
 
 process.on('SIGTERM', () => {
-  console.log('🛑 Arrêt du serveur...');
+  console.log('Stopping server...');
+  if (!server) {
+    process.exit(0);
+  }
+
   server.close(() => {
-    console.log('✅ Serveur arrêté proprement');
+    console.log('Server stopped cleanly');
     process.exit(0);
   });
 });
 
 process.on('unhandledRejection', (err) => {
-  console.error('❌ Erreur non gérée:', err);
+  console.error('Unhandled rejection:', err);
+  if (!server) {
+    process.exit(1);
+  }
+
   server.close(() => process.exit(1));
 });

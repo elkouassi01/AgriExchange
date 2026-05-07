@@ -2,7 +2,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { useAdminAuth } from '../../../src/contexts/AdminAuthContext';
 

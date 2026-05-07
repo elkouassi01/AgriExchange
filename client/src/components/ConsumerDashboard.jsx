@@ -23,87 +23,85 @@ const ConsumerDashboard = () => {
   const [daysRemaining, setDaysRemaining] = useState(0);
   const [viewsUsed, setViewsUsed] = useState(0);
 
-  // Définir les quotas de vues par formule
-  const FORMULE_QUOTAS = {
-    BLEU: 1,
-    GOLD: 5,
-    PLATINUM: Infinity  // Illimité
-  };
+   /**
+    * 🔁 Récupère les infos d'abonnement à partir de l'ID utilisateur
+    */
+   const fetchAbonnement = useCallback(async () => {
+     // Définir les quotas de vues par formule
+     const FORMULE_QUOTAS = {
+       BLEU: 1,
+       GOLD: 5,
+       PLATINUM: Infinity  // Illimité
+     };
+     if (!user || !user._id) {
+       console.warn("❌ Aucun utilisateur authentifié !");
+       setError("Utilisateur non authentifié");
+       return;
+     }
 
-  /**
-   * 🔁 Récupère les infos d'abonnement à partir de l'ID utilisateur
-   */
-  const fetchAbonnement = useCallback(async () => {
-    if (!user || !user._id) {
-      console.warn("❌ Aucun utilisateur authentifié !");
-      setError("Utilisateur non authentifié");
-      return;
-    }
+      setLoading(true);
+      setError(null);
 
-    setLoading(true);
-    setError(null);
+      try {
+        const res = await axios.get(`/api/v1/users/${user._id}/forfait`, {
+          withCredentials: true,
+        });
 
-    try {
-      const res = await axios.get(`/api/v1/users/${user._id}/forfait`, {
-        withCredentials: true,
-      });
+        const data = res.data;
+        console.log("✅ Données abonnement :", data);
 
-      const data = res.data;
-      console.log("✅ Données abonnement :", data);
+        // Vérifier si l'abonnement est présent
+        if (!data.abonnement || !data.abonnement.statut) {
+          setExpired(false);
+          setAbonnementData(null);
+          return;
+        }
 
-      // Vérifier si l'abonnement est présent
-      if (!data.abonnement || !data.abonnement.statut) {
-        setExpired(false);
+        // Vérifier si l'abonnement est actif et non expiré
+        const today = new Date();
+        const endDate = new Date(data.abonnement.dateFin);
+        
+        // Calculer les jours restants (même si expiré)
+        const diffTime = endDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        setDaysRemaining(diffDays > 0 ? diffDays : 0);
+        
+        // Calculer les vues utilisées
+        const viewsCount = data.productViews?.length || 0;
+        setViewsUsed(viewsCount);
+        
+        // Déterminer le quota en fonction de la formule
+        const formule = data.abonnement.formule;
+        const quota = FORMULE_QUOTAS[formule] || 0;
+        
+        // Calculer les vues restantes (sauf pour PLATINUM qui est illimité)
+        const remainingViews = formule === "PLATINUM" 
+          ? Infinity 
+          : Math.max(0, quota - viewsCount);
+
+        // Vérifier l'expiration
+        const isExpired = endDate < today;
+        setExpired(isExpired);
+
+        // Toujours mettre à jour les données d'abonnement
+        setAbonnementData({
+          formule,
+          dateFin: data.abonnement.dateFin,
+          montant: data.abonnement.montant,
+          quotaTotal: quota,
+          quotaRestant: remainingViews,
+          statut: data.abonnement.statut
+        });
+
+      } catch (err) {
+        console.error("❌ Erreur récupération abonnement :", err);
+        setError("Impossible de récupérer les informations de votre abonnement.");
         setAbonnementData(null);
-        return;
+        setExpired(false);
+      } finally {
+        setLoading(false);
       }
-
-      // Vérifier si l'abonnement est actif et non expiré
-      const today = new Date();
-      const endDate = new Date(data.abonnement.dateFin);
-      const isActive = data.abonnement.statut === "actif";
-      
-      // Calculer les jours restants (même si expiré)
-      const diffTime = endDate - today;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      setDaysRemaining(diffDays > 0 ? diffDays : 0);
-      
-      // Calculer les vues utilisées
-      const viewsCount = data.productViews?.length || 0;
-      setViewsUsed(viewsCount);
-      
-      // Déterminer le quota en fonction de la formule
-      const formule = data.abonnement.formule;
-      const quota = FORMULE_QUOTAS[formule] || 0;
-      
-      // Calculer les vues restantes (sauf pour PLATINUM qui est illimité)
-      const remainingViews = formule === "PLATINUM" 
-        ? Infinity 
-        : Math.max(0, quota - viewsCount);
-
-      // Vérifier l'expiration
-      const isExpired = endDate < today;
-      setExpired(isExpired);
-
-      // Toujours mettre à jour les données d'abonnement
-      setAbonnementData({
-        formule,
-        dateFin: data.abonnement.dateFin,
-        montant: data.abonnement.montant,
-        quotaTotal: quota,
-        quotaRestant: remainingViews,
-        statut: data.abonnement.statut
-      });
-
-    } catch (err) {
-      console.error("❌ Erreur récupération abonnement :", err);
-      setError("Impossible de récupérer les informations de votre abonnement.");
-      setAbonnementData(null);
-      setExpired(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+   }, [user]);
 
   /**
    * ▶️ Déclenche le chargement après que le user soit dispo

@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const { isMysql } = require('../utils/authHelpers');
 
 const TOKEN_EXPIRATION = process.env.JWT_EXPIRE || '7d';
 const REFRESH_EXPIRATION = process.env.REFRESH_EXPIRE || '30d';
@@ -44,7 +46,9 @@ const protect = async (req, res, next) => {
     }
 
     // 3. Utilisateur
-    const user = await User.findById(decoded.id).select('-motDePasse');
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserById(decoded.id)
+      : await User.findById(decoded.id).select('-motDePasse');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -88,7 +92,7 @@ const authorize = (roles = []) => {
 
 const generateToken = (user) =>
   jwt.sign(
-    { id: user._id, role: user.role },
+    { id: user.id || user._id, role: user.role },
     process.env.JWT_SECRET,
     {
       expiresIn: TOKEN_EXPIRATION,

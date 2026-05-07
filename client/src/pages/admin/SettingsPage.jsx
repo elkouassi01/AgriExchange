@@ -1,34 +1,31 @@
-// src/pages/admin/SettingsPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './SettingsPage.css';
 import {
-  Box,
-  Typography,
-  Paper,
-  Tabs,
-  Tab,
-  Grid,
-  TextField,
-  Button,
-  Switch,
-  FormControlLabel,
   Alert,
+  Box,
+  Button,
   CircularProgress,
-  Snackbar,
+  Divider,
+  FormControlLabel,
+  Grid,
   MenuItem,
-  Divider
+  Paper,
+  Snackbar,
+  Switch,
+  Tab,
+  Tabs,
+  TextField,
+  Typography
 } from '@mui/material';
 import {
-  Save as SaveIcon,
-  Settings as GeneralIcon,
+  MonetizationOn as PaymentsIcon,
   Notifications as NotificationsIcon,
+  Save as SaveIcon,
   Security as SecurityIcon,
-  MonetizationOn as PaymentsIcon
+  Settings as GeneralIcon
 } from '@mui/icons-material';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
 
 const SettingsPage = () => {
-  const { admin } = useAdminAuth();
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,77 +66,69 @@ const SettingsPage = () => {
   });
 
   useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        setLoading(true);
-        setTimeout(() => {
-          setGeneralSettings({
-            siteName: 'AgriConnect',
-            siteUrl: 'https://agriconnect.ci',
-            currency: 'XOF',
-            timezone: 'Africa/Abidjan',
-            language: 'fr'
-          });
+    const timer = setTimeout(() => {
+      setGeneralSettings({
+        siteName: 'AgriConnect',
+        siteUrl: 'https://agriconnect.ci',
+        currency: 'XOF',
+        timezone: 'Africa/Abidjan',
+        language: 'fr'
+      });
 
-          setNotificationSettings({
-            emailNotifications: true,
-            pushNotifications: false,
-            newsletterEnabled: true,
-            lowBalanceAlert: true
-          });
+      setNotificationSettings({
+        emailNotifications: true,
+        pushNotifications: false,
+        newsletterEnabled: true,
+        lowBalanceAlert: true
+      });
 
-          setSecuritySettings({
-            twoFactorAuth: false,
-            passwordComplexity: true,
-            loginAttempts: 5,
-            sessionTimeout: 30
-          });
+      setSecuritySettings({
+        twoFactorAuth: false,
+        passwordComplexity: true,
+        loginAttempts: 5,
+        sessionTimeout: 30
+      });
 
-          setPaymentSettings({
-            cinetpayApiKey: 'sk_test_1234567890abcdef',
-            cinetpaySiteId: '123456',
-            stripeEnabled: false,
-            stripeSecretKey: '',
-            stripePublicKey: '',
-            paypalEnabled: false,
-            paypalClientId: '',
-            mobileMoneyEnabled: true
-          });
+      setPaymentSettings({
+        cinetpayApiKey: 'sk_test_1234567890abcdef',
+        cinetpaySiteId: '123456',
+        stripeEnabled: false,
+        stripeSecretKey: '',
+        stripePublicKey: '',
+        paypalEnabled: false,
+        paypalClientId: '',
+        mobileMoneyEnabled: true
+      });
 
-          setLoading(false);
-        }, 1000);
-      } catch (error) {
-        setError('Erreur lors du chargement des paramètres');
-        setLoading(false);
-      }
-    };
+      setLoading(false);
+    }, 1000);
 
-    loadSettings();
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleTabChange = (event, newValue) => setActiveTab(newValue);
+  const handleTabChange = (_event, newValue) => setActiveTab(newValue);
 
-  const handleGeneralChange = (e) => {
-    const { name, value } = e.target;
-    setGeneralSettings(prev => ({ ...prev, [name]: value }));
+  const handleGeneralChange = (event) => {
+    const { name, value } = event.target;
+    setGeneralSettings((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleNotificationChange = (e) => {
-    const { name, checked } = e.target;
-    setNotificationSettings(prev => ({ ...prev, [name]: checked }));
+  const handleNotificationChange = (event) => {
+    const { name, checked } = event.target;
+    setNotificationSettings((prev) => ({ ...prev, [name]: checked }));
   };
 
-  const handleSecurityChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setSecuritySettings(prev => ({
+  const handleSecurityChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setSecuritySettings((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
   };
 
-  const handlePaymentChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setPaymentSettings(prev => ({
+  const handlePaymentChange = (event) => {
+    const { name, value, type, checked } = event.target;
+    setPaymentSettings((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
@@ -149,17 +138,14 @@ const SettingsPage = () => {
     try {
       setSaving(true);
       setError('');
-      setTimeout(() => {
-        setSaving(false);
-        setSuccess(true);
-      }, 1500);
-    } catch (error) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setSuccess(true);
+    } catch {
+      setError('Erreur lors de la sauvegarde des parametres');
+    } finally {
       setSaving(false);
-      setError('Erreur lors de la sauvegarde des paramètres');
     }
   };
-
-  const handleCloseSnackbar = () => setSuccess(false);
 
   if (loading) {
     return (
@@ -173,26 +159,83 @@ const SettingsPage = () => {
     <Box className="page-parametres">
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" className="titre-parametres" gutterBottom>
-          Paramètres de la plateforme
+          Parametres de la plateforme
         </Typography>
         <Typography variant="body1" className="sous-titre-parametres">
-          Configurez les paramètres généraux, de notification et de sécurité de la plateforme
+          Configurez les parametres generaux, de notification, de securite et de paiement.
         </Typography>
       </Box>
 
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={handleTabChange} variant="scrollable" scrollButtons="auto">
-          <Tab label="Général" icon={<GeneralIcon />} iconPosition="start" />
+          <Tab label="General" icon={<GeneralIcon />} iconPosition="start" />
           <Tab label="Notifications" icon={<NotificationsIcon />} iconPosition="start" />
-          <Tab label="Sécurité" icon={<SecurityIcon />} iconPosition="start" />
+          <Tab label="Securite" icon={<SecurityIcon />} iconPosition="start" />
           <Tab label="Paiements" icon={<PaymentsIcon />} iconPosition="start" />
         </Tabs>
 
         <Box className="panneau-onglet-parametres">
           {activeTab === 0 && (
             <Grid container spacing={3}>
-              {/* Général */}
-              {/* même contenu que précédemment, inchangé, les className sont globales */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Nom du site"
+                  name="siteName"
+                  value={generalSettings.siteName}
+                  onChange={handleGeneralChange}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="URL du site"
+                  name="siteUrl"
+                  value={generalSettings.siteUrl}
+                  onChange={handleGeneralChange}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Devise"
+                  name="currency"
+                  value={generalSettings.currency}
+                  onChange={handleGeneralChange}
+                  margin="normal"
+                >
+                  <MenuItem value="XOF">XOF</MenuItem>
+                  <MenuItem value="EUR">EUR</MenuItem>
+                  <MenuItem value="USD">USD</MenuItem>
+                </TextField>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Fuseau horaire"
+                  name="timezone"
+                  value={generalSettings.timezone}
+                  onChange={handleGeneralChange}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Langue"
+                  name="language"
+                  value={generalSettings.language}
+                  onChange={handleGeneralChange}
+                  margin="normal"
+                >
+                  <MenuItem value="fr">Francais</MenuItem>
+                  <MenuItem value="en">English</MenuItem>
+                </TextField>
+              </Grid>
             </Grid>
           )}
 
@@ -205,13 +248,11 @@ const SettingsPage = () => {
                       checked={notificationSettings.emailNotifications}
                       onChange={handleNotificationChange}
                       name="emailNotifications"
-                      color="primary"
                     />
                   }
                   label="Notifications par email"
                 />
               </Grid>
-
               <Grid item xs={12}>
                 <FormControlLabel
                   control={
@@ -219,16 +260,11 @@ const SettingsPage = () => {
                       checked={notificationSettings.pushNotifications}
                       onChange={handleNotificationChange}
                       name="pushNotifications"
-                      color="primary"
                     />
                   }
                   label="Notifications push"
                 />
-                <Typography className="description-interrupteur">
-                  Les utilisateurs recevront des notifications sur leur appareil mobile
-                </Typography>
               </Grid>
-
               <Grid item xs={12}>
                 <FormControlLabel
                   control={
@@ -236,16 +272,11 @@ const SettingsPage = () => {
                       checked={notificationSettings.newsletterEnabled}
                       onChange={handleNotificationChange}
                       name="newsletterEnabled"
-                      color="primary"
                     />
                   }
                   label="Newsletter hebdomadaire"
                 />
-                <Typography className="description-interrupteur">
-                  Envoi automatique des nouvelles offres et actualités aux utilisateurs
-                </Typography>
               </Grid>
-
               <Grid item xs={12}>
                 <FormControlLabel
                   control={
@@ -253,21 +284,62 @@ const SettingsPage = () => {
                       checked={notificationSettings.lowBalanceAlert}
                       onChange={handleNotificationChange}
                       name="lowBalanceAlert"
-                      color="primary"
                     />
                   }
                   label="Alerte solde faible"
                 />
-                <Typography className="description-interrupteur">
-                  Envoyer une alerte lorsque le solde est inférieur à 1000 XOF
-                </Typography>
               </Grid>
             </Grid>
           )}
 
           {activeTab === 2 && (
             <Grid container spacing={3}>
-              {/* Idem pour section Sécurité : applique .description-interrupteur à chaque <Typography> explicatif */}
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={securitySettings.twoFactorAuth}
+                      onChange={handleSecurityChange}
+                      name="twoFactorAuth"
+                    />
+                  }
+                  label="Activer l'authentification a deux facteurs"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={securitySettings.passwordComplexity}
+                      onChange={handleSecurityChange}
+                      name="passwordComplexity"
+                    />
+                  }
+                  label="Exiger des mots de passe complexes"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Tentatives de connexion max"
+                  name="loginAttempts"
+                  type="number"
+                  value={securitySettings.loginAttempts}
+                  onChange={handleSecurityChange}
+                  margin="normal"
+                />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Expiration de session (minutes)"
+                  name="sessionTimeout"
+                  type="number"
+                  value={securitySettings.sessionTimeout}
+                  onChange={handleSecurityChange}
+                  margin="normal"
+                />
+              </Grid>
             </Grid>
           )}
 
@@ -280,10 +352,9 @@ const SettingsPage = () => {
                       checked={paymentSettings.mobileMoneyEnabled}
                       onChange={handlePaymentChange}
                       name="mobileMoneyEnabled"
-                      color="primary"
                     />
                   }
-                  label="Activer les paiements par Mobile Money"
+                  label="Activer les paiements Mobile Money"
                 />
               </Grid>
 
@@ -296,12 +367,11 @@ const SettingsPage = () => {
               <Grid item xs={12} md={6}>
                 <TextField
                   fullWidth
-                  label="Clé API CinetPay"
+                  label="Cle API CinetPay"
                   name="cinetpayApiKey"
                   type="password"
                   value={paymentSettings.cinetpayApiKey}
                   onChange={handlePaymentChange}
-                  variant="outlined"
                   margin="normal"
                 />
               </Grid>
@@ -313,7 +383,6 @@ const SettingsPage = () => {
                   name="cinetpaySiteId"
                   value={paymentSettings.cinetpaySiteId}
                   onChange={handlePaymentChange}
-                  variant="outlined"
                   margin="normal"
                 />
               </Grid>
@@ -326,10 +395,9 @@ const SettingsPage = () => {
                       checked={paymentSettings.stripeEnabled}
                       onChange={handlePaymentChange}
                       name="stripeEnabled"
-                      color="primary"
                     />
                   }
-                  label="Activer les paiements par carte bancaire (Stripe)"
+                  label="Activer Stripe"
                 />
               </Grid>
 
@@ -338,24 +406,21 @@ const SettingsPage = () => {
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Clé secrète Stripe"
+                      label="Cle secrete Stripe"
                       name="stripeSecretKey"
                       type="password"
                       value={paymentSettings.stripeSecretKey}
                       onChange={handlePaymentChange}
-                      variant="outlined"
                       margin="normal"
                     />
                   </Grid>
-
                   <Grid item xs={12} md={6}>
                     <TextField
                       fullWidth
-                      label="Clé publique Stripe"
+                      label="Cle publique Stripe"
                       name="stripePublicKey"
                       value={paymentSettings.stripePublicKey}
                       onChange={handlePaymentChange}
-                      variant="outlined"
                       margin="normal"
                     />
                   </Grid>
@@ -370,10 +435,9 @@ const SettingsPage = () => {
                       checked={paymentSettings.paypalEnabled}
                       onChange={handlePaymentChange}
                       name="paypalEnabled"
-                      color="primary"
                     />
                   }
-                  label="Activer les paiements PayPal"
+                  label="Activer PayPal"
                 />
               </Grid>
 
@@ -385,7 +449,6 @@ const SettingsPage = () => {
                     name="paypalClientId"
                     value={paymentSettings.paypalClientId}
                     onChange={handlePaymentChange}
-                    variant="outlined"
                     margin="normal"
                   />
                 </Grid>
@@ -406,7 +469,7 @@ const SettingsPage = () => {
           {saving ? (
             <>
               <CircularProgress size={20} sx={{ mr: 1 }} />
-              Sauvegarde en cours...
+              Sauvegarde...
             </>
           ) : (
             'Enregistrer les modifications'
@@ -423,8 +486,8 @@ const SettingsPage = () => {
       <Snackbar
         open={success}
         autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
-        message="Paramètres enregistrés avec succès"
+        onClose={() => setSuccess(false)}
+        message="Parametres enregistres avec succes"
       />
     </Box>
   );

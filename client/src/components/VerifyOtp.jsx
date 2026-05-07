@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
+import { buildApiUrl } from "../config/api";
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const VerifyOtp = () => {
     setLoading(true);
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/v1/auth/verify-otp`,
+        buildApiUrl('/auth/verify-otp'),
         { telephone, otp }
       );
 
@@ -45,7 +46,7 @@ const VerifyOtp = () => {
     setResending(true);
     try {
       const res = await axios.post(
-        `${import.meta.env.VITE_API_URL || "http://localhost:5000"}/api/v1/auth/resend-otp`,
+        buildApiUrl('/auth/resend-otp'),
         { telephone }
       );
       setMessage(res.data.message || "Nouveau code envoyé !");

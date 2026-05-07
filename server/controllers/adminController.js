@@ -1,190 +1,123 @@
-const User = require('../models/User');
-const Transaction = require('../models/Transaction');
-const Abonnement = require('../models/Abonnement');
-const moment = require('moment');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const mysqlTransactionRepository = require('../repositories/mysqlTransactionRepository');
+const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
+const { getMysqlPool } = require('../config/mysql');
 
-// ==================== DASHBOARD STATS ==================== //
+const sanitizeUser = (user) => {
+  if (!user) return null;
+  const { motDePasse, mot_de_passe, ...rest } = user;
+  return rest;
+};
+
 const getDashboardStats = async (req, res) => {
   try {
-    const [
-      totalUsers,
-      totalFarmers,
-      totalConsumers,
-      totalRevenueData,
-      activeSubscriptions,
-      transactionsCounts,
-      recentTransactions
-    ] = await Promise.all([
-      User.countDocuments(),
-      User.countDocuments({ role: 'agriculteur' }),
-      User.countDocuments({ role: 'consommateur' }),
-      Transaction.aggregate([
-        { $match: { status: 'success' } },
-        { $group: { _id: null, total: { $sum: '$montant' } } },
-      ]),
-      Abonnement.aggregate([
-        { $match: { dateExpiration: { $gte: new Date() } } },
-        { $group: { _id: '$formule', count: { $sum: 1 } } }
-      ]),
-      Transaction.aggregate([
-        { $group: { _id: '$status', count: { $sum: 1 } } }
-      ]),
-      Transaction.find().sort({ createdAt: -1 }).limit(5).populate('user', 'nom email')
-    ]);
+    const pool = getMysqlPool();
 
-    const lastMonth = moment().subtract(1, 'month');
-    const [lastMonthUsers, lastMonthFarmers, lastMonthConsumers] = await Promise.all([
-      User.countDocuments({ createdAt: { $lt: lastMonth.toDate() } }),
-      User.countDocuments({ role: 'agriculteur', createdAt: { $lt: lastMonth.toDate() } }),
-      User.countDocuments({ role: 'consommateur', createdAt: { $lt: lastMonth.toDate() } })
-    ]);
+    const [[stats]] = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users) AS total_users,
+        (SELECT COUNT(*) FROM users WHERE role = 'agriculteur') AS total_farmers,
+        (SELECT COUNT(*) FROM users WHERE role = 'consommateur') AS total_consumers,
+        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status = 'completed') AS total_revenue,
+        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW()) AS active_subscriptions_bleu,
+        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'GOLD') AS active_subscriptions_gold,
+        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'PLATINUM') AS active_subscriptions_platinum
+    `);
 
-    const calculateGrowth = (current, previous) => 
-      previous > 0 ? ((current - previous) / previous * 100).toFixed(2) : current > 0 ? 100 : 0;
-
-    const userGrowth = calculateGrowth(totalUsers, lastMonthUsers);
-    const farmerGrowth = calculateGrowth(totalFarmers, lastMonthFarmers);
-    const consumerGrowth = calculateGrowth(totalConsumers, lastMonthConsumers);
-
-    const totalRevenue = totalRevenueData[0]?.total || 0;
-
-    const transactionStatus = {
-      success: 0,
-      pending: 0,
-      failed: 0
-    };
-    
-    transactionsCounts.forEach(item => {
-      transactionStatus[item._id] = item.count;
+    const [statusRows] = await pool.query(
+      'SELECT status, COUNT(*) AS count FROM transactions GROUP BY status'
+    );
+    const transactionStatus = { success: 0, pending: 0, failed: 0 };
+    statusRows.forEach((row) => {
+      if (row.status in transactionStatus) transactionStatus[row.status] = parseInt(row.count, 10);
     });
 
-    const sixMonthsAgo = moment().subtract(6, 'months').startOf('month');
-    const monthlyActivity = await Transaction.aggregate([
-      {
-        $match: {
-          createdAt: { $gte: sixMonthsAgo.toDate() }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            month: { $month: '$createdAt' },
-            year: { $year: '$createdAt' }
-          },
-          count: { $sum: 1 },
-          amount: { $sum: '$montant' }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
-    ]);
+    const [activityRows] = await pool.query(`
+      SELECT
+        MONTH(created_at) AS month,
+        YEAR(created_at)  AS year,
+        COUNT(*)          AS count,
+        COALESCE(SUM(montant), 0) AS amount
+      FROM transactions
+      WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+      GROUP BY YEAR(created_at), MONTH(created_at)
+      ORDER BY year, month
+    `);
 
-    const activityData = monthlyActivity.map(item => ({
-      mois: moment(`${item._id.year}-${item._id.month}`, 'YYYY-M').format('MMM'),
-      transactions: item.count,
-      revenue: item.amount
+    const activityData = activityRows.map((row) => ({
+      mois: new Date(2000, row.month - 1, 1).toLocaleString('fr-FR', { month: 'short' }),
+      transactions: parseInt(row.count, 10),
+      revenue: parseFloat(row.amount),
     }));
 
     res.json({
       users: {
-        total: totalUsers,
-        farmers: totalFarmers,
-        consumers: totalConsumers,
-        growth: {
-          total: userGrowth,
-          farmers: farmerGrowth,
-          consumers: consumerGrowth
-        }
+        total: parseInt(stats.total_users, 10),
+        farmers: parseInt(stats.total_farmers, 10),
+        consumers: parseInt(stats.total_consumers, 10),
+        growth: { total: 0, farmers: 0, consumers: 0 },
       },
       revenue: {
-        total: totalRevenue,
-        growth: 6
+        total: parseFloat(stats.total_revenue),
+        growth: 6,
       },
-      subscriptions: activeSubscriptions.map(item => ({
-        formule: item._id,
-        count: item.count
-      })),
+      subscriptions: [
+        { formule: 'BLEU',     count: parseInt(stats.active_subscriptions_bleu, 10) },
+        { formule: 'GOLD',     count: parseInt(stats.active_subscriptions_gold, 10) },
+        { formule: 'PLATINUM', count: parseInt(stats.active_subscriptions_platinum, 10) },
+      ],
       transactions: {
         total: transactionStatus.success + transactionStatus.pending + transactionStatus.failed,
         completed: transactionStatus.success,
         pending: transactionStatus.pending,
-        failed: transactionStatus.failed
+        failed: transactionStatus.failed,
       },
-      recentTransactions: recentTransactions.map(tx => ({
-        id: tx._id,
-        user: tx.user ? { id: tx.user._id, name: tx.user.nom } : null,
-        amount: tx.montant,
-        date: tx.createdAt,
-        status: tx.status
-      })),
-      activityData
+      recentTransactions: [],
+      activityData,
     });
   } catch (error) {
-    res.status(500).json({ 
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({
       code: 'ADMIN_DASHBOARD_ERROR',
       message: 'Échec de récupération des statistiques',
-      details: process.env.NODE_ENV === 'development' ? error.message : null
+      details: process.env.NODE_ENV === 'development' ? error.message : null,
     });
   }
 };
 
-// ==================== USER MANAGEMENT ==================== //
 const getUsers = async (req, res) => {
   try {
     const { page = 1, limit = 10, role, search } = req.query;
-    const query = {};
-    
-    if (role) query.role = role;
-    if (search) {
-      query.$or = [
-        { nom: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ];
-    }
 
-    const [users, total] = await Promise.all([
-      User.find(query)
-        .select('-motDePasse')
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
-        .sort({ createdAt: -1 }),
-      User.countDocuments(query)
-    ]);
+    const users = await mysqlUserRepository.listUsers(
+      { role, search },
+      { page: parseInt(page, 10), limit: parseInt(limit, 10), role, search }
+    );
+    const total = await mysqlUserRepository.countUsers({ role, search });
 
     res.json({
-      data: users,
+      data: users.map(sanitizeUser),
       pagination: {
-        currentPage: parseInt(page),
+        currentPage: parseInt(page, 10),
         totalPages: Math.ceil(total / limit),
-        totalItems: total
-      }
+        totalItems: total,
+      },
     });
   } catch (error) {
-    res.status(500).json({ 
-      code: 'USER_FETCH_ERROR',
-      message: 'Échec de récupération des utilisateurs'
-    });
+    console.error('Get users error:', error);
+    res.status(500).json({ code: 'USER_FETCH_ERROR', message: 'Échec de récupération des utilisateurs' });
   }
 };
 
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select('-motDePasse')
-      .populate('abonnements');
-    
+    const user = await mysqlUserRepository.findUserById(req.params.id);
     if (!user) {
-      return res.status(404).json({ 
-        code: 'USER_NOT_FOUND',
-        message: 'Utilisateur non trouvé' 
-      });
+      return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Utilisateur non trouvé' });
     }
-    
-    res.json(user);
+    res.json(sanitizeUser(user));
   } catch (error) {
-    res.status(500).json({ 
-      code: 'USER_FETCH_ERROR',
-      message: 'Échec de récupération de l\'utilisateur'
-    });
+    res.status(500).json({ code: 'USER_FETCH_ERROR', message: "Échec de récupération de l'utilisateur" });
   }
 };
 
@@ -192,35 +125,53 @@ const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     delete updates.motDePasse;
+    delete updates.mot_de_passe;
     delete updates.role;
-    delete updates.dateCreation;
-    
-    const user = await User.findByIdAndUpdate(id, updates, { 
-      new: true,
-      runValidators: true 
-    }).select('-motDePasse');
-    
-    if (!user) {
-      return res.status(404).json({ 
-        code: 'USER_NOT_FOUND',
-        message: 'Utilisateur non trouvé' 
-      });
-    }
-    
-    res.json(user);
-  } catch (error) {
-    const status = error.name === 'ValidationError' ? 400 : 500;
-    const message = error.name === 'ValidationError' 
-      ? 'Données de mise à jour invalides' 
-      : 'Échec de mise à jour de l\'utilisateur';
-    
-    res.status(status).json({ 
-      code: 'USER_UPDATE_ERROR',
-      message,
-      errors: error.errors ? Object.values(error.errors).map(e => e.message) : undefined
+
+    const pool = getMysqlPool();
+
+    const allowedFields = {
+      nom: 'nom',
+      email: 'email',
+      contact: 'contact',
+      fermeNom: 'ferme_nom',
+      localisation: 'localisation',
+      typeExploitation: 'type_exploitation',
+      estActif: 'est_actif',
+      isVerified: 'is_verified',
+    };
+
+    const setClauses = [];
+    const values = [];
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (Object.prototype.hasOwnProperty.call(allowedFields, key)) {
+        setClauses.push(`${allowedFields[key]} = ?`);
+        values.push(value);
+      }
     });
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({ message: 'Aucun champ à mettre à jour' });
+    }
+
+    values.push(id);
+    const [result] = await pool.query(
+      `UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = ?`,
+      values
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Utilisateur non trouvé' });
+    }
+
+    const user = await mysqlUserRepository.findUserById(id);
+    res.json(sanitizeUser(user));
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({ code: 'USER_UPDATE_ERROR', message: "Échec de mise à jour de l'utilisateur" });
   }
 };
 
@@ -228,177 +179,112 @@ const updateUserRole = async (req, res) => {
   try {
     const { id } = req.params;
     const { role } = req.body;
-    
+
     if (!['agriculteur', 'consommateur', 'admin'].includes(role)) {
-      return res.status(400).json({
-        code: 'INVALID_ROLE',
-        message: 'Rôle invalide'
-      });
+      return res.status(400).json({ code: 'INVALID_ROLE', message: 'Rôle invalide' });
     }
-    
-    const user = await User.findByIdAndUpdate(id, { role }, { 
-      new: true,
-      runValidators: true 
-    }).select('-motDePasse');
-    
-    if (!user) {
-      return res.status(404).json({ 
-        code: 'USER_NOT_FOUND',
-        message: 'Utilisateur non trouvé' 
-      });
+
+    const pool = getMysqlPool();
+    const [result] = await pool.query(
+      'UPDATE users SET role = ?, updated_at = NOW() WHERE id = ?',
+      [role, id]
+    );
+
+    if (!result.affectedRows) {
+      return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Utilisateur non trouvé' });
     }
-    
-    res.json(user);
+
+    const user = await mysqlUserRepository.findUserById(id);
+    res.json(sanitizeUser(user));
   } catch (error) {
-    res.status(500).json({ 
-      code: 'ROLE_UPDATE_ERROR',
-      message: 'Échec de mise à jour du rôle'
-    });
+    console.error('Update role error:', error);
+    res.status(500).json({ code: 'ROLE_UPDATE_ERROR', message: 'Échec de mise à jour du rôle' });
   }
 };
 
 const deleteUser = async (req, res) => {
   try {
-    const { id } = req.params;
-    const user = await User.findById(id);
-    if (!user) {
-      return res.status(404).json({ 
-        code: 'USER_NOT_FOUND',
-        message: 'Utilisateur non trouvé' 
-      });
+    const deleted = await mysqlUserRepository.deleteUser(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Utilisateur non trouvé' });
     }
-
-    user.email = `disabled_${Date.now()}_${user.email}`;
-    user.status = 'disabled';
-    await user.save();
-    
-    res.json({ 
-      message: 'Utilisateur désactivé avec succès',
-      userId: user._id,
-      newStatus: user.status
-    });
+    res.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (error) {
-    res.status(500).json({ 
-      code: 'USER_DELETE_ERROR',
-      message: 'Échec de désactivation de l\'utilisateur'
-    });
+    console.error('Delete user error:', error);
+    res.status(500).json({ code: 'USER_DELETE_ERROR', message: "Échec de suppression de l'utilisateur" });
   }
 };
 
 const getUserActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    const [transactions, abonnements] = await Promise.all([
-      Transaction.find({ user: id }).sort({ createdAt: -1 }).limit(10),
-      Abonnement.find({ utilisateur: id }).sort({ dateDebut: -1 })
-    ]);
-    
+    const transactions = await mysqlTransactionRepository.getUserTransactions(id);
+    const abonnements = await mysqlAbonnementRepository.getUserAbonnements(id);
+
     res.json({
-      transactions,
-      abonnements
+      transactions: transactions.transactions,
+      abonnements,
     });
   } catch (error) {
-    res.status(500).json({ 
-      code: 'USER_ACTIVITY_ERROR',
-      message: 'Échec de récupération des activités'
-    });
+    res.status(500).json({ code: 'USER_ACTIVITY_ERROR', message: "Échec de récupération des activités" });
   }
 };
 
-// ==================== TRANSACTIONS & SUBSCRIPTIONS ==================== //
 const getTransactions = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
-    const query = status ? { status } : {};
-    
-    const [transactions, total] = await Promise.all([
-      Transaction.find(query)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
-        .populate('user', 'nom email'),
-      Transaction.countDocuments(query)
-    ]);
+    const { page = 1, limit = 20 } = req.query;
+    const result = await mysqlTransactionRepository.getUserTransactions(null, parseInt(page, 10), parseInt(limit, 10));
 
     res.json({
-      data: transactions,
+      data: result.transactions,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total
-      }
+        currentPage: result.page,
+        totalPages: result.totalPages,
+        totalItems: result.total,
+      },
     });
   } catch (error) {
-    res.status(500).json({ 
-      code: 'TRANSACTION_FETCH_ERROR',
-      message: 'Échec de récupération des transactions'
-    });
+    res.status(500).json({ code: 'TRANSACTION_FETCH_ERROR', message: 'Échec de récupération des transactions' });
   }
 };
 
 const getSubscriptions = async (req, res) => {
   try {
-    const { page = 1, limit = 20, status } = req.query;
-    const query = {};
-    
+    const pool = getMysqlPool();
+    const { status, page = 1, limit = 20 } = req.query;
+
+    let query = 'SELECT * FROM abonnements WHERE 1 = 1';
+    const values = [];
+
     if (status === 'active') {
-      query.dateExpiration = { $gte: new Date() };
+      query += ' AND date_expiration >= NOW()';
     } else if (status === 'expired') {
-      query.dateExpiration = { $lt: new Date() };
+      query += ' AND date_expiration < NOW()';
     } else if (status === 'pending') {
-      query.status = 'pending';
+      query += ' AND status = ?';
+      values.push('pending');
     }
 
-    const [abonnements, total] = await Promise.all([
-      Abonnement.find(query)
-        .sort({ dateDebut: -1 })
-        .skip((page - 1) * limit)
-        .limit(parseInt(limit))
-        .populate('utilisateur', 'nom email'),
-      Abonnement.countDocuments(query)
+    query += ' ORDER BY date_debut DESC LIMIT ? OFFSET ?';
+    values.push(parseInt(limit, 10), (page - 1) * parseInt(limit, 10));
+
+    const [[totalRow], [rows]] = await Promise.all([
+      pool.query('SELECT COUNT(*) AS total FROM abonnements'),
+      pool.query(query, values),
     ]);
 
+    const total = parseInt(totalRow.total, 10);
+
     res.json({
-      data: abonnements,
+      data: rows,
       pagination: {
-        currentPage: parseInt(page),
+        currentPage: parseInt(page, 10),
         totalPages: Math.ceil(total / limit),
-        totalItems: total
-      }
+        totalItems: total,
+      },
     });
   } catch (error) {
-    res.status(500).json({ 
-      code: 'SUBSCRIPTION_FETCH_ERROR',
-      message: 'Échec de récupération des abonnements'
-    });
-  }
-};
-
-// ==================== CLEANUP OBSOLETE FIELDS ==================== //
-// ⭐ CRITICAL FIX: Renamed function to match route reference
-const cleanupObsoleteFields = async (req, res) => {
-  try {
-    const result = await User.updateMany(
-      {},
-      {
-        $unset: {
-          "abonnement.vuesUtilisees": "",
-          "abonnement.derniereVue": ""
-        }
-      }
-    );
-
-    res.json({
-      message: '✅ Champs obsolètes supprimés avec succès.',
-      matchedCount: result.matchedCount,
-      modifiedCount: result.modifiedCount
-    });
-  } catch (error) {
-    res.status(500).json({
-      code: 'USER_CLEANUP_ERROR',
-      message: '❌ Erreur lors du nettoyage des champs obsolètes',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    res.status(500).json({ code: 'SUBSCRIPTION_FETCH_ERROR', message: 'Échec de récupération des abonnements' });
   }
 };
 
@@ -412,5 +298,4 @@ module.exports = {
   getUserActivity,
   getTransactions,
   getSubscriptions,
-  cleanupObsoleteFields // ⭐ Fixed export name
 };

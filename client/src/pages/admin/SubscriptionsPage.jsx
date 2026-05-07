@@ -31,11 +31,9 @@ import {
   Search as SearchIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { fetchSubscriptions } from '../../services/adminService';
 
 const SubscriptionsPage = () => {
-  const { admin } = useAdminAuth();
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -80,7 +78,7 @@ const SubscriptionsPage = () => {
     setStats({ total, active, expired, cancelled });
   };
 
-  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangePage = (_event, newPage) => setPage(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);

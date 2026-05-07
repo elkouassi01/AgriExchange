@@ -1,42 +1,52 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middlewares/auth');
 const sendSms = require('../utils/sendSms');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const { isMysql, sanitizeUser } = require('../utils/authHelpers');
 
-// =============================================
-// 🔐 CONNEXION UTILISATEUR
-// =============================================
 router.post('/connexion', async (req, res) => {
   const { email, motDePasse } = req.body;
-  if (!email || !motDePasse) return res.status(400).json({ success: false, message: 'Email et mot de passe requis' });
+  if (!email || !motDePasse) {
+    return res.status(400).json({ success: false, message: 'Email et mot de passe requis' });
+  }
 
   try {
-    const user = await User.findOne({ email }).select('+motDePasse');
-    if (!user) return res.status(401).json({ success: false, message: 'Identifiants invalides' });
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByEmail(email)
+      : await User.findOne({ email }).select('+motDePasse');
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Identifiants invalides' });
+    }
 
     const passwordMatch = await bcrypt.compare(motDePasse, user.motDePasse);
-    if (!passwordMatch) return res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
+    if (!passwordMatch) {
+      return res.status(401).json({ success: false, message: 'Mot de passe incorrect' });
+    }
 
-    if (!user.estActif) return res.status(403).json({ success: false, message: "Compte désactivé." });
+    if (!user.estActif) {
+      return res.status(403).json({ success: false, message: 'Compte desactive.' });
+    }
 
-    // ✅ Générer token JWT
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    const userId = user.id || user._id;
+    const token = jwt.sign(
+      { id: userId, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '1h' }
+    );
+
+    if (isMysql()) {
+      await mysqlUserRepository.updateUserLastLogin(userId);
+    }
 
     return res.status(200).json({
       success: true,
-      message: 'Connexion réussie',
-      utilisateur: {
-        id: user._id,
-        nom: user.nom,
-        prenom: user.prenom,
-        email: user.email,
-        role: user.role,
-        estActif: user.estActif,
-        isVerified: user.isVerified
-      },
+      message: 'Connexion reussie',
+      utilisateur: sanitizeUser(user),
       token
     });
   } catch (error) {
@@ -45,99 +55,112 @@ router.post('/connexion', async (req, res) => {
   }
 });
 
-// =============================================
-// ✅ VERIFICATION OTP SMS
-// =============================================
 router.post('/verify-otp', async (req, res) => {
   const { telephone, otp } = req.body;
-  if (!telephone || !otp) return res.status(400).json({ message: 'Téléphone et OTP requis' });
+  if (!telephone || !otp) {
+    return res.status(400).json({ message: 'Telephone et OTP requis' });
+  }
 
   try {
-    const user = await User.findOne({ contact: telephone });
-    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByContact(telephone)
+      : await User.findOne({ contact: telephone });
 
-    if (user.otp !== otp) return res.status(400).json({ message: 'OTP incorrect' });
-    if (user.otpExpire < Date.now()) return res.status(400).json({ message: 'OTP expiré' });
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouve' });
+    }
 
-    user.isVerified = true;
-    user.otp = null;
-    user.otpExpire = null;
-    await user.save();
+    if (String(user.otp) !== String(otp)) {
+      return res.status(400).json({ message: 'OTP incorrect' });
+    }
 
-    res.status(200).json({ message: 'Compte vérifié avec succès !' });
+    if (user.otpExpire && new Date(user.otpExpire).getTime() < Date.now()) {
+      return res.status(400).json({ message: 'OTP expire' });
+    }
+
+    if (isMysql()) {
+      await mysqlUserRepository.markUserVerified(user.id || user._id);
+    } else {
+      user.isVerified = true;
+      user.otp = null;
+      user.otpExpire = null;
+      await user.save();
+    }
+
+    return res.status(200).json({ message: 'Compte verifie avec succes !' });
   } catch (error) {
     console.error('[Verify OTP] Erreur serveur :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// =============================================
-// 🔁 RENVOI OTP
-// =============================================
 const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
 
 router.post('/resend-otp', async (req, res) => {
   const { telephone } = req.body;
-  if (!telephone) return res.status(400).json({ message: 'Téléphone requis' });
+  if (!telephone) {
+    return res.status(400).json({ message: 'Telephone requis' });
+  }
 
   try {
-    const user = await User.findOne({ contact: telephone });
-    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByContact(telephone)
+      : await User.findOne({ contact: telephone });
+
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouve' });
+    }
 
     const otp = generateOtp();
-    user.otp = otp;
-    user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 min
-    await user.save();
+    const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+
+    if (isMysql()) {
+      await mysqlUserRepository.updateUserOtp(user.id || user._id, String(otp), otpExpire);
+    } else {
+      user.otp = otp;
+      user.otpExpire = otpExpire.getTime();
+      await user.save();
+    }
 
     await sendSms(telephone, `Votre code OTP est : ${otp}`);
 
-    res.status(200).json({ message: 'Nouveau code OTP envoyé !' });
+    return res.status(200).json({ message: 'Nouveau code OTP envoye !' });
   } catch (error) {
     console.error('[Resend OTP] Erreur serveur :', error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    return res.status(500).json({ message: 'Erreur serveur' });
   }
 });
 
-// =============================================
-// ✅ INFOS UTILISATEUR CONNECTÉ
-// =============================================
 router.get('/me', protect, async (req, res) => {
   try {
-    if (!req.user) return res.status(401).json({ success: false, message: 'Session expirée' });
-    const user = await User.findById(req.user.id).select('-motDePasse');
-    if (!user) return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Session expiree' });
+    }
 
-    res.status(200).json({
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserById(req.user.id || req.user._id)
+      : await User.findById(req.user.id).select('-motDePasse');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Utilisateur non trouve' });
+    }
+
+    return res.status(200).json({
       success: true,
-      utilisateur: {
-        id: user._id,
-        nom: user.nom,
-        prenom: user.prenom,
-        email: user.email,
-        role: user.role,
-        estActif: user.estActif,
-        isVerified: user.isVerified
-      }
+      utilisateur: sanitizeUser(user)
     });
   } catch (error) {
     console.error('[Me] Erreur serveur :', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
-// =============================================
-// 🚪 DECONNEXION UTILISATEUR
-// =============================================
 router.post('/logout', (req, res) => {
-  res.status(200).json({ success: true, message: 'Déconnexion réussie (client-side uniquement)' });
+  res.status(200).json({ success: true, message: 'Deconnexion reussie (client-side uniquement)' });
 });
 
-// =============================================
-// ✅ TEST DISPONIBILITE DE L'API AUTH
-// =============================================
 router.get('/', (req, res) => {
-  res.json({ status: 'active', message: 'API Auth opérationnelle', timestamp: new Date().toISOString() });
-
+  res.json({ status: 'active', message: 'API Auth operationnelle', timestamp: new Date().toISOString() });
 });
 
 module.exports = router;

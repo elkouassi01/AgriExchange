@@ -1,18 +1,18 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const sendSms = require('../utils/sendSms'); // fonction utilitaire pour envoyer SMS
+const bcrypt = require('bcryptjs');
+const sendSms = require('../utils/sendSms');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const { isMysql, sanitizeUser } = require('../utils/authHelpers');
 
-// Générer un token JWT
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user._id, role: user.role },
+    { id: user.id || user._id, role: user.role },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRE || '30m' }
   );
 };
 
-// POST /api/v1/auth/connexion
 exports.login = async (req, res) => {
   const { email, motDePasse } = req.body;
 
@@ -21,56 +21,77 @@ exports.login = async (req, res) => {
   }
 
   try {
-    // Trouver utilisateur
-    const user = await User.findOne({ email }).select('+motDePasse');
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByEmail(email)
+      : await User.findOne({ email }).select('+motDePasse');
+
     if (!user) return res.status(401).json({ message: 'Utilisateur non trouvé' });
 
-    // Vérifier mot de passe
-    const isMatch = await bcrypt.compare(motDePasse, user.motDePasse);
-    if (!isMatch) return res.status(401).json({ message: 'Mot de passe incorrect' });
+    const motDePasseValide = await bcrypt.compare(motDePasse, user.motDePasse);
+    if (!motDePasseValide) return res.status(401).json({ message: 'Mot de passe incorrect' });
 
-    // Vérifier si l'utilisateur est confirmé par OTP
-    if (!user.isVerified) {
-      // Générer nouvel OTP
-      const otp = Math.floor(100000 + Math.random() * 900000); // 6 chiffres
-      user.otp = otp;
-      user.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-      await user.save();
-
-      // Envoyer SMS
+    if (!user.isVerified && isMysql()) {
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+      await mysqlUserRepository.updateUserOtp(user.id, otp, otpExpire);
       await sendSms(user.contact, `Votre code OTP est : ${otp}`);
-
       return res.status(403).json({ message: 'Compte non vérifié. OTP envoyé par SMS.' });
     }
 
-    // Générer token JWT
+    if (!isMysql() && !user.isVerified) {
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      user.otp = otp;
+      user.otpExpire = Date.now() + 10 * 60 * 1000;
+      await user.save();
+      await sendSms(user.contact, `Votre code OTP est : ${otp}`);
+      return res.status(403).json({ message: 'Compte non vérifié. OTP envoyé par SMS.' });
+    }
+
     const token = generateToken(user);
+    const userId = user.id || user._id;
 
-    // Supprimer motDePasse de la réponse
-    const userData = user.toObject();
-    delete userData.motDePasse;
+    if (isMysql()) {
+      await mysqlUserRepository.updateUserLastLogin(userId);
+    } else {
+      user.derniereConnexion = new Date();
+      await user.save();
+    }
 
-    // Envoyer token en cookie httpOnly
-    res.cookie('accessToken', token, {
+    res.cookie('token', token, {
       httpOnly: true,
+      sameSite: 'Lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 30, // 30 minutes
-      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(200).json({ utilisateur: userData, token });
+    return res.status(200).json({
+      message: 'Connexion reussie',
+      user: sanitizeUser(user),
+      token,
+    });
   } catch (error) {
     console.error('[AUTH][LOGIN] Erreur:', error);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 };
 
-// POST /api/v1/auth/verify-otp
 exports.verifyOtp = async (req, res) => {
   const { telephone, otp } = req.body;
   if (!telephone || !otp) return res.status(400).json({ message: 'Téléphone et OTP requis' });
 
   try {
+    if (isMysql()) {
+      const user = await mysqlUserRepository.findUserByContact(telephone);
+      if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+
+      if (user.otp !== otp) return res.status(400).json({ message: 'OTP incorrect' });
+      if (new Date(user.otpExpire) < new Date()) return res.status(400).json({ message: 'OTP expiré' });
+
+      await mysqlUserRepository.markUserVerified(user.id);
+
+      return res.status(200).json({ message: 'Compte vérifié avec succès !' });
+    }
+
     const user = await User.findOne({ contact: telephone });
     if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
 
@@ -89,12 +110,23 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-// POST /api/v1/auth/resend-otp
 exports.resendOtp = async (req, res) => {
   const { telephone } = req.body;
   if (!telephone) return res.status(400).json({ message: 'Téléphone requis' });
 
   try {
+    if (isMysql()) {
+      const user = await mysqlUserRepository.findUserByContact(telephone);
+      if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+      await mysqlUserRepository.updateUserOtp(user.id, otp, otpExpire);
+      await sendSms(user.contact, `Votre code OTP est : ${otp}`);
+
+      return res.status(200).json({ message: 'Nouveau code OTP envoyé !' });
+    }
+
     const user = await User.findOne({ contact: telephone });
     if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
 
@@ -112,14 +144,12 @@ exports.resendOtp = async (req, res) => {
   }
 };
 
-// GET /api/v1/auth/me
 exports.getProfile = async (req, res) => {
-  if (!req.utilisateur) return res.status(401).json({ message: 'Non authentifié' });
-  res.status(200).json({ utilisateur: req.utilisateur });
+  if (!req.user) return res.status(401).json({ message: 'Non authentifié' });
+  res.status(200).json({ utilisateur: sanitizeUser(req.user) });
 };
 
-// POST /api/v1/auth/logout
 exports.logout = (req, res) => {
-  res.clearCookie('accessToken');
+  res.clearCookie('token');
   res.status(200).json({ message: 'Déconnecté avec succès' });
 };

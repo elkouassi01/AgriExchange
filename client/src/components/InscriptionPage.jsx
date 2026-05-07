@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import Select from 'react-select';
 import './InscriptionPage.css';
 import useCallingCodes from '../hooks/useCallingCodes';
+import { SERVER_BASE_URL, buildApiUrl } from '../config/api';
 
 const formulesTarifs = {
   consommateur: { BLEU: 1000, GOLD: 3000, PLATINUM: 5000 },
@@ -10,8 +11,6 @@ const formulesTarifs = {
 };
 
 const promoFin = new Date('2026-04-01');
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 const InscriptionPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -87,7 +86,7 @@ const InscriptionPage = () => {
     try {
       // Inscription gratuite si agriculteur et promo active
       if (type === 'agriculteur' && maintenant < promoFin) {
-        const res = await fetch(`${API_URL}/api/inscription-gratuite`, {
+        const res = await fetch(buildApiUrl('/inscription-gratuite'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -125,7 +124,7 @@ const InscriptionPage = () => {
         customer_name: formData.nom.substring(0, 50),
         customer_email: formData.email,
         customer_phone_number: contactClean,
-        notify_url: `${API_URL}/api/cinetpay-notify`,
+        notify_url: `${SERVER_BASE_URL || window.location.origin}/api/v1/cinetpay-notify`,
         return_url: `${window.location.origin}/paiement-reussi`,
         cancel_url: `${window.location.origin}/paiement-echec`,
         channels: 'ALL',

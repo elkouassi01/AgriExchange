@@ -28,11 +28,9 @@ import {
   Search as SearchIcon,
   Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import { fetchTransactions } from '../../services/adminService';
 
 const TransactionsPage = () => {
-  const { admin } = useAdminAuth();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,7 +58,7 @@ const TransactionsPage = () => {
     loadTransactions();
   }, []);
 
-  const handleChangePage = (event, newPage) => setPage(newPage);
+  const handleChangePage = (_event, newPage) => setPage(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);

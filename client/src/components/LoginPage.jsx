@@ -89,28 +89,7 @@ const LoginPage = () => {
     setShowPassword(!showPassword);
   };
 
-  // 🧪 Connexion démo rapide (si tu veux la garder)
-  const handleDemoLogin = async (role) => {
-    setLoading(true);
-    setError("");
 
-    try {
-      const response = await api.post("/auth/demo", { role });
-
-      if (!response.data?.utilisateur || !response.data?.token) {
-        setError("Échec de la connexion démo");
-        return;
-      }
-
-      login(response.data.utilisateur, response.data.token);
-      navigate(getRoleRedirect(role), { replace: true });
-
-    } catch (err) {
-      handleLoginError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="login-container">

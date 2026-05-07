@@ -1,33 +1,34 @@
 const User = require('../models/User');
-const ProductView = require('../models/ProductView'); // Nouveau modèle
+const ProductView = require('../models/ProductView');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const moment = require('moment');
+const bcrypt = require('bcryptjs');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const { isMysql, sanitizeUser, subscriptionQuotas } = require('../utils/authHelpers');
 
-/**
- * 🔐 Connexion utilisateur
- * Route: POST /api/v1/users/login
- */
 exports.login = async (req, res) => {
   const { email, motDePasse } = req.body;
 
   if (!email || !motDePasse) {
-    return res.status(400).json({ message: "Email et mot de passe requis" });
+    return res.status(400).json({ message: 'Email et mot de passe requis' });
   }
 
   try {
-    const user = await User.findOne({ email }).select('+motDePasse');
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByEmail(email)
+      : await User.findOne({ email }).select('+motDePasse');
+
     if (!user) {
-      return res.status(401).json({ message: "Utilisateur introuvable" });
+      return res.status(401).json({ message: 'Utilisateur introuvable' });
     }
 
     const motDePasseValide = await bcrypt.compare(motDePasse, user.motDePasse);
     if (!motDePasseValide) {
-      return res.status(401).json({ message: "Mot de passe invalide" });
+      return res.status(401).json({ message: 'Mot de passe invalide' });
     }
 
+    const userId = user.id || user._id;
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { id: userId, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -39,78 +40,60 @@ exports.login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    // Mettre à jour la dernière connexion
-    user.derniereConnexion = new Date();
-    await user.save();
-
-    // Exclure le mot de passe de la réponse
-    const userData = user.toObject();
-    delete userData.motDePasse;
+    if (isMysql()) {
+      await mysqlUserRepository.updateUserLastLogin(userId);
+    } else {
+      user.derniereConnexion = new Date();
+      await user.save();
+    }
 
     return res.status(200).json({
-      message: "Connexion réussie",
-      user: userData,
+      message: 'Connexion reussie',
+      user: sanitizeUser(user),
       token,
     });
   } catch (err) {
-    console.error('❌ Erreur login :', err);
-    return res.status(500).json({ message: "Erreur serveur lors de la connexion" });
+    console.error('Erreur login :', err);
+    return res.status(500).json({ message: 'Erreur serveur lors de la connexion' });
   }
 };
 
-/**
- * 🎫 GET /users/:id/forfait
- * Récupère les informations d'abonnement et de vues
- */
 exports.getUserForfait = async (req, res) => {
   try {
     const userId = req.params.id;
-    const user = await User.findById(userId);
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserById(userId)
+      : await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      return res.status(404).json({ message: 'Utilisateur non trouve' });
     }
 
-    // Vérifier le rôle
     if (user.role !== 'consommateur') {
-      return res.status(403).json({ message: 'Accès réservé aux consommateurs' });
+      return res.status(403).json({ message: 'Acces reserve aux consommateurs' });
     }
 
-    const abonnement = user.abonnement || {};
-    const formule = abonnement.formule || null;
-    const dateFin = abonnement.dateFin ? new Date(abonnement.dateFin) : null;
-    
-    // Vérifier si l'abonnement est actif
-    const abonnementActif = abonnement.statut === 'actif' && 
-                            dateFin && 
-                            dateFin > new Date();
+    const abonnement = isMysql()
+      ? await mysqlUserRepository.getActiveSubscriptionForUser(userId)
+      : user.abonnement || {};
 
-    // Calculer les jours restants
+    const formule = abonnement?.formule || null;
+    const dateFin = abonnement?.dateFin ? new Date(abonnement.dateFin) : null;
+    const abonnementActif = abonnement?.statut === 'actif' && dateFin && dateFin > new Date();
     const joursRestants = dateFin ? Math.ceil((dateFin - new Date()) / (1000 * 60 * 60 * 24)) : 0;
-
-    // Récupérer les vues du mois en cours
-    const vuesCeMois = abonnement.vuesUtilisees || 0;
-
-    // Déterminer le quota selon la formule
-    const quotas = {
-      BLEU: 1,
-      GOLD: 5,
-      PLATINUM: Infinity
-    };
-    const quotaTotal = formule ? quotas[formule] || 0 : 0;
-    
-    // Calculer les vues restantes
-    const quotaRestant = quotaTotal === Infinity 
-      ? Infinity 
-      : Math.max(0, quotaTotal - vuesCeMois);
+    const vuesCeMois = isMysql()
+      ? await mysqlUserRepository.countMonthlyViews(userId)
+      : abonnement.vuesUtilisees || 0;
+    const quotaTotal = formule ? subscriptionQuotas[formule] || 0 : 0;
+    const quotaRestant = quotaTotal === Infinity ? Infinity : Math.max(0, quotaTotal - vuesCeMois);
 
     return res.status(200).json({
       abonnement: {
         formule,
-        dateDebut: abonnement.dateDebut,
-        dateFin: abonnement.dateFin,
-        montant: abonnement.montant,
-        statut: abonnement.statut,
+        dateDebut: abonnement?.dateDebut,
+        dateFin: abonnement?.dateFin,
+        montant: abonnement?.montant,
+        statut: abonnement?.statut,
         joursRestants,
         vuesUtilisees: vuesCeMois,
         vuesRestantes: quotaRestant,
@@ -119,18 +102,14 @@ exports.getUserForfait = async (req, res) => {
       abonnementActif
     });
   } catch (err) {
-    console.error('❌ Erreur getUserForfait :', err);
-    return res.status(500).json({ 
+    console.error('Erreur getUserForfait :', err);
+    return res.status(500).json({
       message: 'Erreur interne serveur',
       error: err.message
     });
   }
 };
 
-/**
- * 📊 POST /users/:id/consume-view
- * Enregistre une vue produit
- */
 exports.enregistrerVueProduit = async (req, res) => {
   try {
     const userId = req.params.id;
@@ -140,124 +119,113 @@ exports.enregistrerVueProduit = async (req, res) => {
       return res.status(400).json({ message: 'ID produit manquant' });
     }
 
-    const user = await User.findById(userId);
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserById(userId)
+      : await User.findById(userId);
+
     if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      return res.status(404).json({ message: 'Utilisateur non trouve' });
     }
 
-    // Vérifier le rôle
     if (user.role !== 'consommateur') {
-      return res.status(403).json({ message: 'Action réservée aux consommateurs' });
+      return res.status(403).json({ message: 'Action reservee aux consommateurs' });
     }
 
-    // Vérifier si l'abonnement permet une nouvelle vue
-    const abonnement = user.abonnement || {};
-    const formule = abonnement.formule;
-    
-    // Déterminer le quota selon la formule
-    const quotas = {
-      BLEU: 1,
-      GOLD: 5,
-      PLATINUM: Infinity
-    };
-    const quotaTotal = formule ? quotas[formule] || 0 : 0;
-    
-    // Vérifier si le quota est atteint
-    if (quotaTotal !== Infinity && (abonnement.vuesUtilisees || 0) >= quotaTotal) {
-      return res.status(403).json({ 
-        message: 'Quota mensuel dépassé',
+    const abonnement = isMysql()
+      ? await mysqlUserRepository.getActiveSubscriptionForUser(userId)
+      : user.abonnement || {};
+
+    const formule = abonnement?.formule;
+    const quotaTotal = formule ? subscriptionQuotas[formule] || 0 : 0;
+    const vuesUtilisees = isMysql()
+      ? await mysqlUserRepository.countMonthlyViews(userId)
+      : abonnement.vuesUtilisees || 0;
+
+    if (quotaTotal !== Infinity && vuesUtilisees >= quotaTotal) {
+      return res.status(403).json({
+        message: 'Quota mensuel depasse',
         quotaTotal,
-        vuesUtilisees: abonnement.vuesUtilisees
+        vuesUtilisees
       });
     }
 
-    // Enregistrer la vue dans ProductView
-    const newView = new ProductView({
-      userId: user._id,
-      productId
-    });
-    await newView.save();
+    if (isMysql()) {
+      await mysqlUserRepository.createProductView(userId, productId);
+    } else {
+      const newView = new ProductView({
+        userId: user._id,
+        productId
+      });
+      await newView.save();
 
-    // Mettre à jour le compteur dans l'utilisateur
-    user.abonnement.vuesUtilisees = (user.abonnement.vuesUtilisees || 0) + 1;
-    user.abonnement.derniereVue = new Date();
-    await user.save();
+      user.abonnement.vuesUtilisees = (user.abonnement.vuesUtilisees || 0) + 1;
+      user.abonnement.derniereVue = new Date();
+      await user.save();
+    }
 
-    return res.status(201).json({ 
-      message: 'Vue enregistrée avec succès',
-      vuesUtilisees: user.abonnement.vuesUtilisees
+    return res.status(201).json({
+      message: 'Vue enregistree avec succes',
+      vuesUtilisees: vuesUtilisees + 1
     });
   } catch (err) {
-    console.error('❌ Erreur enregistrerVueProduit :', err);
-    return res.status(500).json({ 
+    console.error('Erreur enregistrerVueProduit :', err);
+    return res.status(500).json({
       message: 'Erreur interne serveur',
       error: err.message
     });
   }
 };
 
-/**
- * ✅ GET /users/products/:productId/can-access
- * Vérifie l'accès à un produit
- */
 exports.verifierAccesProduit = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    const { productId } = req.params;
+    const userId = req.user.id || req.user._id;
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserById(userId)
+      : await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ accessGranted: false, message: 'Utilisateur non trouvé' });
+      return res.status(404).json({ accessGranted: false, message: 'Utilisateur non trouve' });
     }
 
-    // Vérifier le rôle
     if (user.role !== 'consommateur') {
-      return res.status(403).json({ accessGranted: false, message: 'Accès réservé aux consommateurs' });
+      return res.status(403).json({ accessGranted: false, message: 'Acces reserve aux consommateurs' });
     }
 
-    const abonnement = user.abonnement || {};
-    const dateFin = abonnement.dateFin ? new Date(abonnement.dateFin) : null;
-    
-    // Vérifier si l'abonnement est actif
-    const abonnementActif = abonnement.statut === 'actif' && 
-                            dateFin && 
-                            dateFin > new Date();
+    const abonnement = isMysql()
+      ? await mysqlUserRepository.getActiveSubscriptionForUser(userId)
+      : user.abonnement || {};
+    const dateFin = abonnement?.dateFin ? new Date(abonnement.dateFin) : null;
+    const abonnementActif = abonnement?.statut === 'actif' && dateFin && dateFin > new Date();
 
     if (!abonnementActif) {
-      return res.status(403).json({ 
-        accessGranted: false, 
-        message: 'Abonnement inactif ou expiré' 
+      return res.status(403).json({
+        accessGranted: false,
+        message: 'Abonnement inactif ou expire'
       });
     }
 
-    // Déterminer le quota selon la formule
-    const quotas = {
-      BLEU: 1,
-      GOLD: 5,
-      PLATINUM: Infinity
-    };
-    const quotaTotal = abonnement.formule ? quotas[abonnement.formule] || 0 : 0;
-    
-    // Vérifier si le quota est atteint
-    if (quotaTotal !== Infinity && (abonnement.vuesUtilisees || 0) >= quotaTotal) {
-      return res.status(403).json({ 
-        accessGranted: false, 
-        message: 'Quota mensuel dépassé',
+    const quotaTotal = abonnement?.formule ? subscriptionQuotas[abonnement.formule] || 0 : 0;
+    const vuesUtilisees = isMysql()
+      ? await mysqlUserRepository.countMonthlyViews(userId)
+      : abonnement.vuesUtilisees || 0;
+
+    if (quotaTotal !== Infinity && vuesUtilisees >= quotaTotal) {
+      return res.status(403).json({
+        accessGranted: false,
+        message: 'Quota mensuel depasse',
         quotaTotal,
-        vuesUtilisees: abonnement.vuesUtilisees
+        vuesUtilisees
       });
     }
 
-    // Accès autorisé
-    return res.status(200).json({ 
+    return res.status(200).json({
       accessGranted: true,
-      vuesRestantes: quotaTotal === Infinity 
-        ? 'Illimité' 
-        : quotaTotal - (abonnement.vuesUtilisees || 0)
+      vuesRestantes: quotaTotal === Infinity ? 'Illimite' : quotaTotal - vuesUtilisees
     });
   } catch (err) {
-    console.error('❌ Erreur verifierAccesProduit :', err);
-    return res.status(500).json({ 
-      accessGranted: false, 
+    console.error('Erreur verifierAccesProduit :', err);
+    return res.status(500).json({
+      accessGranted: false,
       message: 'Erreur serveur',
       error: err.message
     });

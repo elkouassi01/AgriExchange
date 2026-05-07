@@ -4,170 +4,174 @@ const sharp = require('sharp');
 const Product = require('../models/Product');
 const { protect, authorize } = require('../middlewares/auth');
 const { upload, cloudinary } = require('../config/upload');
+const mysqlProductRepository = require('../repositories/mysqlProductRepository');
+const { isMysql } = require('../utils/authHelpers');
 
-// ---------- POST /api/v1/products/add ----------
+const parseJsonArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim().startsWith('[')) {
+    return JSON.parse(value);
+  }
+  if (typeof value === 'string') {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+const buildValidatedPayload = (req) => {
+  const {
+    nom,
+    prix,
+    description,
+    categorie,
+    stock,
+    unite,
+    dateRecolte,
+    mensurations,
+    etat,
+    tags,
+    certifications,
+    imageUrl,
+    images
+  } = req.body;
+
+  const champsObligatoires = { nom, prix, categorie, stock, unite, dateRecolte };
+  const champsManquants = Object.keys(champsObligatoires)
+    .filter((champ) => !champsObligatoires[champ] && champsObligatoires[champ] !== 0);
+
+  if (champsManquants.length > 0) {
+    const error = new Error(`Champs obligatoires manquants: ${champsManquants.join(', ')}`);
+    error.status = 400;
+    error.code = 'MISSING_FIELDS';
+    throw error;
+  }
+
+  if (parseFloat(prix) <= 0) {
+    const error = new Error('Le prix doit etre superieur a 0');
+    error.status = 400;
+    error.code = 'INVALID_PRICE';
+    throw error;
+  }
+
+  if (parseInt(stock, 10) < 0) {
+    const error = new Error('Le stock ne peut pas etre negatif');
+    error.status = 400;
+    error.code = 'INVALID_STOCK';
+    throw error;
+  }
+
+  return {
+    nom: String(nom).trim(),
+    prix: parseFloat(prix),
+    description: description || '',
+    categorie: String(categorie).toLowerCase(),
+    stock: parseInt(stock, 10),
+    unite: String(unite).toLowerCase(),
+    dateRecolte: new Date(dateRecolte),
+    mensurations: mensurations || '',
+    etat: String(etat || 'frais').toLowerCase(),
+    tags: parseJsonArray(tags),
+    certifications: parseJsonArray(certifications),
+    imageUrl: imageUrl || 'https://via.placeholder.com/150',
+    images: parseJsonArray(images),
+  };
+};
+
+const resolveImageUrl = async (req, fallbackImageUrl) => {
+  let finalImageUrl = fallbackImageUrl || 'https://via.placeholder.com/150';
+
+  if (!req.file) {
+    return finalImageUrl;
+  }
+
+  const buffer = await sharp(req.file.buffer)
+    .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  const uploadRes = await new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ folder: 'farm_products' }, (err, result) => {
+        if (err) return reject(err);
+        return resolve(result);
+      })
+      .end(buffer);
+  });
+
+  return uploadRes.secure_url;
+};
+
 router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
   try {
-    console.log('🔍 Données reçues pour nouveau produit:', req.body);
-    console.log('👤 Utilisateur authentifié:', {
-      id: req.user._id,
-      nom: req.user.nom,
-      role: req.user.role
-    });
+    const payload = buildValidatedPayload(req);
+    payload.imageUrl = await resolveImageUrl(req, payload.imageUrl);
+    payload.sellerId = req.user.id || req.user._id;
 
-    const {
-      nom,
-      prix,
-      description,
-      categorie,
-      stock,
-      unite,
-      dateRecolte,
-      mensurations,
-      etat,
-      tags,
-      certifications,
-      imageUrl,
-      images
-    } = req.body;
-
-    // Validation des champs obligatoires
-    const champsObligatoires = { nom, prix, categorie, stock, unite, dateRecolte };
-    const champsManquants = Object.keys(champsObligatoires)
-      .filter(champ => !champsObligatoires[champ] && champsObligatoires[champ] !== 0);
-
-    if (champsManquants.length > 0) {
-      return res.status(400).json({
-        success: false,
-        code: 'MISSING_FIELDS',
-        message: `Champs obligatoires manquants: ${champsManquants.join(', ')}`
+    if (isMysql()) {
+      const createdProduct = await mysqlProductRepository.createProduct(payload);
+      return res.status(201).json({
+        success: true,
+        code: 'PRODUCT_CREATED',
+        message: 'Produit ajoute avec succes !',
+        product: createdProduct
       });
     }
 
-    if (parseFloat(prix) <= 0) {
-      return res.status(400).json({
-        success: false,
-        code: 'INVALID_PRICE',
-        message: 'Le prix doit être supérieur à 0'
-      });
-    }
-
-    if (parseInt(stock) < 0) {
-      return res.status(400).json({
-        success: false,
-        code: 'INVALID_STOCK',
-        message: 'Le stock ne peut pas être négatif'
-      });
-    }
-
-    // 1. Gestion de l'image (file prioritaire sur URL)
-    let finalImageUrl = imageUrl || "https://via.placeholder.com/150";
-    if (req.file) {
-      const buffer = await sharp(req.file.buffer)
-        .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 85 })
-        .toBuffer();
-
-      const uploadRes = await new Promise((res, rej) => {
-        cloudinary.uploader
-          .upload_stream({ folder: 'farm_products' }, (err, result) => {
-            if (err) return rej(err);
-            res(result);
-          })
-          .end(buffer);
-      });
-      finalImageUrl = uploadRes.secure_url;
-    }
-
-    // 2. Normalisation JSON (tags & certifications)
-    let tagsArray = tags || [];
-    let certsArray = certifications || [];
-    if (typeof tags === 'string' && tags.trim().startsWith('[')) tagsArray = JSON.parse(tags);
-    if (typeof certifications === 'string' && certifications.trim().startsWith('[')) certsArray = JSON.parse(certifications);
-
-    // 3. Créer le produit
     const nouveauProduit = new Product({
-      nom,
-      prix: parseFloat(prix),
-      description: description || "",
-      categorie: categorie.toLowerCase(),
-      stock: parseInt(stock),
-      unite: unite.toLowerCase(),
-      dateRecolte: new Date(dateRecolte),
-      mensurations: mensurations || "",
-      etat: (etat || "frais").toLowerCase(),
-      tags: tagsArray,
-      certifications: certsArray,
-      imageUrl: finalImageUrl,
-      images: images || [],
-      sellerId: req.user._id
+      ...payload,
+      sellerId: payload.sellerId
     });
 
-    console.log('💾 Tentative de sauvegarde du produit...');
     const produitSauvegarde = await nouveauProduit.save();
     await produitSauvegarde.populate({
       path: 'vendeur',
       select: 'nom email contact fermeNom rating'
     });
 
-    console.log('✅ Produit sauvegardé avec succès:', {
-      id: produitSauvegarde._id,
-      nom: produitSauvegarde.nom,
-      prix: produitSauvegarde.prix,
-      stock: produitSauvegarde.stock,
-      imageUrl: produitSauvegarde.imageUrl
-    });
-
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       code: 'PRODUCT_CREATED',
-      message: 'Produit ajouté avec succès !',
+      message: 'Produit ajoute avec succes !',
       product: produitSauvegarde
     });
-
   } catch (error) {
-    // LOG COMPLET
-    console.error('❌ ERREUR COMPLETE :', error);
-    console.error('❌ STACK :', error.stack);
+    console.error('Erreur ajout produit:', error);
 
-    // Erreurs Mongoose
+    if (error.status) {
+      return res.status(error.status).json({
+        success: false,
+        code: error.code || 'VALIDATION_ERROR',
+        message: error.message
+      });
+    }
+
     if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => ({
+      const errors = Object.values(error.errors).map((err) => ({
         field: err.path,
         message: err.message
       }));
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Données du produit invalides',
+        message: 'Donnees du produit invalides',
         errors
       });
     }
 
-    // Duplication MongoDB
-    if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        code: 'DUPLICATE_PRODUCT',
-        message: 'Un produit avec ce nom existe déjà pour cet agriculteur'
-      });
-    }
-
-    // Erreur Cloudinary
     if (error.http_code >= 400) {
       return res.status(502).json({
         success: false,
         code: 'UPLOAD_FAILED',
-        message: 'Échec de l\'upload de l\'image',
+        message: "Echec de l'upload de l'image",
         details: error.message
       });
     }
 
-    // Toute autre erreur
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de l\'ajout du produit',
+      message: "Erreur serveur lors de l'ajout du produit",
       ...(process.env.NODE_ENV === 'development' && {
         details: error.message,
         stack: error.stack
@@ -176,7 +180,6 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
   }
 });
 
-// ---------- GET /api/v1/products ----------
 router.get('/', async (req, res) => {
   try {
     const {
@@ -191,6 +194,30 @@ router.get('/', async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
+    if (isMysql()) {
+      const result = await mysqlProductRepository.listProducts(
+        { page, limit, categorie, etat, minPrix, maxPrix, search, sortBy, sortOrder },
+        { onlyInStock: true }
+      );
+
+      return res.json({
+        success: true,
+        code: 'PRODUCTS_FETCHED',
+        message: 'Produits recuperes avec succes',
+        data: {
+          products: result.docs,
+          pagination: {
+            currentPage: result.page,
+            totalPages: result.totalPages,
+            totalProducts: result.totalDocs,
+            hasNext: result.hasNextPage,
+            hasPrev: result.hasPrevPage,
+            limit: result.limit
+          }
+        }
+      });
+    }
+
     const filter = { stock: { $gt: 0 } };
     if (categorie) filter.categorie = categorie.toLowerCase();
     if (etat) filter.etat = etat.toLowerCase();
@@ -202,17 +229,17 @@ router.get('/', async (req, res) => {
     if (search && search.trim() !== '') filter.$text = { $search: search.trim() };
 
     const options = {
-      page: parseInt(page),
-      limit: parseInt(limit) > 50 ? 50 : parseInt(limit),
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10) > 50 ? 50 : parseInt(limit, 10),
       sort: { [sortBy]: sortOrder === 'desc' ? -1 : 1 },
       populate: { path: 'vendeur', select: 'nom email contact fermeNom rating' }
     };
 
     const result = await Product.paginate(filter, options);
-    res.json({
+    return res.json({
       success: true,
       code: 'PRODUCTS_FETCHED',
-      message: 'Produits récupérés avec succès',
+      message: 'Produits recuperes avec succes',
       data: {
         products: result.docs,
         pagination: {
@@ -226,35 +253,60 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération des produits:', error);
-    res.status(500).json({
+    console.error('Erreur recuperation produits:', error);
+    return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la récupération des produits',
+      message: 'Erreur serveur lors de la recuperation des produits',
       ...(process.env.NODE_ENV === 'development' && { error: error.message })
     });
   }
 });
 
-// ---------- autres routes (non modifiées) ----------
 router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
   try {
     const { page = 1, limit = 10, includeOutOfStock = false } = req.query;
-    const filter = { sellerId: req.user._id };
+    const sellerId = req.user.id || req.user._id;
+
+    if (isMysql()) {
+      const result = await mysqlProductRepository.listProducts(
+        { page, limit, sellerId, sortBy: 'createdAt', sortOrder: 'desc' },
+        { onlyInStock: includeOutOfStock !== 'true' }
+      );
+
+      return res.json({
+        success: true,
+        code: 'USER_PRODUCTS_FETCHED',
+        message: 'Vos produits ont ete recuperes avec succes',
+        data: {
+          products: result.docs,
+          pagination: {
+            currentPage: result.page,
+            totalPages: result.totalPages,
+            totalProducts: result.totalDocs,
+            hasNext: result.hasNextPage,
+            hasPrev: result.hasPrevPage,
+            limit: result.limit
+          }
+        }
+      });
+    }
+
+    const filter = { sellerId };
     if (includeOutOfStock !== 'true') filter.stock = { $gt: 0 };
 
     const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
       sort: { createdAt: -1 },
       populate: { path: 'vendeur', select: 'nom email contact fermeNom rating' }
     };
 
     const result = await Product.paginate(filter, options);
-    res.json({
+    return res.json({
       success: true,
       code: 'USER_PRODUCTS_FETCHED',
-      message: 'Vos produits ont été récupérés avec succès',
+      message: 'Vos produits ont ete recuperes avec succes',
       data: {
         products: result.docs,
         pagination: {
@@ -262,22 +314,41 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
           totalPages: result.totalPages,
           totalProducts: result.totalDocs,
           hasNext: result.hasNextPage,
-          hasPrev: result.hasPrevPage
+          hasPrev: result.hasPrevPage,
+          limit: result.limit
         }
       }
     });
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération de vos produits:', error);
-    res.status(500).json({
+    console.error('Erreur recuperation produits utilisateur:', error);
+    return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la récupération de vos produits'
+      message: 'Erreur serveur lors de la recuperation de vos produits'
     });
   }
 });
 
 router.get('/:id', async (req, res) => {
   try {
+    if (isMysql()) {
+      const product = await mysqlProductRepository.findProductById(req.params.id);
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          code: 'PRODUCT_NOT_FOUND',
+          message: 'Produit non trouve'
+        });
+      }
+
+      return res.json({
+        success: true,
+        code: 'PRODUCT_FETCHED',
+        message: 'Produit recupere avec succes',
+        data: { product }
+      });
+    }
+
     const product = await Product.findById(req.params.id)
       .populate({ path: 'vendeur', select: 'nom email contact fermeNom rating adresse description' });
 
@@ -285,40 +356,76 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({
         success: false,
         code: 'PRODUCT_NOT_FOUND',
-        message: 'Produit non trouvé'
+        message: 'Produit non trouve'
       });
     }
-    res.json({
+
+    return res.json({
       success: true,
       code: 'PRODUCT_FETCHED',
-      message: 'Produit récupéré avec succès',
+      message: 'Produit recupere avec succes',
       data: { product }
     });
   } catch (error) {
-    console.error('❌ Erreur lors de la récupération du produit:', error);
-    if (error.name === 'CastError') {
-      return res.status(400).json({
-        success: false,
-        code: 'INVALID_PRODUCT_ID',
-        message: 'ID de produit invalide'
-      });
-    }
-    res.status(500).json({
+    console.error('Erreur recuperation produit:', error);
+    return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la récupération du produit'
+      message: 'Erreur serveur lors de la recuperation du produit'
     });
   }
 });
 
 router.put('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, sellerId: req.user._id });
+    const sellerId = req.user.id || req.user._id;
+
+    if (isMysql()) {
+      const updates = {};
+      const allowedUpdates = [
+        'nom', 'prix', 'description', 'categorie', 'stock', 'unite',
+        'dateRecolte', 'mensurations', 'etat', 'tags', 'certifications',
+        'imageUrl', 'images'
+      ];
+
+      allowedUpdates.forEach((key) => {
+        if (!Object.prototype.hasOwnProperty.call(req.body, key)) return;
+
+        if (key === 'prix') updates.prix = parseFloat(req.body.prix);
+        else if (key === 'stock') updates.stock = parseInt(req.body.stock, 10);
+        else if (key === 'categorie' || key === 'unite' || key === 'etat') updates[key] = String(req.body[key]).toLowerCase();
+        else if (key === 'dateRecolte') updates.dateRecolte = new Date(req.body.dateRecolte);
+        else if (key === 'tags' || key === 'certifications' || key === 'images') updates[key] = parseJsonArray(req.body[key]);
+        else updates[key] = req.body[key];
+      });
+
+      if (req.file) {
+        updates.imageUrl = await resolveImageUrl(req, req.body.imageUrl || '');
+      }
+
+      const updatedProduct = await mysqlProductRepository.updateProduct(req.params.id, sellerId, updates);
+      if (!updatedProduct) {
+        return res.status(404).json({
+          success: false,
+          code: 'PRODUCT_NOT_FOUND',
+          message: "Produit non trouve ou vous n'etes pas autorise a le modifier"
+        });
+      }
+
+      return res.json({
+        success: true,
+        code: 'PRODUCT_UPDATED',
+        message: 'Produit modifie avec succes',
+        data: { product: updatedProduct }
+      });
+    }
+
+    const product = await Product.findOne({ _id: req.params.id, sellerId });
     if (!product) {
       return res.status(404).json({
         success: false,
         code: 'PRODUCT_NOT_FOUND',
-        message: 'Produit non trouvé ou vous n\'êtes pas autorisé à le modifier'
+        message: "Produit non trouve ou vous n'etes pas autorise a le modifier"
       });
     }
 
@@ -327,39 +434,28 @@ router.put('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, re
       'dateRecolte', 'mensurations', 'etat', 'tags', 'certifications',
       'imageUrl', 'images'
     ];
+
     const updates = Object.keys(req.body)
-      .filter(key => allowedUpdates.includes(key))
+      .filter((key) => allowedUpdates.includes(key))
       .reduce((obj, key) => {
         obj[key] = req.body[key];
         return obj;
       }, {});
 
-    Object.keys(updates).forEach(key => { product[key] = updates[key]; });
+    Object.keys(updates).forEach((key) => { product[key] = updates[key]; });
 
     const updatedProduct = await product.save();
     await updatedProduct.populate({ path: 'vendeur', select: 'nom email contact fermeNom rating' });
 
-    res.json({
+    return res.json({
       success: true,
       code: 'PRODUCT_UPDATED',
-      message: 'Produit modifié avec succès',
+      message: 'Produit modifie avec succes',
       data: { product: updatedProduct }
     });
   } catch (error) {
-    console.error('❌ Erreur lors de la modification du produit:', error);
-    if (error.name === 'ValidationError') {
-      const errors = Object.values(error.errors).map(err => ({
-        field: err.path,
-        message: err.message
-      }));
-      return res.status(400).json({
-        success: false,
-        code: 'VALIDATION_ERROR',
-        message: 'Données de modification invalides',
-        errors
-      });
-    }
-    res.status(500).json({
+    console.error('Erreur modification produit:', error);
+    return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
       message: 'Erreur serveur lors de la modification du produit'
@@ -369,22 +465,42 @@ router.put('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, re
 
 router.delete('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
   try {
-    const product = await Product.findOneAndDelete({ _id: req.params.id, sellerId: req.user._id });
+    const sellerId = req.user.id || req.user._id;
+
+    if (isMysql()) {
+      const deleted = await mysqlProductRepository.deleteProduct(req.params.id, sellerId);
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          code: 'PRODUCT_NOT_FOUND',
+          message: "Produit non trouve ou vous n'etes pas autorise a le supprimer"
+        });
+      }
+
+      return res.json({
+        success: true,
+        code: 'PRODUCT_DELETED',
+        message: 'Produit supprime avec succes'
+      });
+    }
+
+    const product = await Product.findOneAndDelete({ _id: req.params.id, sellerId });
     if (!product) {
       return res.status(404).json({
         success: false,
         code: 'PRODUCT_NOT_FOUND',
-        message: 'Produit non trouvé ou vous n\'êtes pas autorisé à le supprimer'
+        message: "Produit non trouve ou vous n'etes pas autorise a le supprimer"
       });
     }
-    res.json({
+
+    return res.json({
       success: true,
       code: 'PRODUCT_DELETED',
-      message: 'Produit supprimé avec succès'
+      message: 'Produit supprime avec succes'
     });
   } catch (error) {
-    console.error('❌ Erreur lors de la suppression du produit:', error);
-    res.status(500).json({
+    console.error('Erreur suppression produit:', error);
+    return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
       message: 'Erreur serveur lors de la suppression du produit'

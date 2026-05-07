@@ -1,17 +1,14 @@
-// src/services/axiosConfig.js
 import axios from 'axios';
-
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+import { API_BASE_URL } from '../config/api';
 
 const api = axios.create({
-  baseURL,           // <-- juste la variable du .env
+  baseURL: API_BASE_URL,
   withCredentials: true,
   timeout: 10000,
 });
 
-// Intercepteur pour ajouter le token JWT automatiquement
 api.interceptors.request.use(
-  config => {
+  (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -19,8 +16,7 @@ api.interceptors.request.use(
     config.params = { ...config.params, timestamp: Date.now() };
     return config;
   },
-  error => Promise.reject(error)
+  (error) => Promise.reject(error)
 );
 
 export default api;
-

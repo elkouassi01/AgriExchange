@@ -1,70 +1,65 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import './HomePage.css';
 import Footer from './Footer';
 import PromoBanner from './PromoBanner';
-import Fireworks from "../components/Fireworks";
+import Fireworks from '../components/Fireworks';
 
-// Images de produits
 import tomate from '../assets/tomate.jpg';
 import salade from '../assets/salade.jpg';
 import concombre from '../assets/concombre.jpg';
-import pomme_terre from '../assets/pomme_terre.jpg';
+import pommeTerre from '../assets/pomme_terre.jpg';
+
+const PRODUITS_PHARES = [
+  { nom: 'Tomates Bio', image: tomate, emoji: '🍅' },
+  { nom: 'Salades Fraiches', image: salade, emoji: '🥬' },
+  { nom: 'Pommes de Terre', image: pommeTerre, emoji: '🥔' },
+  { nom: 'Concombres Frais', image: concombre, emoji: '🥒' },
+  { nom: 'Tomates Cerises', image: tomate, emoji: '🍅' },
+  { nom: 'Laitues Croquantes', image: salade, emoji: '🥬' },
+  { nom: 'Patates Douces', image: pommeTerre, emoji: '🥔' },
+  { nom: 'Cornichons Frais', image: concombre, emoji: '🥒' },
+];
 
 function HomePage() {
-  // Liste des produits phares
-  const produitsPhares = [
-    { nom: "Tomates Bio", image: tomate, emoji: "🍅" },
-    { nom: "Salades Fraîches", image: salade, emoji: "🥬" },
-    { nom: "Pommes de Terre", image: pomme_terre, emoji: "🥔" },
-    { nom: "Concombres Frais", image: concombre, emoji: "🥒" },
-    { nom: "Tomates Cerises", image: tomate, emoji: "🍅" },
-    { nom: "Laitues Croquantes", image: salade, emoji: "🥬" },
-    { nom: "Patates Douces", image: pomme_terre, emoji: "🥔" },
-    { nom: "Cornichons Frais", image: concombre, emoji: "🥒" },
-  ];
-
   const [indexGroupe, setIndexGroupe] = useState(0);
 
-  // Découpage en groupes de 3 produits
-  const groupes = [];
-  for (let i = 0; i < produitsPhares.length; i += 3) {
-    groupes.push(produitsPhares.slice(i, i + 3));
-  }
+  const groupes = useMemo(() => {
+    const nextGroups = [];
+    for (let i = 0; i < PRODUITS_PHARES.length; i += 3) {
+      nextGroups.push(PRODUITS_PHARES.slice(i, i + 3));
+    }
+    return nextGroups;
+  }, []);
 
-  // Défilement automatique toutes les 30s
   useEffect(() => {
     const interval = setInterval(() => {
-      allerAuSuivant();
+      setIndexGroupe((prevIndex) => (prevIndex + 1) % groupes.length);
     }, 30000);
+
     return () => clearInterval(interval);
-  }, [indexGroupe]);
+  }, [groupes.length]);
 
   const allerAuSuivant = () => {
     setIndexGroupe((prevIndex) => (prevIndex + 1) % groupes.length);
   };
 
   const allerAuPrecedent = () => {
-    setIndexGroupe((prevIndex) => prevIndex === 0 ? groupes.length - 1 : prevIndex - 1);
+    setIndexGroupe((prevIndex) => (prevIndex === 0 ? groupes.length - 1 : prevIndex - 1));
   };
 
   return (
     <div className="home-container">
-      {/* Feux d'artifice réalistes */}
       <Fireworks />
-
-      {/* Bannière promotionnelle */}
       <PromoBanner />
-      
-      {/* En-tête d'accueil */}
+
       <section className="hero">
         <h1>Bienvenue sur VivriMarket 🌾</h1>
-        <p>Votre marché Ivoirien de vivriers et d'élevage, où le client rencontre les agriculteurs.</p>
+        <p>Votre marche ivoirien de vivriers et d'elevage, ou le client rencontre les agriculteurs.</p>
       </section>
 
-      {/* Section produits phares */}
       <section className="sample-products">
-        <h2>Achetez vos aliments favoris en gros à des tarifs bord champ</h2>
+        <h2>Achetez vos aliments favoris en gros a des tarifs bord champ</h2>
         <div className="carousel-wrapper">
           <button className="carousel-button left" onClick={allerAuPrecedent}>⏮</button>
           <div className="carousel-group">
@@ -78,42 +73,40 @@ function HomePage() {
           <button className="carousel-button right" onClick={allerAuSuivant}>⏭</button>
         </div>
         <Link to="/produits" className="cta-button">Voir tous les produits</Link>
-        <p className="cta-subtext">Découvrez notre large catalogue et trouvez vos aliments préférés.</p>
+        <p className="cta-subtext">Decouvrez notre large catalogue et trouvez vos aliments preferes.</p>
       </section>
 
-      {/* Section promotion spéciale */}
       <section className="special-promo">
         <div className="promo-card">
           <div className="promo-badge">PROMO</div>
-          <h2>Offre Spéciale de Lancement !</h2>
+          <h2>Offre Speciale de Lancement !</h2>
           <p className="promo-highlight">
-            🎉 Offre spéciale agriculteurs :<br/>
-            6 mois d’inscription 100% gratuite ! <strong>🎉</strong>
+            🎉 Offre speciale agriculteurs :
+            <br />
+            6 mois d'inscription 100% gratuite ! <strong>🎉</strong>
           </p>
-          <p>Valable jusqu'au 31 Décembre 2025</p>
+          <p>Valable jusqu'au 31 Decembre 2025</p>
           <Link to="/inscription?type=agriculteur&formule=OFFRE_GRATUITE" className="promo-button">
             Profiter de l'offre
           </Link>
         </div>
       </section>
 
-      {/* Section à propos */}
       <section className="about-section">
         <div className="about-content">
           <h2>Pourquoi choisir VivriMarket ?</h2>
           <ul className="benefits-list">
             <li>✅ Produits frais directement des agriculteurs locaux</li>
-            <li>✅ Prix de gros sans intermédiaire</li>
-            <li>✅ Livraison rapide dans toute la Côte d'Ivoire</li>
-            <li>✅ Paiements sécurisés et multiples options</li>
+            <li>✅ Prix de gros sans intermediaire</li>
+            <li>✅ Livraison rapide dans toute la Cote d'Ivoire</li>
+            <li>✅ Paiements securises et multiples options</li>
             <li>✅ Support client 7j/7</li>
           </ul>
         </div>
       </section>
 
-      {/* Bouton WhatsApp flottant */}
       <a
-        href="https://wa.me/212614225951?text=Bonjour%20AgriExchange%2C%20j%27ai%20besoin%20d%27aide%20😊"
+        href="https://wa.me/212614225951?text=Bonjour%20AgriExchange%2C%20j%27ai%20besoin%20d%27aide%20🙂"
         className="whatsapp-float"
         target="_blank"
         rel="noopener noreferrer"

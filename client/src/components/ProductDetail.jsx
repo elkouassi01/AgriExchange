@@ -4,6 +4,7 @@ import { useUser } from '../contexts/UserContext';
 import './ProductDetail.css';
 import { Eye, Lock, ShoppingCart } from 'lucide-react';
 import api from '../services/axiosConfig'; 
+import { buildUploadUrl } from '../config/api';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
 
@@ -97,16 +98,7 @@ function ProductDetail() {
           return;
         }
 
-        let imageUrl = product.imageUrl || DEFAULT_IMAGE;
-        if (!imageUrl.startsWith('http') && !imageUrl.startsWith('blob:')) {
-          if (imageUrl.startsWith('/uploads/')) {
-            imageUrl = `${api.defaults.baseURL.replace('/api/v1', '')}${imageUrl}`;
-          } else if (!imageUrl.startsWith('/')) {
-            imageUrl = `${api.defaults.baseURL.replace('/api/v1', '')}/uploads/${imageUrl}`;
-          } else {
-            imageUrl = `${api.defaults.baseURL.replace('/api/v1', '')}${imageUrl}`;
-          }
-        }
+        const imageUrl = buildUploadUrl(product.imageUrl || '') || DEFAULT_IMAGE;
 
         const prixFormatte = `${formatFCFA(product.prix)} / ${product.unite || 'kg'}`;
 

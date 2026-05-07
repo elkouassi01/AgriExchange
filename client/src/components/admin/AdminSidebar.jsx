@@ -16,7 +16,7 @@ import './AdminSidebar.css';
 
 const AdminSidebar = () => {
   const { logout } = useAdminAuth();
-  const location = useLocation();
+  useLocation(); // Required for NavLink to work properly
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 

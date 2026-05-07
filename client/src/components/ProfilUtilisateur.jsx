@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import './ProfilUtilisateur.css';
 
 const ProfilUtilisateur = () => {
@@ -38,33 +38,32 @@ const ProfilUtilisateur = () => {
         '/api/users/me'
       ];
 
-      let response = null;
-      let data = null;
-      let successfulEndpoint = null;
+       let response = null;
+       let data = null;
 
-      // Tester chaque endpoint jusqu'à trouver celui qui fonctionne
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`🔍 Test de l'endpoint: ${endpoint}`);
-          response = await fetch(`${SERVER_BASE_URL}${endpoint}`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            }
-          });
+       // Tester chaque endpoint jusqu'à trouver celui qui fonctionne
+       for (const endpoint of endpoints) {
+         try {
+           console.log(`🔍 Test de l'endpoint: ${endpoint}`);
+           response = await fetch(`${SERVER_BASE_URL}${endpoint}`, {
+             method: 'GET',
+             headers: {
+               'Content-Type': 'application/json',
+               'Authorization': `Bearer ${token}`
+             }
 
-          if (response.ok) {
-            data = await response.json();
-            successfulEndpoint = endpoint;
-            console.log(`✅ Endpoint trouvé: ${endpoint}`);
-            break;
-          }
-        } catch (err) {
-          console.log(`❌ Endpoint ${endpoint} échoué:`, err.message);
-          continue;
-        }
-      }
+           });
+
+           if (response.ok) {
+             data = await response.json();
+             console.log(`✅ Endpoint trouvé: ${endpoint}`);
+             break;
+           }
+         } catch (err) {
+           console.log(`❌ Endpoint ${endpoint} échoué:`, err.message);
+           continue;
+         }
+       }
 
       // Si aucun endpoint n'a fonctionné
       if (!response || !response.ok) {
@@ -254,32 +253,43 @@ const ProfilUtilisateur = () => {
             });
             return;
           }
-        } catch (error) {
+        } catch {
           continue;
         }
       }
 
-      // Si aucun endpoint de statistiques ne fonctionne, utiliser des valeurs par défaut
-      console.warn('⚠️ Aucun endpoint de statistiques trouvé, utilisation des valeurs par défaut');
-      setStatistiques({
-        produitsActifs: 0,
-        commandesMois: 0,
-        clientsAbonnes: 0,
-        revenuMois: 0,
-        satisfaction: 0
-      });
-
-    } catch (error) {
-      console.warn('⚠️ Erreur chargement statistiques, utilisation des valeurs par défaut');
-      setStatistiques({
-        produitsActifs: 0,
-        commandesMois: 0,
-        clientsAbonnes: 0,
-        revenuMois: 0,
-        satisfaction: 0
-      });
-    }
-  };
+       // Si aucun endpoint de statistiques ne fonctionne, utiliser des valeurs par défaut
+       console.warn('⚠️ Aucun endpoint de statistiques trouvé, utilisation des valeurs par défaut');
+       setStatistiques({
+         produitsActifs: 0,
+         commandesMois: 0,
+         clientsAbonnes: 0,
+         revenuMois: 0,
+         satisfaction: 0
+       });
+     } catch (error) {
+       console.error('❌ Erreur chargement profil:', error);
+       
+       let errorMessage = error.message || 'Erreur lors du chargement du profil';
+       
+       if (error.message.includes('Failed to fetch') || error.message.includes('Network Error')) {
+         errorMessage = "Impossible de se connecter au serveur. Vérifiez votre connexion Internet.";
+       }
+       else if (error.message.includes('401') || error.message.includes('token')) {
+         errorMessage = "Session expirée. Veuillez vous reconnecter.";
+         setTimeout(() => navigate('/login'), 2000);
+       }
+       else if (error.message.includes('404') || error.message.includes('Aucun endpoint')) {
+         errorMessage = "Configuration API manquante. Utilisation des données de démonstration.";
+         loadDonneesDemo();
+         return;
+       }
+       
+       setError(errorMessage);
+     } finally {
+       setLoading(false);
+     }
+   };
 
   // Fonction pour sauvegarder les modifications
   const handleSubmit = async (e) => {

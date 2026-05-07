@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const { isMysql } = require('../utils/authHelpers');
 
 /**
  * 🔐 Middleware de protection des routes
@@ -50,8 +52,10 @@ const protect = async (req, res, next) => {
     }
 
     // 🔎 Récupération de l'utilisateur
-    const utilisateur = await User.findById(decoded.id || decoded.userId)
-      .select('-motDePasse -password -__v -createdAt -updatedAt');
+    const utilisateur = isMysql()
+      ? await mysqlUserRepository.findUserById(decoded.id || decoded.userId)
+      : await User.findById(decoded.id || decoded.userId)
+          .select('-motDePasse -password -__v -createdAt -updatedAt');
 
     if (!utilisateur) {
       return res.status(401).json({
@@ -155,7 +159,8 @@ const isOwner = (model, idPath = 'params.id') => {
         });
       }
 
-      if (ownerId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      const currentUserId = req.user.id || req.user._id;
+      if (ownerId.toString() !== currentUserId.toString() && req.user.role !== 'admin') {
         return res.status(403).json({
           code: 'OWNERSHIP_REQUIRED',
           message: 'Vous devez être propriétaire de cette ressource'

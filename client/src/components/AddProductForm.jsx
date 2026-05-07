@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import "./AddProductForm.css";
+import { buildApiUrl } from "../config/api";
 
 const AddProductForm = () => {
   const navigate = useNavigate();
@@ -175,7 +176,7 @@ const AddProductForm = () => {
       console.log('HEADERS :', { Authorization: `Bearer ${token}` });
 
       const res = await axios.post(
-        "http://localhost:5000/api/v1/products/add",
+        buildApiUrl('/products/add'),
         payload,
         {
           withCredentials: true,

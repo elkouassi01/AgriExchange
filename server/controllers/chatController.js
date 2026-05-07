@@ -1,25 +1,32 @@
+const mysqlMessageRepository = require('../repositories/mysqlMessageRepository');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const { isMysql } = require('../utils/authHelpers');
 const Message = require('../models/Message');
-const mongoose = require('mongoose');
 
 exports.envoyerMessage = async (req, res) => {
   try {
     const { produitId, receiverId, texte } = req.body;
-    const senderId = req.user.id; // récupéré via middleware auth
+    const senderId = req.user.id || req.user._id;
 
-    // Vérifications des données
     if (!produitId || !receiverId || !texte) {
       return res.status(400).json({ success: false, error: "Données manquantes (produitId, receiverId, texte)" });
     }
-    if (!mongoose.Types.ObjectId.isValid(produitId) || !mongoose.Types.ObjectId.isValid(receiverId)) {
-      return res.status(400).json({ success: false, error: "ID produit ou receiver invalide" });
-    }
 
-    const message = await Message.create({
+    const payload = {
+      senderId,
+      receiverId,
       produitId,
-      sender: senderId,
-      receiver: receiverId,
-      texte
-    });
+      texte,
+    };
+
+    const message = isMysql()
+      ? await mysqlMessageRepository.sendMessage(payload)
+      : await Message.create({
+          produitId,
+          sender: senderId,
+          receiver: receiverId,
+          texte,
+        });
 
     return res.status(201).json({ success: true, message });
   } catch (error) {
@@ -31,20 +38,17 @@ exports.envoyerMessage = async (req, res) => {
 exports.lireMessages = async (req, res) => {
   try {
     const { produitId, autreUserId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.id || req.user._id;
 
-    if (!mongoose.Types.ObjectId.isValid(produitId) || !mongoose.Types.ObjectId.isValid(autreUserId)) {
-      return res.status(400).json({ success: false, error: "ID produit ou utilisateur invalide" });
-    }
-
-    // Cherche les messages entre userId et autreUserId pour le produit donné
-    const messages = await Message.find({
-      produitId,
-      $or: [
-        { sender: userId, receiver: autreUserId },
-        { sender: autreUserId, receiver: userId }
-      ]
-    }).sort({ date: 1 });
+    const messages = isMysql()
+      ? await mysqlMessageRepository.getMessages(produitId, userId, autreUserId)
+      : await Message.find({
+          produitId,
+          $or: [
+            { sender: userId, receiver: autreUserId },
+            { sender: autreUserId, receiver: userId }
+          ]
+        }).sort({ date: 1 });
 
     return res.json({ success: true, messages });
   } catch (error) {
