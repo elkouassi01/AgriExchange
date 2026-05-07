@@ -115,7 +115,7 @@ router.post('/:productId/initiate', async (req, res) => {
 // GET /api/v1/product-payments/:productId/check?tx_id=xxx
 router.get('/:productId/check', async (req, res) => {
   const { productId } = req.params;
-  const { tx_id, buyer_phone } = req.query;
+  const { tx_id, buyer_phone, buyer_email } = req.query;
 
   if (!tx_id) {
     return res.status(400).json({ success: false, message: 'tx_id requis' });
@@ -157,7 +157,20 @@ router.get('/:productId/check', async (req, res) => {
           sellerId: product.sellerId,
           sellerPhone: seller.contact,
           buyerPhone: buyer_phone || null,
+          buyerEmail: buyer_email || null,
         });
+
+        // Confirmation WhatsApp au visiteur/acheteur
+        if (buyer_phone) {
+          const confirmMsg =
+            `✅ *VivriMarket* — Paiement reçu !\n\n` +
+            `Merci pour votre paiement pour le produit :\n` +
+            `📦 *${product.nom}*\n\n` +
+            `Le vendeur a *24 heures* pour confirmer sa disponibilité.\n` +
+            `Vous serez notifié ici dès sa réponse.\n\n` +
+            `— VivriMarket 🌾`;
+          sendWhatsApp(buyer_phone, confirmMsg).catch(() => {});
+        }
 
         const ferme = seller.fermeNom || seller.nom || 'vendeur';
         const msg =

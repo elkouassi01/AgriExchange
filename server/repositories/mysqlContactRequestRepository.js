@@ -15,6 +15,7 @@ const ensureTables = async () => {
       product_nom   VARCHAR(100),
       seller_phone  VARCHAR(30)  NOT NULL,
       buyer_phone   VARCHAR(30),
+      buyer_email   VARCHAR(150),
       status        ENUM('pending','responded','expired','refunded') DEFAULT 'pending',
       created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
       expires_at    DATETIME     NOT NULL,
@@ -44,22 +45,28 @@ const ensureTables = async () => {
     console.log('[DB] Colonne suspended_at ajoutée à users');
   }
 
+  const [c4] = await pool.query(`SHOW COLUMNS FROM contact_requests LIKE 'buyer_email'`);
+  if (c4.length === 0) {
+    await pool.query(`ALTER TABLE contact_requests ADD COLUMN buyer_email VARCHAR(150) NULL`);
+    console.log('[DB] Colonne buyer_email ajoutée à contact_requests');
+  }
+
   tableReady = true;
 };
 
 const { randomUUID } = require('crypto');
 
-const createContactRequest = async ({ paymentId, productId, productNom, sellerId, sellerPhone, buyerPhone }) => {
+const createContactRequest = async ({ paymentId, productId, productNom, sellerId, sellerPhone, buyerPhone, buyerEmail }) => {
   await ensureTables();
   const pool = getMysqlPool();
   const id = randomUUID();
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24h
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await pool.query(
     `INSERT INTO contact_requests
-       (id, payment_id, product_id, product_nom, seller_id, seller_phone, buyer_phone, status, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
-    [id, paymentId, productId, productNom, sellerId, sellerPhone, buyerPhone || null, expiresAt]
+       (id, payment_id, product_id, product_nom, seller_id, seller_phone, buyer_phone, buyer_email, status, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)`,
+    [id, paymentId, productId, productNom, sellerId, sellerPhone, buyerPhone || null, buyerEmail || null, expiresAt]
   );
   return id;
 };

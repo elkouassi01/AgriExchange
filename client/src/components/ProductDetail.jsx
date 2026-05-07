@@ -30,16 +30,27 @@ function ProductDetail() {
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
 
-  // Modal connexion
+  // Modal connexion / infos visiteur
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [modalStep, setModalStep] = useState('login'); // 'login' | 'visitor'
   const [loginForm, setLoginForm] = useState({ email: '', motDePasse: '' });
+  const [visitorForm, setVisitorForm] = useState({ email: '', phone: '' });
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
+
+  const VISITOR_KEY = (pid) => `visitor_info_${pid}`;
 
   const checkAccess = useCallback(async (txId) => {
     setAccessState('checking');
     try {
-      const res = await api.get(`/product-payments/${id}/check?tx_id=${txId}`);
+      // Récupérer les infos visiteur stockées avant le paiement
+      const visitorRaw = localStorage.getItem(VISITOR_KEY(id));
+      const visitor = visitorRaw ? JSON.parse(visitorRaw) : {};
+      const params = new URLSearchParams({ tx_id: txId });
+      if (visitor.phone) params.set('buyer_phone', visitor.phone);
+      if (visitor.email) params.set('buyer_email', visitor.email);
+
+      const res = await api.get(`/product-payments/${id}/check?${params.toString()}`);
       if (res.data.paid) {
         setSeller(res.data.seller);
         setAccessState('granted');
@@ -96,13 +107,18 @@ function ProductDetail() {
     }
   }, [id, checkAccess, searchParams, setSearchParams]);
 
-  const initiatePayment = async () => {
+  const initiatePayment = async (visitorInfo = null) => {
     setPaymentLoading(true);
     setPaymentError('');
+    // Stocker les infos visiteur avant redirect CinetPay
+    if (visitorInfo) {
+      localStorage.setItem(VISITOR_KEY(id), JSON.stringify(visitorInfo));
+    }
     try {
       const res = await api.post(`/product-payments/${id}/initiate`, {
-        customer_name: user?.nom || 'Visiteur',
-        customer_email: user?.email || 'guest@vivrimarket.com',
+        customer_name: user?.nom || visitorInfo?.name || 'Visiteur',
+        customer_email: user?.email || visitorInfo?.email || 'guest@vivrimarket.com',
+        customer_phone: visitorInfo?.phone || '',
       });
       if (res.data.success && res.data.payment_url) {
         window.location.href = res.data.payment_url;
@@ -118,6 +134,7 @@ function ProductDetail() {
 
   const handlePay = () => {
     if (!user) {
+      setModalStep('login');
       setShowLoginModal(true);
     } else {
       initiatePayment();
@@ -133,7 +150,6 @@ function ProductDetail() {
       if (res.data.success) {
         login(res.data.utilisateur, res.data.token);
         setShowLoginModal(false);
-        // Le token est maintenant dans les headers, le backend applique 150 FCFA
         setTimeout(initiatePayment, 100);
       } else {
         setLoginError(res.data.message || 'Identifiants incorrects');
@@ -143,6 +159,12 @@ function ProductDetail() {
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  const handleVisitorPay = (e) => {
+    e.preventDefault();
+    setShowLoginModal(false);
+    initiatePayment({ email: visitorForm.email, phone: visitorForm.phone });
   };
 
   if (loading) {
@@ -263,41 +285,73 @@ function ProductDetail() {
               </div>
             )}
 
-            {/* Modal connexion */}
+            {/* Modal connexion / infos visiteur */}
             {showLoginModal && (
               <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
                 <div className="login-modal" onClick={(e) => e.stopPropagation()}>
-                  <h3>Connectez-vous pour payer 150 FCFA</h3>
-                  <p className="login-modal-sub">Compte consommateur requis</p>
-                  <form onSubmit={handleLogin}>
-                    <input
-                      type="email"
-                      placeholder="Adresse email"
-                      value={loginForm.email}
-                      onChange={(e) => setLoginForm((f) => ({ ...f, email: e.target.value }))}
-                      required
-                    />
-                    <input
-                      type="password"
-                      placeholder="Mot de passe"
-                      value={loginForm.motDePasse}
-                      onChange={(e) => setLoginForm((f) => ({ ...f, motDePasse: e.target.value }))}
-                      required
-                    />
-                    {loginError && <p className="login-modal-error">{loginError}</p>}
-                    <button type="submit" className="login-modal-btn" disabled={loginLoading}>
-                      {loginLoading ? 'Connexion...' : 'Se connecter et payer 150 FCFA'}
-                    </button>
-                  </form>
-                  <button
-                    className="login-modal-skip"
-                    onClick={() => { setShowLoginModal(false); initiatePayment(); }}
-                  >
-                    Continuer sans compte — 300 FCFA
-                  </button>
-                  <a href="/inscription?type=consommateur" className="login-modal-register">
-                    Pas encore de compte ? S'inscrire gratuitement
-                  </a>
+
+                  {modalStep === 'login' && (
+                    <>
+                      <h3>Connectez-vous pour payer 150 FCFA</h3>
+                      <p className="login-modal-sub">Compte consommateur requis</p>
+                      <form onSubmit={handleLogin}>
+                        <input
+                          type="email"
+                          placeholder="Adresse email"
+                          value={loginForm.email}
+                          onChange={(e) => setLoginForm((f) => ({ ...f, email: e.target.value }))}
+                          required
+                        />
+                        <input
+                          type="password"
+                          placeholder="Mot de passe"
+                          value={loginForm.motDePasse}
+                          onChange={(e) => setLoginForm((f) => ({ ...f, motDePasse: e.target.value }))}
+                          required
+                        />
+                        {loginError && <p className="login-modal-error">{loginError}</p>}
+                        <button type="submit" className="login-modal-btn" disabled={loginLoading}>
+                          {loginLoading ? 'Connexion...' : 'Se connecter et payer 150 FCFA'}
+                        </button>
+                      </form>
+                      <button className="login-modal-skip" onClick={() => setModalStep('visitor')}>
+                        Continuer sans compte — 300 FCFA
+                      </button>
+                      <a href="/inscription?type=consommateur" className="login-modal-register">
+                        Pas encore de compte ? S'inscrire gratuitement
+                      </a>
+                    </>
+                  )}
+
+                  {modalStep === 'visitor' && (
+                    <>
+                      <h3>Restez informé de votre commande</h3>
+                      <p className="login-modal-sub">Votre WhatsApp & email pour vous notifier</p>
+                      <form onSubmit={handleVisitorPay}>
+                        <input
+                          type="email"
+                          placeholder="Adresse email *"
+                          value={visitorForm.email}
+                          onChange={(e) => setVisitorForm((f) => ({ ...f, email: e.target.value }))}
+                          required
+                        />
+                        <input
+                          type="tel"
+                          placeholder="Numéro WhatsApp (ex: +2250700000000) *"
+                          value={visitorForm.phone}
+                          onChange={(e) => setVisitorForm((f) => ({ ...f, phone: e.target.value }))}
+                          required
+                        />
+                        <button type="submit" className="login-modal-btn" disabled={paymentLoading}>
+                          {paymentLoading ? 'Redirection...' : 'Payer 300 FCFA →'}
+                        </button>
+                      </form>
+                      <button className="login-modal-skip" onClick={() => setModalStep('login')}>
+                        ← Retour / Se connecter (150 FCFA)
+                      </button>
+                    </>
+                  )}
+
                 </div>
               </div>
             )}
