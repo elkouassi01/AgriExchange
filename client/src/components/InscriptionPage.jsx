@@ -109,6 +109,28 @@ const InscriptionPage = () => {
         return;
       }
 
+      // Inscription consommateur gratuite avec OTP
+      if (type === 'consommateur') {
+        const res = await fetch(buildApiUrl('/auth/inscription-consommateur'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nom: formData.nom,
+            email: formData.email,
+            motDePasse: formData.motDePasse,
+            contact: fullPhone,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.pendingVerification) {
+          localStorage.setItem('pendingPhone', fullPhone);
+          navigate('/verify-otp', { state: { telephone: fullPhone } });
+        } else {
+          alert(data.message || 'Erreur lors de l\'inscription');
+        }
+        return;
+      }
+
       // Vérifier que type et formule sont valides
       if (!type || !formule || !formulesTarifs[type]?.[formule]) {
         alert('Veuillez choisir une formule depuis la page des offres.');

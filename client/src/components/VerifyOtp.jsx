@@ -19,7 +19,7 @@ const VerifyOtp = () => {
   // ✅ Vérifier le code OTP
   const handleVerify = async (e) => {
     e.preventDefault();
-    if (!otp) return setMessage("Veuillez entrer le code OTP reçu par SMS.");
+    if (!otp) return setMessage("Veuillez entrer le code OTP reçu par WhatsApp.");
 
     setLoading(true);
     try {
@@ -66,7 +66,7 @@ const VerifyOtp = () => {
           Vérification du code OTP
         </h2>
         <p className="text-gray-600 text-center mb-6">
-          Entrez le code reçu par SMS sur <strong>{telephone}</strong>
+          Entrez le code reçu par <strong>WhatsApp</strong> sur <strong>{telephone}</strong>
         </p>
 
         <form onSubmit={handleVerify} className="flex flex-col gap-4">

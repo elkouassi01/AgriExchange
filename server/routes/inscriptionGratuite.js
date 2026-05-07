@@ -6,6 +6,18 @@ const bcrypt = require('bcryptjs');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
 const { isMysql } = require('../utils/authHelpers');
+const { sendWhatsApp } = require('../utils/whatsappClient');
+
+const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+
+const sendOtpWhatsApp = async (phone, otp) => {
+  const msg =
+    `🔐 *VivriMarket* — Code de vérification\n\n` +
+    `Votre code OTP est : *${otp}*\n\n` +
+    `Ce code expire dans *10 minutes*.\n` +
+    `Ne le partagez avec personne.`;
+  await sendWhatsApp(phone, msg).catch((e) => console.error('[OTP WA]', e.message));
+};
 
 router.post('/inscription-gratuite', async (req, res) => {
   try {
@@ -33,6 +45,7 @@ router.post('/inscription-gratuite', async (req, res) => {
         fermeNom,
         localisation,
         typeExploitation,
+        isVerified: false,
       });
 
       const dateDebut = new Date();
@@ -47,21 +60,17 @@ router.post('/inscription-gratuite', async (req, res) => {
         statut: 'actif',
       });
 
-      const token = jwt.sign(
-        { id: user.id, role: 'agriculteur', email: user.email },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '1h' }
-      );
+      // Génère et envoie l'OTP WhatsApp
+      const otp = generateOtp();
+      const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+      await mysqlUserRepository.updateUserOtp(user.id, otp, otpExpire);
+      await sendOtpWhatsApp(contact, otp);
 
       return res.status(201).json({
         success: true,
-        message: "Inscription gratuite réussie !",
-        data: {
-          id: user.id,
-          nom: user.nom,
-          email: user.email,
-        },
-        token,
+        pendingVerification: true,
+        message: "Inscription réussie ! Vérifiez votre WhatsApp pour le code OTP.",
+        telephone: contact,
       });
     }
 

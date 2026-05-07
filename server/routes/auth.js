@@ -5,9 +5,18 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middlewares/auth');
-const sendSms = require('../utils/sendSms');
+const { sendWhatsApp } = require('../utils/whatsappClient');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { isMysql, sanitizeUser } = require('../utils/authHelpers');
+
+const sendOtpWhatsApp = async (phone, otp) => {
+  const msg =
+    `🔐 *VivriMarket* — Code de vérification\n\n` +
+    `Votre code OTP est : *${otp}*\n\n` +
+    `Ce code expire dans *10 minutes*.\n` +
+    `Ne le partagez avec personne.`;
+  await sendWhatsApp(phone, msg).catch((e) => console.error('[OTP WA]', e.message));
+};
 
 const otpRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -146,7 +155,7 @@ router.post('/resend-otp', otpRateLimit, async (req, res) => {
       await user.save();
     }
 
-    await sendSms(telephone, `Votre code OTP est : ${otp}`);
+    await sendOtpWhatsApp(telephone, otp);
 
     return res.status(200).json({ message: 'Nouveau code OTP envoye !' });
   } catch (error) {
@@ -181,6 +190,48 @@ router.get('/me', protect, async (req, res) => {
 
 router.post('/logout', (req, res) => {
   res.status(200).json({ success: true, message: 'Deconnexion reussie (client-side uniquement)' });
+});
+
+// Inscription consommateur avec OTP WhatsApp
+router.post('/inscription-consommateur', otpRateLimit, async (req, res) => {
+  const { nom, email, motDePasse, contact } = req.body;
+
+  if (!nom || !email || !motDePasse || !contact) {
+    return res.status(400).json({ message: 'Tous les champs sont requis.' });
+  }
+
+  try {
+    if (isMysql()) {
+      const emailExists = await mysqlUserRepository.findUserByEmail(email);
+      if (emailExists) return res.status(409).json({ message: 'Email déjà utilisé.' });
+
+      const contactExists = await mysqlUserRepository.findUserByContact(contact);
+      if (contactExists) return res.status(409).json({ message: 'Contact déjà utilisé.' });
+
+      const hashedPassword = await bcrypt.hash(motDePasse, 12);
+      const user = await mysqlUserRepository.createUser({
+        nom, email, motDePasse: hashedPassword, contact,
+        role: 'consommateur', isVerified: false,
+      });
+
+      const otp = generateOtp();
+      const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+      await mysqlUserRepository.updateUserOtp(user.id, otp, otpExpire);
+      await sendOtpWhatsApp(contact, otp);
+
+      return res.status(201).json({
+        success: true,
+        pendingVerification: true,
+        message: 'Inscription réussie ! Vérifiez votre WhatsApp pour le code OTP.',
+        telephone: contact,
+      });
+    }
+
+    return res.status(400).json({ message: 'Fonctionnalité non disponible.' });
+  } catch (err) {
+    console.error('[Inscription consommateur]', err);
+    return res.status(500).json({ message: 'Erreur serveur.' });
+  }
 });
 
 router.get('/', (req, res) => {
