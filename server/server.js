@@ -25,6 +25,7 @@ const cinetpayNotifyRoutes = require('./routes/cinetpayNotify');
 const chatRoutes = require('./routes/chatRoutes');
 const userRoutes = require('./routes/userRoutes');
 const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
+const productPaymentsRoutes = require('./routes/productPayments');
 
 console.log('Cloudinary cloud:', process.env.CLD_CLOUD || 'not configured');
 
@@ -219,6 +220,7 @@ app.use('/api/v1/cinetpay-notify', cinetpayNotifyRoutes);
 app.use('/api/v1/chat', chatRoutes);
 
 app.use('/api/v1/users', protect, userRoutes);
+app.use('/api/v1/product-payments', productPaymentsRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

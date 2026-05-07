@@ -85,7 +85,7 @@ function HomePage() {
             <br />
             6 mois d'inscription 100% gratuite ! <strong>🎉</strong>
           </p>
-          <p>Valable jusqu'au 31 Decembre 2025</p>
+          <p>Valable jusqu'au 31 Decembre 2026</p>
           <Link to="/inscription?type=agriculteur&formule=OFFRE_GRATUITE" className="promo-button">
             Profiter de l'offre
           </Link>

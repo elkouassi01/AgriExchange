@@ -1,206 +1,114 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useUser } from '../contexts/UserContext';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import './ProductDetail.css';
-import { Eye, Lock, ShoppingCart } from 'lucide-react';
-import api from '../services/axiosConfig'; 
+import api from '../services/axiosConfig';
 import { buildUploadUrl } from '../config/api';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
 
-const formatFCFA = (amount) => {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'decimal',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(amount) + ' FCFA';
-};
+const ACCESS_KEY = (productId) => `pv_tx_${productId}`;
+
+const formatFCFA = (amount) =>
+  new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(amount) + ' FCFA';
 
 function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, refreshUserData } = useUser(); // Ajout de refreshUserData pour mettre à jour les données utilisateur
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [produit, setProduit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [accessGranted, setAccessGranted] = useState(false);
-  const [accessLoading, setAccessLoading] = useState(true);
-  const [accessError, setAccessError] = useState(null);
-  const [remainingViews, setRemainingViews] = useState(null);
 
-  // Vérifier l'accès au produit
-  useEffect(() => {
-    const checkProductAccess = async () => {
-      setAccessLoading(true);
-      setAccessError(null);
-      
-      try {
-        // Si l'utilisateur n'est pas connecté, accès refusé
-        if (!user) {
-          setAccessGranted(false);
-          setAccessError('Vous devez vous connecter pour accéder à ce produit');
-          setAccessLoading(false);
-          return;
-        }
+  const [seller, setSeller] = useState(null);
+  const [accessState, setAccessState] = useState('idle'); // idle | checking | granted | denied
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
 
-        // Vérifier l'accès via l'API avec axios
-        const accessRes = await api.get(`/users/products/${id}/can-access`);
-        
-        if (accessRes.data.canAccess) {
-          setAccessGranted(true);
-          
-          // Enregistrer la vue si l'accès est autorisé
-          try {
-            const viewRes = await api.post(`/users/${user._id}/consume-view`, { productId: id });
-            
-            // Mettre à jour les vues restantes
-            if (viewRes.data.viewsRemaining !== undefined) {
-              setRemainingViews(viewRes.data.viewsRemaining);
-            }
-            
-            // Actualiser les données utilisateur pour refléter la nouvelle vue
-            await refreshUserData();
-          } catch (viewError) {
-            console.error("Erreur d'enregistrement de la vue:", viewError.response?.data?.message || viewError.message);
-          }
-        } else {
-          setAccessGranted(false);
-          setAccessError(accessRes.data.message || "Accès refusé");
-        }
-      } catch (err) {
-        setAccessGranted(false);
-        setAccessError(err.response?.data?.message || err.message || "Erreur lors de la vérification d'accès");
-      } finally {
-        setAccessLoading(false);
+  const checkAccess = useCallback(async (txId) => {
+    setAccessState('checking');
+    try {
+      const res = await api.get(`/product-payments/${id}/check?tx_id=${txId}`);
+      if (res.data.paid) {
+        setSeller(res.data.seller);
+        setAccessState('granted');
+        localStorage.setItem(ACCESS_KEY(id), txId);
+      } else {
+        setAccessState('denied');
+        localStorage.removeItem(ACCESS_KEY(id));
       }
-    };
+    } catch {
+      setAccessState('denied');
+    }
+  }, [id]);
 
-    // Charger le produit uniquement si l'accès est autorisé
-    const fetchProduit = async () => {
+  useEffect(() => {
+    const fetchProduct = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        setLoading(true);
-        setError(null);
-
-        if (!id || !/^[0-9a-fA-F]{24}$/.test(id)) {
-          setError("ID de produit invalide");
-          setLoading(false);
-          return;
-        }
-
-        // Utilisation de l'API axios configurée
         const res = await api.get(`/products/${id}`);
-        const product = res.data.product || res.data;
+        const product = res.data.data?.product || res.data.product || res.data;
 
-        if (!product || !product._id) {
-          setError("Produit introuvable");
-          setLoading(false);
+        if (!product) {
+          setError('Produit introuvable');
           return;
         }
 
         const imageUrl = buildUploadUrl(product.imageUrl || '') || DEFAULT_IMAGE;
-
         const prixFormatte = `${formatFCFA(product.prix)} / ${product.unite || 'kg'}`;
 
-        setProduit({
-          ...product,
-          prix: prixFormatte,
-          imageUrl,
-          categorie: product.categorie || 'Non classé',
-          vendeur: product.sellerId || product.vendeur,
-        });
+        setProduit({ ...product, prixFormatte, imageUrl });
       } catch (err) {
-        // Gestion des erreurs avec message utilisateur
-        if (err.response) {
-          if (err.response.status === 401) {
-            setError('Session expirée. Veuillez vous reconnecter.');
-          } else if (err.response.status === 403) {
-            setError('Permission refusée pour accéder à ce produit');
-          } else {
-            setError(err.response.data?.message || `Erreur ${err.response.status}`);
-          }
-        } else if (err.request) {
-          setError("Erreur réseau: Impossible de contacter le serveur");
-        } else {
-          setError(err.message);
-        }
+        if (err.response?.status === 404) setError('Produit introuvable');
+        else if (err.request) setError('Serveur injoignable. Vérifiez votre connexion.');
+        else setError(err.message);
       } finally {
         setLoading(false);
       }
     };
 
-    if (accessGranted) {
-      fetchProduit();
+    fetchProduct();
+
+    // Check if returning from CinetPay with tx_id in URL
+    const txId = searchParams.get('tx_id');
+    if (txId) {
+      setSearchParams({}, { replace: true });
+      checkAccess(txId);
     } else {
-      checkProductAccess();
+      const saved = localStorage.getItem(ACCESS_KEY(id));
+      if (saved) {
+        checkAccess(saved);
+      } else {
+        setAccessState('denied');
+      }
     }
-  }, [id, user, accessGranted, refreshUserData]);
+  }, [id, checkAccess, searchParams, setSearchParams]);
 
-  const handleLoginRedirect = () => {
-    navigate('/login', { state: { from: `/products/${id}` } });
+  const handlePay = async () => {
+    setPaymentLoading(true);
+    setPaymentError('');
+    try {
+      const res = await api.post(`/product-payments/${id}/initiate`, {
+        customer_name: 'Visiteur',
+      });
+      if (res.data.success && res.data.payment_url) {
+        window.location.href = res.data.payment_url;
+      } else {
+        setPaymentError(res.data.message || 'Erreur paiement');
+      }
+    } catch (err) {
+      setPaymentError(err.response?.data?.message || "Erreur lors de l'initialisation du paiement");
+    } finally {
+      setPaymentLoading(false);
+    }
   };
-
-  const handleUpgradeRedirect = () => {
-    navigate('/offres');
-  };
-
-  if (accessLoading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Vérification de votre accès au produit...</p>
-      </div>
-    );
-  }
-
-  if (!accessGranted) {
-    return (
-      <div className="access-denied-container">
-        <div className="access-denied-card">
-          <Lock size={48} color="#c62828" />
-          <h2>Accès restreint</h2>
-          
-          <div className="access-denied-message">
-            <p>{accessError || "Vous n'avez pas accès à ce produit"}</p>
-            {remainingViews !== null && (
-              <div className="views-remaining">
-                <Eye size={16} />
-                <span>Vues restantes ce mois : {remainingViews}</span>
-              </div>
-            )}
-          </div>
-
-          <div className="access-denied-actions">
-            {!user ? (
-              <button 
-                onClick={handleLoginRedirect}
-                className="login-button"
-              >
-                Se connecter
-              </button>
-            ) : (
-              <button 
-                onClick={handleUpgradeRedirect}
-                className="upgrade-button"
-              >
-                Mettre à niveau mon abonnement
-              </button>
-            )}
-            
-            <button onClick={() => navigate('/categories')} className="back-button">
-              Voir d'autres produits
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (loading) {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p>Chargement des détails du produit...</p>
+        <p>Chargement du produit...</p>
       </div>
     );
   }
@@ -208,27 +116,17 @@ function ProductDetail() {
   if (error) {
     return (
       <div className="error-container">
-        <h3>Erreur de chargement</h3>
+        <h3>Erreur</h3>
         <p className="error-message">{error}</p>
         <div className="error-actions">
           <button onClick={() => window.location.reload()}>Réessayer</button>
-          <button onClick={() => navigate('/categories')}>Retour aux catégories</button>
-          <button onClick={() => navigate('/')}>Accueil</button>
+          <button onClick={() => navigate('/produits')}>Voir les produits</button>
         </div>
       </div>
     );
   }
 
-  if (!produit) {
-    return (
-      <div className="not-found-container">
-        <h3>Produit introuvable</h3>
-        <p>Le produit demandé n'existe pas ou a été supprimé.</p>
-        <button onClick={() => navigate('/categories')}>Voir tous les produits</button>
-        <button onClick={() => navigate(-1)}>Retour</button>
-      </div>
-    );
-  }
+  if (!produit) return null;
 
   return (
     <div className="product-detail-container">
@@ -240,27 +138,17 @@ function ProductDetail() {
             onError={(e) => {
               e.target.onerror = null;
               e.target.src = DEFAULT_IMAGE;
-              e.target.classList.add("default-image");
             }}
           />
-          
-          {remainingViews !== null && (
-            <div className="views-badge">
-              <Eye size={16} />
-              <span>Vues restantes: {remainingViews}</span>
-            </div>
-          )}
         </div>
 
         <div className="product-info">
           <h1>{produit.nom}</h1>
 
-          <div className="info-line">
-            <strong>Catégorie :</strong>&nbsp;{produit.categorie}
-          </div>
-          <div className="info-line">
-            <strong>Prix :</strong>&nbsp;{produit.prix}
-          </div>
+          <div className="info-line"><strong>Catégorie :</strong>&nbsp;{produit.categorie}</div>
+          <div className="info-line"><strong>Prix :</strong>&nbsp;{produit.prixFormatte}</div>
+          <div className="info-line"><strong>Stock :</strong>&nbsp;{produit.stock} {produit.unite}</div>
+          <div className="info-line"><strong>État :</strong>&nbsp;{produit.etat}</div>
 
           {produit.dateRecolte && (
             <div className="info-line">
@@ -269,36 +157,71 @@ function ProductDetail() {
             </div>
           )}
 
-          <div className="product-description">
-            <h3>Description</h3>
-            <p>{produit.description || 'Aucune description fournie.'}</p>
-          </div>
+          {produit.description && (
+            <div className="product-description">
+              <h3>Description</h3>
+              <p>{produit.description}</p>
+            </div>
+          )}
 
           {produit.tags && produit.tags.length > 0 && (
             <div className="product-description">
               <h3>Tags</h3>
               <div className="tags-container">
-                {produit.tags.map((tag, index) => (
-                  <span key={index} className="tag">{tag}</span>
+                {produit.tags.map((tag, i) => (
+                  <span key={i} className="tag">{tag}</span>
                 ))}
               </div>
             </div>
           )}
 
-          {produit.vendeur && (
-            <div className="seller-contact">
-              <h3>Contact du vendeur</h3>
-              <p><strong>Nom :</strong> {produit.vendeur.nom}</p>
-              {produit.vendeur.contact && <p><strong>Téléphone :</strong> {produit.vendeur.contact}</p>}
-              {produit.vendeur.email && <p><strong>Email :</strong> {produit.vendeur.email}</p>}
-            </div>
-          )}
+          {/* Seller section — gated */}
+          <div className="seller-section">
+            {accessState === 'checking' && (
+              <div className="seller-checking">
+                <div className="loading-spinner small"></div>
+                <span>Vérification de l'accès...</span>
+              </div>
+            )}
+
+            {accessState === 'granted' && seller && (
+              <div className="seller-contact">
+                <h3>Coordonnées du vendeur</h3>
+                {seller.fermeNom && <p><strong>Ferme :</strong> {seller.fermeNom}</p>}
+                {seller.nom && <p><strong>Nom :</strong> {seller.nom}</p>}
+                {seller.contact && <p><strong>Téléphone :</strong> {seller.contact}</p>}
+                {seller.email && <p><strong>Email :</strong> {seller.email}</p>}
+                {seller.adresse && <p><strong>Localisation :</strong> {seller.adresse}</p>}
+                {seller.typeExploitation && <p><strong>Type d'exploitation :</strong> {seller.typeExploitation}</p>}
+              </div>
+            )}
+
+            {(accessState === 'denied' || accessState === 'idle') && (
+              <div className="paywall-card">
+                <div className="paywall-lock-icon">🔒</div>
+                <h3>Coordonnées du vendeur</h3>
+                <p className="paywall-desc">
+                  Obtenez les coordonnées complètes du vendeur et de sa ferme pour le contacter directement.
+                </p>
+                <div className="paywall-price">300 FCFA</div>
+                <p className="paywall-hint">Paiement unique — sans création de compte</p>
+                {paymentError && <p className="paywall-error">{paymentError}</p>}
+                <button
+                  className="paywall-btn"
+                  onClick={handlePay}
+                  disabled={paymentLoading}
+                >
+                  {paymentLoading ? 'Redirection...' : 'Voir les coordonnées — 300 FCFA'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="navigation-buttons">
-        <button onClick={() => navigate(-1)} className="back-button">← Retour aux produits</button>
-        <button onClick={() => window.scrollTo(0, 0)} className="top-button">↑ Haut de page</button>
+        <button onClick={() => navigate(-1)} className="back-button">← Retour</button>
+        <button onClick={() => window.scrollTo(0, 0)} className="top-button">↑ Haut</button>
       </div>
     </div>
   );

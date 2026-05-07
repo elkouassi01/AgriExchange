@@ -380,3 +380,98 @@
 .product-image {
   position: relative;
 }
+
+/* =============================
+   🔒 Paywall vendeur
+============================= */
+.seller-section {
+  margin-top: 2rem;
+}
+
+.paywall-card {
+  background: linear-gradient(135deg, #fff8e1, #fffde7);
+  border: 2px dashed #f39c12;
+  border-radius: var(--border-radius);
+  padding: 1.75rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.paywall-lock-icon {
+  font-size: 2.5rem;
+}
+
+.paywall-card h3 {
+  color: #2c3e50;
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.paywall-desc {
+  color: #555;
+  font-size: 0.92rem;
+  max-width: 340px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.paywall-price {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #e67e22;
+}
+
+.paywall-hint {
+  color: #888;
+  font-size: 0.8rem;
+  margin: 0;
+}
+
+.paywall-error {
+  color: var(--danger);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+.paywall-btn {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 0.85rem 1.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 12px rgba(230, 126, 34, 0.35);
+  width: 100%;
+  max-width: 320px;
+}
+
+.paywall-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(230, 126, 34, 0.5);
+}
+
+.paywall-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.seller-checking {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  color: #555;
+}
+
+.loading-spinner.small {
+  width: 20px;
+  height: 20px;
+  border-width: 3px;
+  margin: 0;
+}

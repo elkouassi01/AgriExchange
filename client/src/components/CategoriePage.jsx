@@ -83,23 +83,8 @@ const CategoriePage = () => {
     fetchProduits();
   }, [nomCategorie]);
 
-  const handleVoirPlusClick = async (produitId) => {
-    if (!user) {
-      if (window.confirm('Vous devez creer un compte pour continuer.')) navigate('/offres');
-      return;
-    }
-    if (user.role !== 'consommateur') {
-      if (window.confirm('Acces reserve aux consommateurs abonnes.')) navigate('/offres');
-      return;
-    }
-    try {
-      const res = await api.get(`/users/products/${produitId}/can-access`);
-      if (res.data.accessGranted) navigate(`/produits/${produitId}`);
-      else if (window.confirm(res.data.message || 'Acces refuse.')) navigate('/offres');
-    } catch (err) {
-      console.error("Erreur verification d'acces :", err);
-      if (window.confirm("Erreur d'acces. Voir les offres ?")) navigate('/offres');
-    }
+  const handleVoirPlusClick = (produitId) => {
+    navigate(`/produits/${produitId}`);
   };
 
   if (loading) return <div className="loading-container"><div className="loading-spinner" /><p>Chargement des produits...</p></div>;

@@ -341,11 +341,19 @@ router.get('/:id', async (req, res) => {
         });
       }
 
+      // Strip seller contact info — gated behind 300 FCFA payment (see /api/v1/product-payments)
+      const publicProduct = {
+        ...product,
+        vendeur: product.vendeur
+          ? { nom: product.vendeur.nom, fermeNom: product.vendeur.fermeNom }
+          : null,
+      };
+
       return res.json({
         success: true,
         code: 'PRODUCT_FETCHED',
         message: 'Produit recupere avec succes',
-        data: { product }
+        data: { product: publicProduct }
       });
     }
 
