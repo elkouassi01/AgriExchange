@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
-import {   Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Rabbit, Banana } from 'lucide-react';
+import { Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Sprout } from 'lucide-react';
 import './NavBar.css';
 
 function NavBar() {
@@ -40,11 +40,14 @@ function NavBar() {
   return (
     <nav className="navbar">
       {/* Logo principal */}
-      <div className="navbar-brand">        
-        <Banana className="navbar-logo-icon" size={28} fill='gold' color='black'/>        
-        <span className="navbar-logo-text">Vivri<Rabbit className="navbar-logo-icon" size={28} fill='brown' color='black'/>Market</span>
-        <Leaf className="navbar-logo-icon" size={28} fill='green' color='black'/>
-      </div>
+      <Link to="/" className="navbar-brand">
+        <div className="navbar-logo-icon-wrapper">
+          <Sprout size={30} className="navbar-logo-sprout" />
+        </div>
+        <span className="navbar-logo-text">
+          <span className="logo-vivri">Vivri</span><span className="logo-market">Market</span>
+        </span>
+      </Link>
 
       {/* Bouton menu mobile */}
       <button className="menu-toggle" onClick={toggleMenu} aria-label="Menu">

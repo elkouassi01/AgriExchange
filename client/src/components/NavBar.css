@@ -23,18 +23,41 @@
 .navbar-brand {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  color: var(--primary-color);
+  gap: 0.6rem;
+  text-decoration: none;
 }
 
-.navbar-logo-icon {
-  color: var(--primary-color);
+.navbar-logo-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(34, 197, 94, 0.35);
+}
+
+.navbar-logo-sprout {
+  color: white;
+  stroke-width: 2.2px;
 }
 
 .navbar-logo-text {
-  font-size: 2rem;
+  font-size: 1.75rem;
   font-family: "Montserrat Alternates", sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+
+.logo-vivri {
+  color: #16a34a;
+  font-style: italic;
+}
+
+.logo-market {
+  color: #f59e0b;
 }
 
 .menu-toggle {
