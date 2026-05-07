@@ -177,6 +177,9 @@ const connectToMongo = async () => {
 const connectToMysql = async () => {
   await testMysqlConnection();
   console.log('MySQL connected');
+  // Migration automatique des colonnes suspension
+  const { ensureTables } = require('./repositories/mysqlContactRequestRepository');
+  await ensureTables();
 };
 
 const connectToDatabase = async () => {
