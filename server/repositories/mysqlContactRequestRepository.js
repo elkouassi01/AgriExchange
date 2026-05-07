@@ -27,13 +27,21 @@ const ensureTables = async () => {
     )
   `);
 
-  // Ajouter colonnes suspension sur users si absentes
-  const [cols] = await pool.query(`SHOW COLUMNS FROM users LIKE 'suspended'`);
-  if (cols.length === 0) {
+  // Ajouter colonnes suspension sur users si absentes (vérification individuelle)
+  const [c1] = await pool.query(`SHOW COLUMNS FROM users LIKE 'suspended'`);
+  if (c1.length === 0) {
     await pool.query(`ALTER TABLE users ADD COLUMN suspended TINYINT(1) NOT NULL DEFAULT 0`);
+    console.log('[DB] Colonne suspended ajoutée à users');
+  }
+  const [c2] = await pool.query(`SHOW COLUMNS FROM users LIKE 'penalty_amount'`);
+  if (c2.length === 0) {
     await pool.query(`ALTER TABLE users ADD COLUMN penalty_amount DECIMAL(10,2) NOT NULL DEFAULT 0`);
+    console.log('[DB] Colonne penalty_amount ajoutée à users');
+  }
+  const [c3] = await pool.query(`SHOW COLUMNS FROM users LIKE 'suspended_at'`);
+  if (c3.length === 0) {
     await pool.query(`ALTER TABLE users ADD COLUMN suspended_at DATETIME NULL`);
-    console.log('[DB] Colonnes suspension ajoutées à users');
+    console.log('[DB] Colonne suspended_at ajoutée à users');
   }
 
   tableReady = true;
