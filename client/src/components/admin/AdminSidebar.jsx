@@ -1,7 +1,7 @@
 // src/components/admin/AdminSidebar.jsx
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useUser } from '../../contexts/UserContext';
 import { 
   HiChartPie, 
   HiUserGroup, 
@@ -15,7 +15,7 @@ import {
 import './AdminSidebar.css'; 
 
 const AdminSidebar = () => {
-  const { logout } = useAdminAuth();
+  const { logout } = useUser();
   useLocation(); // Required for NavLink to work properly
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);

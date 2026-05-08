@@ -3,11 +3,11 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useUser } from '../../contexts/UserContext';
 import './AdminLayout.css'; 
 
 const AdminLayout = () => {
-  const { admin, logout } = useAdminAuth();
+  const { user: admin, logout } = useUser();
 
   return (
     <div className="admin-layout">

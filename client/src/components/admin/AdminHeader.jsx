@@ -1,11 +1,11 @@
 // src/components/admin/AdminHeader.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { useAdminAuth } from '../../contexts/AdminAuthContext'; // adapte le chemin selon ton arborescence
+import { useUser } from '../../contexts/UserContext';
 import './AdminHeader.css';
 
 const AdminHeader = () => {
-  const { admin, logout } = useAdminAuth();
+  const { user: admin, logout } = useUser();
 
   return (
     <header className="admin-header">

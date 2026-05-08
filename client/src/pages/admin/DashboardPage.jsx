@@ -1,6 +1,6 @@
 import './DashboardPage.css';
 import React, { useEffect, useState } from 'react';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import { useUser } from '../../contexts/UserContext';
 import StatCard from '../../components/admin/StatCard';
 import ActivityChart from '../../components/admin/ActivityChart';
 import { fetchDashboardStats } from '../../services/adminService';
@@ -8,7 +8,7 @@ import { fetchDashboardStats } from '../../services/adminService';
 const DashboardPage = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const { admin } = useAdminAuth();
+  const { user: admin } = useUser();
 
   useEffect(() => {
     fetchDashboardStats()

@@ -1,8 +1,8 @@
 /* AdminHeader.css - */
 
 .admin-header {
-  background: linear-gradient(135deg, #1a2e19 0%, #2c5a2d 100%);
-  box-shadow: 0 4px 20px rgba(0, 30, 10, 0.25);
+  background: linear-gradient(135deg, #1a0800 0%, #2d0e1a 100%);
+  box-shadow: 0 4px 20px rgba(255, 138, 0, 0.2);
   position: relative;
   overflow: hidden;
   z-index: 100;
@@ -18,13 +18,7 @@
   right: 0;
   height: 4px;
   text-align: justify;
-  background: linear-gradient(
-    90deg, 
-    #4CAF50,    /* Vert feuille */
-    #8BC34A,    /* Vert herbe */
-    #FFC107,    /* Jaune soleil */
-    #4CAF50     /* Retour au vert */
-  );
+  background: linear-gradient(90deg, #ff8a00, #f43f5e, #da1b60, #ff8a00);
   background-size: 300% 300%;
   animation: gradientFlow 8s ease infinite;
   z-index: 1;
@@ -106,7 +100,7 @@
   left: 0;
   width: 100%;
   height: 2px;
-  background: linear-gradient(to right, #4CAF50, #8BC34A);
+  background: linear-gradient(to right, #ff8a00, #da1b60);
   border-radius: 2px;
   transform: scaleX(0);
   transform-origin: left;
@@ -164,7 +158,7 @@
 
 .admin-user-email {
   font-size: 0.8rem;
-  color: #c8e6c9;
+  color: #fcd5a8;
   font-weight: 500;
   text-align: center;
 }
