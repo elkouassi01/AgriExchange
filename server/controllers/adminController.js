@@ -9,7 +9,15 @@ const sanitizeUser = (user) => {
   return rest;
 };
 
+// Cache memoire 5 minutes pour le dashboard (evite de recalculer a chaque visite)
+const dashCache = { data: null, expiresAt: 0 };
+const DASH_CACHE_TTL = 5 * 60 * 1000;
+
 const getDashboardStats = async (req, res) => {
+  if (dashCache.data && Date.now() < dashCache.expiresAt) {
+    return res.json(dashCache.data);
+  }
+
   try {
     const pool = getMysqlPool();
 
@@ -81,7 +89,7 @@ const getDashboardStats = async (req, res) => {
       suspendedFarmers = parseInt(sus.count || 0);
     } catch {}
 
-    res.json({
+    const result = {
       users: {
         total: parseInt(stats.total_users, 10),
         farmers: parseInt(stats.total_farmers, 10),
@@ -106,7 +114,11 @@ const getDashboardStats = async (req, res) => {
       contactRequests: contactStats,
       productPayments,
       suspendedFarmers,
-    });
+    };
+
+    dashCache.data = result;
+    dashCache.expiresAt = Date.now() + DASH_CACHE_TTL;
+    res.json(result);
   } catch (error) {
     console.error('Dashboard stats error:', error);
     res.status(500).json({

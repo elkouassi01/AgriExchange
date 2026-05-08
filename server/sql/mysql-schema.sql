@@ -183,7 +183,7 @@ CREATE TABLE IF NOT EXISTS plans_consommateur (
   CONSTRAINT chk_plans_conso_statut  CHECK (statut IN ('actif', 'expiré', 'annulé'))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Index
+-- Index (schema initial)
 CREATE INDEX idx_users_role              ON users(role);
 CREATE INDEX idx_products_seller_id      ON products(seller_id);
 CREATE INDEX idx_products_categorie      ON products(categorie);
@@ -196,3 +196,17 @@ CREATE INDEX idx_messages_product_id     ON messages(product_id);
 CREATE INDEX idx_plans_agri_nom          ON plans_agriculteur(nom);
 CREATE INDEX idx_plans_conso_user        ON plans_consommateur(utilisateur_id);
 CREATE INDEX idx_plans_conso_statut      ON plans_consommateur(statut);
+
+-- Index supplementaires (ajoutes via ensureIndexes() au demarrage)
+CREATE INDEX idx_products_etat               ON products(etat);
+CREATE INDEX idx_products_stock              ON products(stock);
+CREATE INDEX idx_products_created_at         ON products(created_at);
+CREATE INDEX idx_abonnements_date_expiration ON abonnements(date_expiration);
+CREATE INDEX idx_abonnements_status          ON abonnements(status);
+CREATE INDEX idx_users_est_actif             ON users(est_actif);
+CREATE INDEX idx_users_suspended             ON users(suspended);
+CREATE INDEX idx_transactions_status         ON transactions(status);
+CREATE INDEX idx_cr_status                   ON contact_requests(status);
+CREATE INDEX idx_cr_seller_phone             ON contact_requests(seller_phone);
+CREATE INDEX idx_pp_status                   ON product_payments(status);
+CREATE INDEX idx_pp_transaction_id           ON product_payments(transaction_id);

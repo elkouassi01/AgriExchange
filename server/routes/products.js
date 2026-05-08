@@ -11,7 +11,7 @@ const parseJsonArray = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) return value;
   if (typeof value === 'string' && value.trim().startsWith('[')) {
-    return JSON.parse(value);
+    try { return JSON.parse(value); } catch { return []; }
   }
   if (typeof value === 'string') {
     return value.split(',').map((item) => item.trim()).filter(Boolean);

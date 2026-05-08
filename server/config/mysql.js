@@ -11,11 +11,14 @@ const getMysqlPool = () => {
       user: process.env.MYSQL_USER || 'root',
       password: process.env.MYSQL_PASSWORD || '',
       waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
+      connectionLimit: parseInt(process.env.MYSQL_POOL_SIZE || '25', 10),
+      queueLimit: 100,
+      connectTimeout: 10000,
       timezone: '+00:00',
       supportBigNumbers: true,
       bigNumberStrings: false,
+      enableKeepAlive: true,
+      keepAliveInitialDelay: 0,
     });
   }
   return pool;
