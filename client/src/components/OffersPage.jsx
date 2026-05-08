@@ -2,17 +2,12 @@ import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./OffersPage.css";
 import Footer from "./Footer";
-import { PROMO_FIN_AGRICULTEUR } from "../config/constants";
-
 const OffersPage = () => {
   const navigate = useNavigate();
 
   const handleSubscription = (type, formule) => {
     navigate(`/inscription?type=${type}&formule=${formule}`);
   };
-
-  const isPromoActive = new Date() < PROMO_FIN_AGRICULTEUR;
-  const promoFin = PROMO_FIN_AGRICULTEUR;
 
   return (
     <div className="offers-container">
@@ -81,21 +76,6 @@ const OffersPage = () => {
           <div className="icon">🌾</div>
           <h2>Offres Agriculteurs — Publiez vos produits</h2>
         </div>
-
-        {isPromoActive && (
-          <div className="promo-card special-offer">
-            <div className="promo-badge">PROMO</div>
-            <p className="promo-highlight">
-              Inscription <strong>100% gratuite</strong> jusqu'au {promoFin.toLocaleDateString("fr-FR")} !
-            </p>
-            <p style={{ color: "#fff", marginBottom: "1rem" }}>
-              Publiez vos produits et recevez des acheteurs sans frais d'inscription.
-            </p>
-            <Link to="/inscription?type=agriculteur&formule=OFFRE_GRATUITE" className="promo-button">
-              Profiter de l'offre gratuite
-            </Link>
-          </div>
-        )}
 
         <div className="offer-cards">
           <div className="offer-card blue">
