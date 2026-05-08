@@ -1,5 +1,18 @@
 require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
+// Validation des variables critiques au demarrage
+const REQUIRED_ENV = ['JWT_SECRET'];
+const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+if (missing.length) {
+  console.error('[ENV] Variables manquantes:', missing.join(', '));
+  console.error('[ENV] Copiez server/.env.example en server/.env et remplissez les valeurs.');
+  process.exit(1);
+}
+if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET === 'CHANGE_ME_STRONG_RANDOM_SECRET') {
+  console.error('[ENV] JWT_SECRET utilise la valeur par defaut — changez-la en production!');
+  process.exit(1);
+}
+
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -17,7 +30,6 @@ const { protect } = require('./middlewares/auth');
 const authRoutes = require('./routes/auth');
 const utilisateursRoutes = require('./routes/utilisateurs');
 const productsRoutes = require('./routes/products');
-const paiementRoutes = require('./routes/paiement');
 const contactRoutes = require('./routes/contact');
 const forfaitsRoutes = require('./routes/forfaits');
 const adminRoutes = require('./routes/adminRoutes');
@@ -29,8 +41,6 @@ const productPaymentsRoutes = require('./routes/productPayments');
 const contactRequestsRoutes = require('./routes/contactRequests');
 const { startContactRequestCron } = require('./routes/contactRequests');
 const { getClient: initWhatsApp } = require('./utils/whatsappClient');
-
-console.log('Cloudinary cloud:', process.env.CLD_CLOUD || 'not configured');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -219,7 +229,6 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/utilisateurs', utilisateursRoutes);
 app.use('/api/v1/inscription-gratuite', inscriptionGratuiteRoutes);
 app.use('/api/v1/products', productsRoutes);
-app.use('/api/v1/paiement', paiementRoutes);
 app.use('/api/v1/contact', contactRoutes);
 app.use('/api/v1/forfaits', forfaitsRoutes);
 app.use('/api/v1/admin', adminRoutes);

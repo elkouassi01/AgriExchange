@@ -4,8 +4,9 @@ import './ProductDetail.css';
 import api from '../services/axiosConfig';
 import { buildUploadUrl } from '../config/api';
 import { useUser } from '../contexts/UserContext';
+import { PRICE_CONSUMER, PRICE_VISITOR, DEFAULT_PRODUCT_IMAGE } from '../config/constants';
 
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
+const DEFAULT_IMAGE = DEFAULT_PRODUCT_IMAGE;
 
 const ACCESS_KEY = (productId) => `pv_tx_${productId}`;
 
@@ -19,7 +20,7 @@ function ProductDetail() {
   const { user, login } = useUser();
 
   const isConsumer = user?.role === 'consommateur';
-  const price = isConsumer ? 150 : 300;
+  const price = isConsumer ? PRICE_CONSUMER : PRICE_VISITOR;
 
   const [produit, setProduit] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -267,20 +268,20 @@ function ProductDetail() {
                   Obtenez les coordonnées complètes du vendeur et de sa ferme pour le contacter directement.
                 </p>
                 <div className="paywall-price">
-                  {isConsumer ? '150 FCFA' : '300 FCFA'}
+                  {isConsumer ? `${PRICE_CONSUMER} FCFA` : `${PRICE_VISITOR} FCFA`}
                 </div>
                 <p className="paywall-hint">
-                  {isConsumer ? 'Tarif consommateur inscrit' : 'Paiement unique — sans création de compte'}
+                  {isConsumer ? 'Tarif consommateur inscrit' : 'Paiement unique — sans creation de compte'}
                 </p>
                 {!user && (
                   <p className="paywall-signup-hint">
-                    Payez seulement <strong>150 FCFA</strong> —{' '}
+                    Payez seulement <strong>{PRICE_CONSUMER} FCFA</strong> —{' '}
                     <a href="/inscription" className="paywall-signup-link">Créer un compte gratuit</a>
                   </p>
                 )}
                 {paymentError && <p className="paywall-error">{paymentError}</p>}
                 <button className="paywall-btn" onClick={handlePay} disabled={paymentLoading}>
-                  {paymentLoading ? 'Redirection...' : `Voir les coordonnées — ${isConsumer ? '150' : '300'} FCFA`}
+                  {paymentLoading ? 'Redirection...' : `Voir les coordonnees — ${isConsumer ? PRICE_CONSUMER : PRICE_VISITOR} FCFA`}
                 </button>
               </div>
             )}
@@ -292,7 +293,7 @@ function ProductDetail() {
 
                   {modalStep === 'login' && (
                     <>
-                      <h3>Connectez-vous pour payer 150 FCFA</h3>
+                      <h3>Connectez-vous pour payer {PRICE_CONSUMER} FCFA</h3>
                       <p className="login-modal-sub">Compte consommateur requis</p>
                       <form onSubmit={handleLogin}>
                         <input
@@ -311,7 +312,7 @@ function ProductDetail() {
                         />
                         {loginError && <p className="login-modal-error">{loginError}</p>}
                         <button type="submit" className="login-modal-btn" disabled={loginLoading}>
-                          {loginLoading ? 'Connexion...' : 'Se connecter et payer 150 FCFA'}
+                          {loginLoading ? 'Connexion...' : `Se connecter et payer ${PRICE_CONSUMER} FCFA`}
                         </button>
                       </form>
                       <button className="login-modal-btn" onClick={() => setModalStep('visitor')}>
@@ -343,7 +344,7 @@ function ProductDetail() {
                           required
                         />
                         <button type="submit" className="login-modal-btn" disabled={paymentLoading}>
-                          {paymentLoading ? 'Redirection...' : 'Payer 300 FCFA →'}
+                          {paymentLoading ? 'Redirection...' : `Payer ${PRICE_VISITOR} FCFA`}
                         </button>
                       </form>
                       <button className="login-modal-btn" onClick={() => setModalStep('login')}>

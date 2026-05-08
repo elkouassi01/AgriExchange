@@ -73,13 +73,13 @@ const buildValidatedPayload = (req) => {
     etat: String(etat || 'frais').toLowerCase(),
     tags: parseJsonArray(tags),
     certifications: parseJsonArray(certifications),
-    imageUrl: imageUrl || 'https://via.placeholder.com/150',
+    imageUrl: imageUrl || null,
     images: parseJsonArray(images),
   };
 };
 
 const resolveImageUrl = async (req, fallbackImageUrl) => {
-  let finalImageUrl = fallbackImageUrl || 'https://via.placeholder.com/150';
+  let finalImageUrl = fallbackImageUrl || null;
 
   if (!req.file) {
     return finalImageUrl;
