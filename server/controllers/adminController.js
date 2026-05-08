@@ -264,18 +264,53 @@ const getUserActivity = async (req, res) => {
 
 const getTransactions = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
-    const result = await mysqlTransactionRepository.getUserTransactions(null, parseInt(page, 10), parseInt(limit, 10));
+    const pool = getMysqlPool();
+    const { page = 1, limit = 20, status } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
+
+    const conditions = [];
+    const values = [];
+    if (status) { conditions.push('t.status = ?'); values.push(status); }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [[countRow], [rows]] = await Promise.all([
+      pool.query(`SELECT COUNT(*) AS total FROM transactions t ${where}`, values),
+      pool.query(
+        `SELECT t.id, t.reference, t.montant, t.devise, t.methode,
+                t.status, t.description, t.created_at,
+                u.nom AS user_nom, u.email AS user_email
+         FROM transactions t
+         LEFT JOIN users u ON u.id = t.user_id
+         ${where}
+         ORDER BY t.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [...values, limitNum, offset]
+      ),
+    ]);
+
+    const total = parseInt(countRow.total, 10);
+    const transactions = rows.map(r => ({
+      id: r.id,
+      reference: r.reference || r.id,
+      montant: Number(r.montant),
+      devise: r.devise || 'XOF',
+      methode: r.methode || '—',
+      statut: r.status,
+      description: r.description || '',
+      createdAt: r.created_at,
+      userNom: r.user_nom || 'Visiteur',
+      userEmail: r.user_email || '—',
+    }));
 
     res.json({
-      data: result.transactions,
-      pagination: {
-        currentPage: result.page,
-        totalPages: result.totalPages,
-        totalItems: result.total,
-      },
+      data: transactions,
+      pagination: { currentPage: pageNum, totalPages: Math.ceil(total / limitNum), totalItems: total },
     });
   } catch (error) {
+    console.error('Get transactions error:', error);
     res.status(500).json({ code: 'TRANSACTION_FETCH_ERROR', message: 'Échec de récupération des transactions' });
   }
 };
