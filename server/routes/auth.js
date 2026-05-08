@@ -76,6 +76,13 @@ router.post('/connexion', async (req, res) => {
       await mysqlUserRepository.updateUserLastLogin(userId);
     }
 
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
     return res.status(200).json({
       success: true,
       message: 'Connexion reussie',
@@ -189,7 +196,12 @@ router.get('/me', protect, async (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  res.status(200).json({ success: true, message: 'Deconnexion reussie (client-side uniquement)' });
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: 'Lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  res.status(200).json({ success: true, message: 'Déconnexion réussie' });
 });
 
 // Inscription consommateur avec OTP WhatsApp

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const { randomUUID } = require('crypto');
 const { isMysql } = require('../utils/authHelpers');
 const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
@@ -12,12 +13,13 @@ const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
 const PRICE_VISITOR = 300;
 const PRICE_CONSUMER = 150;
 
-// Vérifie optionnellement le JWT — retourne le payload ou null
+// Vérifie optionnellement le JWT (cookie httpOnly ou Bearer header) — retourne le payload ou null
 const optionalAuth = (req) => {
-  const auth = req.headers.authorization;
-  if (!auth || !auth.startsWith('Bearer ')) return null;
+  const token = req.cookies?.token ||
+    (req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.split(' ')[1] : null);
+  if (!token) return null;
   try {
-    return jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET);
+    return jwt.verify(token, process.env.JWT_SECRET);
   } catch {
     return null;
   }
@@ -26,16 +28,26 @@ const optionalAuth = (req) => {
 // POST /api/v1/product-payments/webhook — CinetPay notification
 router.post('/webhook', async (req, res) => {
   const data = req.body;
-  console.log('[ProductPayment] Webhook:', JSON.stringify(data));
 
   try {
     const txId = data.transaction_id || data.cpm_trans_id;
     if (!txId) return res.status(400).send('Missing transaction_id');
 
-    const isAccepted = data.status === 'ACCEPTED' || data.cpm_result === '00';
+    // Ne pas faire confiance au corps du webhook : re-vérifier auprès de CinetPay
+    const verifyRes = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        apikey: CINETPAY_APIKEY,
+        site_id: CINETPAY_SITE_ID,
+        transaction_id: txId,
+      }),
+    });
+    const verifyResult = await verifyRes.json();
+    const isAccepted = verifyResult.data?.status === 'ACCEPTED' || verifyResult.code === '00';
+
     if (isAccepted && isMysql()) {
       await mysqlPaymentRepository.markAsPaid(txId);
-      console.log(`[ProductPayment] Paid: ${txId}`);
     }
     return res.status(200).send('OK');
   } catch (err) {
@@ -61,7 +73,7 @@ router.post('/:productId/initiate', async (req, res) => {
     const isConsumer = decoded?.role === 'consommateur';
     const amount = isConsumer ? PRICE_CONSUMER : PRICE_VISITOR;
 
-    const transactionId = `PV${Date.now()}`;
+    const transactionId = `PV${randomUUID().replace(/-/g, '')}`;
     const origin = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 

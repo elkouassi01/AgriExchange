@@ -10,18 +10,14 @@ const protect = async (req, res, next) => {
   try {
     let token;
 
-    // 1. Extraction
+    // 1. Extraction — cookie httpOnly en priorité, puis Bearer header (API clients)
     if (req.cookies?.token) {
       token = req.cookies.token;
     } else if (req.headers.authorization?.startsWith('Bearer ')) {
       token = req.headers.authorization.split(' ')[1];
-      console.log('AUTH HEADER REÇU :', req.headers.authorization);
-    } else if (req.query?.token) {
-      token = req.query.token;
     }
 
     if (!token) {
-      console.warn('🚫 Aucun token détecté');
       return res.status(401).json({
         success: false,
         code: 'NO_TOKEN',
@@ -29,13 +25,11 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // 2. Vérification SANS issuer/audience
+    // 2. Vérification
     let decoded;
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET); // <-- CORRIGÉ
-      console.log('TOKEN DÉCODÉ :', decoded);
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
     } catch (err) {
-      console.warn('⚠️ Erreur de vérification du token:', err.name);
       return res.status(401).json({
         success: false,
         code: err.name === 'TokenExpiredError' ? 'TOKEN_EXPIRED' : 'INVALID_TOKEN',
@@ -94,11 +88,7 @@ const generateToken = (user) =>
   jwt.sign(
     { id: user.id || user._id, role: user.role },
     process.env.JWT_SECRET,
-    {
-      expiresIn: TOKEN_EXPIRATION,
-      issuer: 'AgriExchange API',        // <-- conservé côté génération
-      audience: 'agriexchange-client'
-    }
+    { expiresIn: TOKEN_EXPIRATION }
   );
 
 const generateRefreshToken = (user) =>

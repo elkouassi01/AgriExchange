@@ -36,8 +36,9 @@ export const UserProvider = ({ children }) => {
       const res = await api.get('/auth/me');
       const currentUser = res.data.utilisateur || res.data.user;
 
-      if (currentUser && currentUser._id) {
-        const abonnement = await fetchUserAbonnement(currentUser._id);
+      const userId = currentUser?.id || currentUser?._id;
+      if (currentUser && userId) {
+        const abonnement = await fetchUserAbonnement(userId);
         const fullUser = {
           ...currentUser,
           abonnement: abonnement.formule ? abonnement : null,
@@ -83,12 +84,13 @@ export const UserProvider = ({ children }) => {
 
   // 🔄 Rafraîchit les données utilisateur + abonnement
   const refreshUserData = async () => {
-    if (!user?._id) return;
+    const uid = user?.id || user?._id;
+    if (!uid) return;
 
     try {
       const [userRes, abonnementRes] = await Promise.all([
         api.get('/auth/me'),
-        api.get(`/users/${user._id}/forfait`),
+        api.get(`/users/${uid}/forfait`),
       ]);
 
       const currentUser = userRes.data.utilisateur || userRes.data.user;
@@ -117,38 +119,31 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // 🔑 Connexion — enregistre le token et l’utilisateur
-  const login = (userData, token) => {
+  // 🔑 Connexion — enregistre l’utilisateur (le token est dans le cookie httpOnly)
+  const login = (userData) => {
     setUser(userData);
-    localStorage.setItem('userData', JSON.stringify(userData));
-    localStorage.setItem('token', token);
-
-    // 🔐 Injecte le token dans Axios pour toutes les requêtes suivantes
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    localStorage.setItem(‘userData’, JSON.stringify(userData));
   };
 
-  // 🚪 Déconnexion
-  const logout = () => {
+  // 🚪 Déconnexion — efface le cookie côté serveur puis nettoie localement
+  const logout = async () => {
+    try {
+      await api.post(‘/auth/logout’);
+    } catch {
+      // ignore — on nettoie quand même
+    }
     clearSession();
   };
 
-  // 🧹 Nettoyage de la session (sans route logout)
+  // 🧹 Nettoyage local de la session (appelé sur 401 ou logout)
   const clearSession = () => {
     setUser(null);
-    localStorage.removeItem('userData');
-    localStorage.removeItem('token');
-    delete api.defaults.headers.common['Authorization']; // Important
+    localStorage.removeItem(‘userData’);
   };
 
-  // 🧭 Au chargement : restaure la session si token valide
+  // 🧭 Au chargement : tente de restaurer la session via le cookie httpOnly
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
+    fetchUser();
   }, []);
 
   return (
