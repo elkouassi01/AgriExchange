@@ -12,7 +12,8 @@ router.use(authMiddleware.authorize('admin'));
 // ✅ Validation commune
 const validateId = [
   param('id')
-    .isMongoId().withMessage('ID utilisateur invalide')
+    .notEmpty().withMessage('ID requis')
+    .isUUID().withMessage('ID utilisateur invalide')
     .bail()
     .customSanitizer(value => value.trim()),
   handleValidationErrors

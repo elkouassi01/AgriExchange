@@ -14,9 +14,9 @@ export const fetchUsers = async () => {
 };
 
 // 🔹 Met à jour le statut d’un utilisateur
-export const updateUserStatus = async (userId, status) => {
+export const updateUserStatus = async (userId, estActif) => {
   try {
-    const response = await api.put(`/admin/users/${userId}/status`, { status });
+    const response = await api.put(`/admin/users/${userId}`, { estActif });
     return response.data;
   } catch (error) {
     const message = error.response?.data?.message || "Échec de la mise à jour du statut";
