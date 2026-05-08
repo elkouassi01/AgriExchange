@@ -348,8 +348,8 @@ a:hover {
   text-decoration: underline;
 }
 
-/* ── Promo banner ── */
-.promo-banner {
+/* ── Promo banner (formulaire inscription) ── */
+.inscription-promo-banner {
   display: flex;
   align-items: center;
   gap: 0.75rem;
@@ -360,20 +360,20 @@ a:hover {
   border-radius: var(--radius);
   color: #1e8449;
 }
-.promo-banner__icon {
+.inscription-promo-banner__icon {
   font-size: 1.5rem;
   flex-shrink: 0;
 }
-.promo-banner__text {
+.inscription-promo-banner__text {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
 }
-.promo-banner__text strong {
+.inscription-promo-banner__text strong {
   font-size: 1rem;
   font-weight: 700;
 }
-.promo-banner__text span {
+.inscription-promo-banner__text span {
   font-size: 0.88rem;
   opacity: 0.85;
 }

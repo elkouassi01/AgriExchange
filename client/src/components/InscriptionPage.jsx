@@ -289,9 +289,9 @@ const InscriptionPage = () => {
         )}
 
         {isPromo && (
-          <div className="promo-banner">
-            <span className="promo-banner__icon">🎉</span>
-            <div className="promo-banner__text">
+          <div className="inscription-promo-banner">
+            <span className="inscription-promo-banner__icon">🎉</span>
+            <div className="inscription-promo-banner__text">
               <strong>Inscription 100% GRATUITE</strong>
               <span>Offre valable jusqu'au {promoEndStr} — quelle que soit la formule</span>
             </div>
