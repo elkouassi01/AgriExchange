@@ -1,40 +1,21 @@
-// src/pages/admin/SubscriptionsPage.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import './SubscriptionsPage.css';
 import {
-  Box,
-  Typography,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TablePagination,
-  Chip,
-  Button,
-  TextField,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Select,
-  IconButton,
-  Tooltip,
-  Grid,
-  Card,
-  CardContent,
-  CircularProgress
+  Box, Typography, Paper, Table, TableBody, TableCell,
+  TableContainer, TableHead, TableRow, TablePagination,
+  Chip, Button, TextField, MenuItem, FormControl,
+  InputLabel, Select, IconButton, Tooltip, CircularProgress, Grid, Card, CardContent,
 } from '@mui/material';
-import {
-  FileDownload as ExportIcon,
-  Search as SearchIcon,
-  Refresh as RefreshIcon
-} from '@mui/icons-material';
+import { FileDownload as ExportIcon, Search as SearchIcon, Refresh as RefreshIcon } from '@mui/icons-material';
 import { fetchSubscriptions } from '../../services/adminService';
+
+const FORMULE_COLOR = { BLEU: 'info', GOLD: 'warning', PLATINUM: 'secondary' };
+
+const fmt = (d) => d ? new Date(d).toLocaleDateString('fr-FR') : '—';
 
 const SubscriptionsPage = () => {
   const [subscriptions, setSubscriptions] = useState([]);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -42,192 +23,156 @@ const SubscriptionsPage = () => {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [planFilter, setPlanFilter] = useState('all');
+  const [formuleFilter, setFormuleFilter] = useState('all');
 
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    expired: 0,
-    cancelled: 0
-  });
-
-  useEffect(() => {
-    const loadSubscriptions = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchSubscriptions();
-        setSubscriptions(data);
-        calculateStats(data);
-        setLoading(false);
-      } catch (error) {
-        setError('Erreur lors du chargement des abonnements');
-        setLoading(false);
-        console.error('Erreur:', error);
-      }
-    };
-
-    loadSubscriptions();
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetchSubscriptions();
+      const list = Array.isArray(res) ? res : (res.data || []);
+      setSubscriptions(list);
+      if (res.stats) setStats(res.stats);
+    } catch {
+      setError('Erreur lors du chargement des abonnements');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const calculateStats = (data) => {
-    const total = data.length;
-    const active = data.filter(sub => sub.status === 'active').length;
-    const expired = data.filter(sub => sub.status === 'expired').length;
-    const cancelled = data.filter(sub => sub.status === 'cancelled').length;
+  useEffect(() => { load(); }, [load]);
 
-    setStats({ total, active, expired, cancelled });
-  };
-
-  const handleChangePage = (_event, newPage) => setPage(newPage);
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  const filteredSubscriptions = subscriptions.filter(subscription => {
-    const matchesSearch =
-      subscription.user?.nom?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subscription.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      subscription.reference.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || subscription.status === statusFilter;
-    const matchesPlan = planFilter === 'all' || subscription.plan === planFilter;
-
-    return matchesSearch && matchesStatus && matchesPlan;
+  const filtered = subscriptions.filter(s => {
+    const q = searchTerm.toLowerCase();
+    const matchSearch = !q ||
+      (s.userNom || '').toLowerCase().includes(q) ||
+      (s.userEmail || '').toLowerCase().includes(q);
+    const matchStatus =
+      statusFilter === 'all' ||
+      (statusFilter === 'active'    && s.isActive) ||
+      (statusFilter === 'expired'   && !s.isActive && s.status !== 'cancelled') ||
+      (statusFilter === 'cancelled' && s.status === 'cancelled') ||
+      (statusFilter === 'pending'   && s.status === 'pending');
+    const matchFormule = formuleFilter === 'all' || s.formule === formuleFilter;
+    return matchSearch && matchStatus && matchFormule;
   });
 
-  const paginatedSubscriptions = filteredSubscriptions.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
+  const paginated = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
+  const handleExportCSV = () => {
+    const header = ['Utilisateur', 'Email', 'Formule', 'Montant', 'Début', 'Expiration', 'Statut'];
+    const rows = filtered.map(s => [
+      s.userNom, s.userEmail, s.formule, s.montant,
+      fmt(s.dateDebut), fmt(s.dateExpiration),
+      s.isActive ? 'Actif' : (s.status === 'cancelled' ? 'Annulé' : 'Expiré'),
+    ]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${v ?? ''}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `abonnements-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const StatCard = ({ label, value, color, sub }) => (
+    <Card sx={{ borderRadius: 2, border: '1px solid #f1f5f9' }} elevation={0}>
+      <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+        <Typography variant="caption" color="text.secondary" display="block">{label}</Typography>
+        <Typography variant="h4" fontWeight={800} color={color || 'text.primary'}>{value ?? '—'}</Typography>
+        {sub && <Typography variant="caption" color="text.secondary">{sub}</Typography>}
+      </CardContent>
+    </Card>
   );
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return 'success';
-      case 'pending': return 'warning';
-      case 'expired': return 'error';
-      case 'cancelled': return 'default';
-      default: return 'info';
-    }
-  };
-
-  const getPlanColor = (plan) => {
-    switch (plan) {
-      case 'BLEU': return 'info';
-      case 'GOLD': return 'warning';
-      case 'PLATINUM': return 'primary';
-      default: return 'default';
-    }
-  };
-
-  const handleExport = () => {
-    alert("Fonctionnalité d'export à implémenter");
-  };
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
-  const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('fr-FR', options);
-  };
 
   return (
     <Box className="page-abonnements">
+      {/* En-tête */}
       <Box className="en-tete-abonnements">
         <div>
-          <Typography variant="h4" className="titre-page">
-            Abonnements
-          </Typography>
-          <Typography variant="body1" className="sous-titre-page">
-            Gestion des abonnements des utilisateurs
+          <Typography variant="h5" fontWeight={700}>Abonnements</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Gestion des abonnements agriculteurs VivriMarket
           </Typography>
         </div>
-
         <div className="actions-abonnements">
-          <Button variant="outlined" startIcon={<ExportIcon />} onClick={handleExport}>
-            Exporter
+          <Button variant="outlined" size="small" startIcon={<ExportIcon />} onClick={handleExportCSV}>
+            Exporter CSV
           </Button>
           <Tooltip title="Rafraîchir">
-            <IconButton onClick={handleRefresh}>
-              <RefreshIcon />
-            </IconButton>
+            <IconButton onClick={load} disabled={loading}><RefreshIcon /></IconButton>
           </Tooltip>
         </div>
       </Box>
 
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="text.secondary" gutterBottom>Total</Typography>
-              <Typography variant="h4">{stats.total}</Typography>
-            </CardContent>
-          </Card>
+      {/* Cartes stats */}
+      {stats && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={6} sm={4} md={2}>
+            <StatCard label="Total" value={stats.total} />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2}>
+            <StatCard label="Actifs" value={stats.active} color="success.main" />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2}>
+            <StatCard label="Expirés" value={stats.expired} color="error.main" />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2}>
+            <StatCard label="Annulés" value={stats.cancelled} color="text.secondary" />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2}>
+            <StatCard label="En attente" value={stats.pending} color="warning.main" />
+          </Grid>
+          <Grid item xs={6} sm={4} md={2}>
+            <StatCard
+              label="Revenu total"
+              value={`${(stats.totalRevenue || 0).toLocaleString('fr-FR')}`}
+              color="success.main"
+              sub="XOF"
+            />
+          </Grid>
+          {/* Par formule */}
+          <Grid item xs={4} sm={4} md={4}>
+            <Card sx={{ borderRadius: 2, border: '1px solid #dbeafe' }} elevation={0}>
+              <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                <Typography variant="caption" color="text.secondary">Par formule</Typography>
+                <Box display="flex" gap={1} mt={0.5} flexWrap="wrap">
+                  <Chip label={`BLEU · ${stats.byFormule?.BLEU ?? 0}`} color="info" size="small" />
+                  <Chip label={`GOLD · ${stats.byFormule?.GOLD ?? 0}`} color="warning" size="small" />
+                  <Chip label={`PLATINUM · ${stats.byFormule?.PLATINUM ?? 0}`} color="secondary" size="small" />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="text.secondary" gutterBottom>Actifs</Typography>
-              <Typography variant="h4" color="success.main">{stats.active}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="text.secondary" gutterBottom>Expirés</Typography>
-              <Typography variant="h4" color="error.main">{stats.expired}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="text.secondary" gutterBottom>Annulés</Typography>
-              <Typography variant="h4">{stats.cancelled}</Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      )}
 
+      {/* Filtres */}
       <Paper className="filtres-abonnements">
         <TextField
-          fullWidth
           variant="outlined"
           size="small"
-          placeholder="Rechercher un abonnement..."
+          placeholder="Nom, email..."
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          InputProps={{
-            startAdornment: <SearchIcon color="action" />,
-          }}
+          onChange={e => { setSearchTerm(e.target.value); setPage(0); }}
+          InputProps={{ startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} /> }}
+          sx={{ flex: 1, minWidth: 200 }}
         />
-
         <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
           <InputLabel>Statut</InputLabel>
-          <Select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            label="Statut"
-          >
-            <MenuItem value="all">Tous les statuts</MenuItem>
-            <MenuItem value="active">Actif</MenuItem>
+          <Select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(0); }} label="Statut">
+            <MenuItem value="all">Tous</MenuItem>
+            <MenuItem value="active">Actifs</MenuItem>
+            <MenuItem value="expired">Expirés</MenuItem>
+            <MenuItem value="cancelled">Annulés</MenuItem>
             <MenuItem value="pending">En attente</MenuItem>
-            <MenuItem value="expired">Expiré</MenuItem>
-            <MenuItem value="cancelled">Annulé</MenuItem>
           </Select>
         </FormControl>
-
-        <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+        <FormControl variant="outlined" size="small" sx={{ minWidth: 140 }}>
           <InputLabel>Formule</InputLabel>
-          <Select
-            value={planFilter}
-            onChange={(e) => setPlanFilter(e.target.value)}
-            label="Formule"
-          >
-            <MenuItem value="all">Toutes les formules</MenuItem>
+          <Select value={formuleFilter} onChange={e => { setFormuleFilter(e.target.value); setPage(0); }} label="Formule">
+            <MenuItem value="all">Toutes</MenuItem>
             <MenuItem value="BLEU">BLEU</MenuItem>
             <MenuItem value="GOLD">GOLD</MenuItem>
             <MenuItem value="PLATINUM">PLATINUM</MenuItem>
@@ -235,59 +180,57 @@ const SubscriptionsPage = () => {
         </FormControl>
       </Paper>
 
+      {error && <Box className="message-erreur" mb={2}><Typography color="error">{error}</Typography></Box>}
+
       {loading ? (
-        <Box className="spinner-center">
-          <CircularProgress size={60} />
-        </Box>
-      ) : error ? (
-        <Box className="message-erreur">
-          <Typography>{error}</Typography>
-        </Box>
+        <Box className="spinner-center"><CircularProgress color="success" /></Box>
       ) : (
         <>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+            <Table size="small">
+              <TableHead sx={{ backgroundColor: '#f8fafc' }}>
                 <TableRow>
-                  <TableCell>Utilisateur</TableCell>
-                  <TableCell>Formule</TableCell>
-                  <TableCell>Référence</TableCell>
-                  <TableCell>Date de début</TableCell>
-                  <TableCell>Date de fin</TableCell>
-                  <TableCell>Statut</TableCell>
-                  <TableCell>Actions</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Utilisateur</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Formule</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Montant</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Début</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Expiration</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Statut</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedSubscriptions.map((subscription) => (
-                  <TableRow key={subscription._id}>
+                {paginated.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 4, color: '#94a3b8' }}>
+                      Aucun abonnement trouvé
+                    </TableCell>
+                  </TableRow>
+                ) : paginated.map(s => (
+                  <TableRow key={s.id} hover sx={{ '&:hover': { backgroundColor: '#f0fdf4' } }}>
                     <TableCell>
-                      {subscription.user?.nom ? (
-                        <div>
-                          <div>{subscription.user.nom}</div>
-                          <div className="cellule-email">{subscription.user.email}</div>
-                        </div>
+                      <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{s.userNom}</div>
+                      <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{s.userEmail}</div>
+                    </TableCell>
+                    <TableCell>
+                      <Chip label={s.formule} color={FORMULE_COLOR[s.formule] || 'default'} size="small" />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#16a34a', fontSize: '0.88rem' }}>
+                      {(s.montant || 0).toLocaleString('fr-FR')} XOF
+                    </TableCell>
+                    <TableCell sx={{ fontSize: '0.82rem', color: '#64748b' }}>{fmt(s.dateDebut)}</TableCell>
+                    <TableCell sx={{ fontSize: '0.82rem', color: s.isActive ? '#64748b' : '#dc2626' }}>
+                      {fmt(s.dateExpiration)}
+                    </TableCell>
+                    <TableCell>
+                      {s.status === 'cancelled' ? (
+                        <Chip label="Annulé" color="default" size="small" />
+                      ) : s.status === 'pending' ? (
+                        <Chip label="En attente" color="warning" size="small" />
+                      ) : s.isActive ? (
+                        <Chip label="Actif" color="success" size="small" />
                       ) : (
-                        'Utilisateur inconnu'
+                        <Chip label="Expiré" color="error" size="small" />
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Chip label={subscription.plan} color={getPlanColor(subscription.plan)} size="small" />
-                    </TableCell>
-                    <TableCell>{subscription.reference}</TableCell>
-                    <TableCell>{formatDate(subscription.startDate)}</TableCell>
-                    <TableCell>{formatDate(subscription.endDate)}</TableCell>
-                    <TableCell>
-                      <Chip label={subscription.status} color={getStatusColor(subscription.status)} size="small" />
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => alert(`Détails de l'abonnement ${subscription.reference}`)}
-                      >
-                        Détails
-                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -296,14 +239,14 @@ const SubscriptionsPage = () => {
           </TableContainer>
 
           <TablePagination
-            rowsPerPageOptions={[5, 10, 25]}
+            rowsPerPageOptions={[10, 25, 50]}
             component="div"
-            count={filteredSubscriptions.length}
+            count={filtered.length}
             rowsPerPage={rowsPerPage}
             page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage="Lignes par page:"
+            onPageChange={(_, p) => setPage(p)}
+            onRowsPerPageChange={e => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+            labelRowsPerPage="Lignes par page :"
           />
         </>
       )}

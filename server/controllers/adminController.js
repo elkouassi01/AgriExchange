@@ -318,39 +318,82 @@ const getTransactions = async (req, res) => {
 const getSubscriptions = async (req, res) => {
   try {
     const pool = getMysqlPool();
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, formule, page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page, 10);
+    const limitNum = parseInt(limit, 10);
+    const offset = (pageNum - 1) * limitNum;
 
-    let query = 'SELECT * FROM abonnements WHERE 1 = 1';
+    const conditions = [];
     const values = [];
+    if (status === 'active')    { conditions.push('a.date_expiration >= NOW() AND a.status = ?'); values.push('active'); }
+    else if (status === 'expired')   { conditions.push('a.date_expiration < NOW()'); }
+    else if (status === 'cancelled') { conditions.push('a.status = ?'); values.push('cancelled'); }
+    else if (status === 'pending')   { conditions.push('a.status = ?'); values.push('pending'); }
+    if (formule) { conditions.push('a.formule = ?'); values.push(formule); }
 
-    if (status === 'active') {
-      query += ' AND date_expiration >= NOW()';
-    } else if (status === 'expired') {
-      query += ' AND date_expiration < NOW()';
-    } else if (status === 'pending') {
-      query += ' AND status = ?';
-      values.push('pending');
-    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    query += ' ORDER BY date_debut DESC LIMIT ? OFFSET ?';
-    values.push(parseInt(limit, 10), (page - 1) * parseInt(limit, 10));
-
-    const [[totalRow], [rows]] = await Promise.all([
-      pool.query('SELECT COUNT(*) AS total FROM abonnements'),
-      pool.query(query, values),
+    const [[statsRow], [countRow], [rows]] = await Promise.all([
+      pool.query(`
+        SELECT
+          COUNT(*)                                                    AS total,
+          SUM(date_expiration >= NOW() AND status = 'active')        AS active,
+          SUM(date_expiration < NOW())                                AS expired,
+          SUM(status = 'cancelled')                                   AS cancelled,
+          SUM(status = 'pending')                                     AS pending,
+          COALESCE(SUM(montant), 0)                                   AS total_revenue,
+          SUM(formule = 'BLEU')                                       AS bleu,
+          SUM(formule = 'GOLD')                                       AS gold,
+          SUM(formule = 'PLATINUM')                                   AS platinum
+        FROM abonnements`),
+      pool.query(`SELECT COUNT(*) AS total FROM abonnements a ${where}`, values),
+      pool.query(
+        `SELECT a.*, u.nom AS user_nom, u.email AS user_email
+         FROM abonnements a
+         LEFT JOIN users u ON u.id = a.utilisateur_id
+         ${where}
+         ORDER BY a.date_debut DESC LIMIT ? OFFSET ?`,
+        [...values, limitNum, offset]
+      ),
     ]);
 
-    const total = parseInt(totalRow.total, 10);
+    const subscriptions = rows.map(r => ({
+      id: r.id,
+      formule: r.formule,
+      montant: Number(r.montant),
+      dateDebut: r.date_debut,
+      dateExpiration: r.date_expiration,
+      status: r.status,
+      isActive: new Date(r.date_expiration) >= new Date() && r.status === 'active',
+      transactionId: r.transaction_id,
+      createdAt: r.created_at,
+      userNom: r.user_nom || 'Inconnu',
+      userEmail: r.user_email || '—',
+    }));
 
     res.json({
-      data: rows,
+      data: subscriptions,
+      stats: {
+        total:        parseInt(statsRow[0].total        || 0),
+        active:       parseInt(statsRow[0].active       || 0),
+        expired:      parseInt(statsRow[0].expired      || 0),
+        cancelled:    parseInt(statsRow[0].cancelled    || 0),
+        pending:      parseInt(statsRow[0].pending      || 0),
+        totalRevenue: parseFloat(statsRow[0].total_revenue || 0),
+        byFormule: {
+          BLEU:     parseInt(statsRow[0].bleu     || 0),
+          GOLD:     parseInt(statsRow[0].gold     || 0),
+          PLATINUM: parseInt(statsRow[0].platinum || 0),
+        },
+      },
       pagination: {
-        currentPage: parseInt(page, 10),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
+        currentPage: pageNum,
+        totalPages: Math.ceil(parseInt(countRow[0].total, 10) / limitNum),
+        totalItems: parseInt(countRow[0].total, 10),
       },
     });
   } catch (error) {
+    console.error('Get subscriptions error:', error);
     res.status(500).json({ code: 'SUBSCRIPTION_FETCH_ERROR', message: 'Échec de récupération des abonnements' });
   }
 };

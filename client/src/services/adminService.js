@@ -49,7 +49,7 @@ export const fetchTransactions = async () => {
 // 🔹 Récupère la liste des abonnements
 export const fetchSubscriptions = async () => {
   try {
-    const response = await api.get('/admin/subscriptions');
+    const response = await api.get('/admin/abonnements');
     return response.data;
   } catch (error) {
     const message = error.response?.data?.message || "Erreur lors de la récupération des abonnements";
