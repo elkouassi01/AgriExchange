@@ -189,7 +189,8 @@ const connectToMysql = async () => {
   console.log('MySQL connected');
   const { ensureTables } = require('./repositories/mysqlContactRequestRepository');
   await ensureTables();
-  const { ensureIndexes } = require('./utils/dbMigrations');
+  const { ensureIndexes, ensureColumns } = require('./utils/dbMigrations');
+  await ensureColumns();
   await ensureIndexes();
 };
 

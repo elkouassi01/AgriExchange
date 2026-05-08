@@ -1,5 +1,36 @@
 const { getMysqlPool } = require('../config/mysql');
 
+// Colonnes ajoutees apres le schema initial
+const REQUIRED_COLUMNS = [
+  { table: 'users', column: 'description', definition: 'TEXT NULL' },
+  { table: 'users', column: 'surface',     definition: 'VARCHAR(100) NULL' },
+];
+
+const columnExists = async (pool, table, column) => {
+  const [rows] = await pool.query(
+    'SELECT COUNT(*) AS cnt FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?',
+    [table, column]
+  );
+  return rows[0].cnt > 0;
+};
+
+const ensureColumn = async (pool, table, column, definition) => {
+  if (await columnExists(pool, table, column)) return;
+  try {
+    await pool.query('ALTER TABLE ' + table + ' ADD COLUMN ' + column + ' ' + definition);
+    console.log('[DB] Colonne ajoutee: ' + table + '.' + column);
+  } catch (e) {
+    console.warn('[DB] Colonne ignoree: ' + table + '.' + column + ' — ' + e.message.split('\n')[0]);
+  }
+};
+
+const ensureColumns = async () => {
+  const pool = getMysqlPool();
+  for (const { table, column, definition } of REQUIRED_COLUMNS) {
+    await ensureColumn(pool, table, column, definition);
+  }
+};
+
 // Index absents du schema initial — crees une seule fois au demarrage
 const REQUIRED_INDEXES = [
   { table: 'products',     name: 'idx_products_etat',              cols: 'etat' },
@@ -61,4 +92,4 @@ const ensureIndexes = async () => {
   }
 };
 
-module.exports = { ensureIndexes };
+module.exports = { ensureIndexes, ensureColumns };

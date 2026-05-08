@@ -4,3 +4,6 @@ export const PRICE_VISITOR = 300;
 
 // Image par defaut si le produit n'en a pas
 export const DEFAULT_PRODUCT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
+
+// Fin de la promo inscription gratuite agriculteurs (31 decembre 2026)
+export const PROMO_FIN_AGRICULTEUR = new Date('2026-12-31T23:59:59');

@@ -14,6 +14,8 @@ const mapUserRow = (row) => {
     fermeNom: row.ferme_nom,
     localisation: row.localisation,
     typeExploitation: row.type_exploitation,
+    surface: row.surface,
+    description: row.description,
     otp: row.otp,
     otpExpire: row.otp_expire,
     isVerified: Boolean(row.is_verified),
@@ -110,8 +112,8 @@ const createUser = async (data) => {
   await pool.query(
     `INSERT INTO users (
       id, nom, email, mot_de_passe, contact, role,
-      ferme_nom, localisation, type_exploitation, is_verified
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ferme_nom, localisation, type_exploitation, surface, description, is_verified
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       data.nom,
@@ -122,6 +124,8 @@ const createUser = async (data) => {
       data.fermeNom || null,
       data.localisation || null,
       data.typeExploitation || null,
+      data.surface || null,
+      data.description || null,
       data.isVerified ? 1 : 0,
     ]
   );

@@ -4,9 +4,12 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
-const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
 const { isMysql } = require('../utils/authHelpers');
 const { sendWhatsApp } = require('../utils/whatsappClient');
+
+const VALID_FORMULES = ['BLEU', 'GOLD', 'PLATINUM'];
+
+const FORMULE_DURATIONS_MONTHS = { BLEU: 1, GOLD: 3, PLATINUM: 6 };
 
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
 
@@ -19,19 +22,28 @@ const sendOtpWhatsApp = async (phone, otp) => {
   await sendWhatsApp(phone, msg).catch((e) => console.error('[OTP WA]', e.message));
 };
 
-router.post('/inscription-gratuite', async (req, res) => {
+// POST /api/v1/inscription-gratuite
+router.post('/', async (req, res) => {
   try {
-    const { nom, email, motDePasse, contact, fermeNom, localisation, typeExploitation } = req.body;
+    const {
+      nom, email, motDePasse, contact,
+      fermeNom, localisation, typeExploitation,
+      surface, description,
+      formule: rawFormule,
+    } = req.body;
+
+    const formule = VALID_FORMULES.includes(rawFormule) ? rawFormule : 'BLEU';
+    const durationMonths = FORMULE_DURATIONS_MONTHS[formule];
 
     if (isMysql()) {
       const emailExists = await mysqlUserRepository.findUserByEmail(email);
       if (emailExists) {
-        return res.status(409).json({ message: "Email déjà utilisé." });
+        return res.status(409).json({ message: 'Email déjà utilisé.' });
       }
 
       const contactExists = await mysqlUserRepository.findUserByContact(contact);
       if (contactExists) {
-        return res.status(409).json({ message: "Contact déjà utilisé." });
+        return res.status(409).json({ message: 'Contact déjà utilisé.' });
       }
 
       const hashedPassword = await bcrypt.hash(motDePasse, 12);
@@ -45,22 +57,23 @@ router.post('/inscription-gratuite', async (req, res) => {
         fermeNom,
         localisation,
         typeExploitation,
+        surface: surface || null,
+        description: description || null,
         isVerified: false,
       });
 
       const dateDebut = new Date();
       const dateFin = new Date();
-      dateFin.setMonth(dateFin.getMonth() + 6);
+      dateFin.setMonth(dateFin.getMonth() + durationMonths);
 
       await mysqlUserRepository.updateUserSubscription(user.id, {
-        formule: 'BLEU',
+        formule,
         dateDebut,
         dateFin,
         montant: 0,
         statut: 'actif',
       });
 
-      // Génère et envoie l'OTP WhatsApp
       const otp = generateOtp();
       const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
       await mysqlUserRepository.updateUserOtp(user.id, otp, otpExpire);
@@ -69,24 +82,25 @@ router.post('/inscription-gratuite', async (req, res) => {
       return res.status(201).json({
         success: true,
         pendingVerification: true,
-        message: "Inscription réussie ! Vérifiez votre WhatsApp pour le code OTP.",
+        message: 'Inscription réussie ! Vérifiez votre WhatsApp pour le code OTP.',
         telephone: contact,
       });
     }
 
+    // MongoDB path
     const emailExists = await User.findOne({ email });
     if (emailExists) {
-      return res.status(409).json({ message: "Email déjà utilisé." });
+      return res.status(409).json({ message: 'Email déjà utilisé.' });
     }
 
     const contactExists = await User.findOne({ contact });
     if (contactExists) {
-      return res.status(409).json({ message: "Contact déjà utilisé." });
+      return res.status(409).json({ message: 'Contact déjà utilisé.' });
     }
 
     const dateDebut = new Date();
     const dateFin = new Date();
-    dateFin.setMonth(dateFin.getMonth() + 6);
+    dateFin.setMonth(dateFin.getMonth() + durationMonths);
 
     const nouvelUtilisateur = new User({
       nom,
@@ -97,6 +111,7 @@ router.post('/inscription-gratuite', async (req, res) => {
       fermeNom,
       localisation,
       typeExploitation,
+      description: description || '',
       status: 'active',
     });
 
@@ -110,7 +125,7 @@ router.post('/inscription-gratuite', async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: "Inscription gratuite réussie !",
+      message: 'Inscription gratuite réussie !',
       data: {
         id: nouvelUtilisateur._id,
         nom: nouvelUtilisateur.nom,
@@ -119,12 +134,12 @@ router.post('/inscription-gratuite', async (req, res) => {
       token,
     });
   } catch (err) {
-    console.error("Erreur inscription gratuite:", err);
+    console.error('Erreur inscription gratuite:', err);
     if (err.name === 'ValidationError') {
-      const messages = Object.values(err.errors).map(val => val.message);
+      const messages = Object.values(err.errors).map((val) => val.message);
       return res.status(400).json({ message: messages.join(', ') });
     }
-    res.status(500).json({ message: "Erreur interne du serveur" });
+    res.status(500).json({ message: 'Erreur interne du serveur' });
   }
 });
 

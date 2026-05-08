@@ -2,8 +2,7 @@ import React from "react";
 import { useNavigate, Link } from "react-router-dom";
 import "./OffersPage.css";
 import Footer from "./Footer";
-
-const promoFin = new Date("2026-04-01");
+import { PROMO_FIN_AGRICULTEUR } from "../config/constants";
 
 const OffersPage = () => {
   const navigate = useNavigate();
@@ -12,7 +11,8 @@ const OffersPage = () => {
     navigate(`/inscription?type=${type}&formule=${formule}`);
   };
 
-  const isPromoActive = new Date() < promoFin;
+  const isPromoActive = new Date() < PROMO_FIN_AGRICULTEUR;
+  const promoFin = PROMO_FIN_AGRICULTEUR;
 
   return (
     <div className="offers-container">

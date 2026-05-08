@@ -348,6 +348,199 @@ a:hover {
   text-decoration: underline;
 }
 
+/* ── Promo banner ── */
+.promo-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.9rem 1.2rem;
+  background: linear-gradient(135deg, #d5f5e3 0%, #a9dfbf 100%);
+  border: 1.5px solid #82e0aa;
+  border-radius: var(--radius);
+  color: #1e8449;
+}
+.promo-banner__icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+.promo-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.promo-banner__text strong {
+  font-size: 1rem;
+  font-weight: 700;
+}
+.promo-banner__text span {
+  font-size: 0.88rem;
+  opacity: 0.85;
+}
+
+/* ── Plan feature card ── */
+.plan-card {
+  border: 2px solid;
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.plan-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.plan-card__label {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.plan-card__duration {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  background: rgba(0,0,0,0.06);
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.plan-card__features {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.plan-card__features li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  color: var(--text-dark);
+}
+.plan-card__check {
+  font-weight: 700;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.plan-card__promo-note {
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  font-size: 0.88rem;
+  color: var(--text-dark);
+}
+.plan-card__free {
+  color: #1e8449;
+  font-size: 0.95rem;
+}
+
+/* ── formule-badge variants ── */
+.formule-badge--bleu   { background-color: #3498db; }
+.formule-badge--gold   { background-color: #e67e22; }
+.formule-badge--platinum { background-color: #8e44ad; }
+.formule-badge-price {
+  font-weight: 400;
+  font-size: 0.85em;
+  opacity: 0.9;
+}
+
+/* ── Form sections ── */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.5rem;
+  background: var(--bg-light);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.form-section + .form-section {
+  margin-top: 0.5rem;
+}
+.form-section__title {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 0.4rem;
+}
+
+/* ── Labels inside form-group ── */
+.form-group label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-dark);
+}
+.form-label-optional {
+  font-weight: 400;
+  color: var(--text-light);
+}
+.form-field-hint {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  margin-top: 0.3rem;
+}
+
+/* ── Submit button variants ── */
+.submit-btn {
+  width: 100%;
+  padding: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  background-color: var(--primary);
+  color: #fff;
+  transition: background-color var(--transition-speed), transform .08s, box-shadow var(--transition-speed);
+  box-shadow: 0 6px 22px rgba(46, 204, 113, 0.18);
+  margin-top: 0.5rem;
+}
+.submit-btn:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(39, 174, 96, 0.22);
+}
+.submit-btn:disabled {
+  background-color: var(--text-light);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.submit-btn--promo {
+  background: linear-gradient(135deg, #27ae60 0%, #1abc9c 100%);
+  box-shadow: 0 6px 22px rgba(39, 174, 96, 0.28);
+  font-size: 1.1rem;
+}
+.submit-btn--promo:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e8449 0%, #17a589 100%);
+}
+
+/* ── Submit error ── */
+.submit-error-banner {
+  padding: 0.8rem 1rem;
+  background: #fdecea;
+  border: 1.5px solid #f5c6cb;
+  border-radius: var(--radius);
+  color: var(--error);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* ── Footer hint ── */
+.form-footer-hint {
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--text-light);
+  margin-top: 0.5rem;
+}
+
 /* Ajoutez ceci à votre fichier InscriptionPage.css */
 
 /* Styles pour les drapeaux dans les options */
