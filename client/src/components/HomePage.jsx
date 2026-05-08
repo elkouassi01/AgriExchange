@@ -77,16 +77,16 @@ function HomePage() {
       </section>
 
       <section className="special-promo">
-        <div className="promo-card">
-          <div className="promo-badge">PROMO</div>
+        <div className="home-promo-card">
+          <div className="home-promo-badge">PROMO</div>
           <h2>Offre Speciale de Lancement !</h2>
-          <p className="promo-highlight">
+          <p className="home-promo-highlight">
             🎉 Offre speciale agriculteurs :
             <br />
             6 mois d'inscription 100% gratuite ! <strong>🎉</strong>
           </p>
           <p>Valable jusqu'au 31 Decembre 2026</p>
-          <Link to="/inscription?type=agriculteur&formule=OFFRE_GRATUITE" className="promo-button">
+          <Link to="/inscription?type=agriculteur&formule=BLEU" className="home-promo-button">
             Profiter de l'offre
           </Link>
         </div>

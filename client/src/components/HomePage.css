@@ -251,14 +251,14 @@
   box-shadow: 0 8px 20px rgba(218,27,96,0.25);
 }
 
-.promo-card {
+.home-promo-card {
   max-width: 800px;
   margin: 0 auto;
   position: relative;
   z-index: 2;
 }
 
-.promo-badge {
+.home-promo-badge {
   position: absolute;
   top: -15px;
   right: -15px;
@@ -272,7 +272,7 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.promo-highlight {
+.home-promo-highlight {
   font-size: 1.4rem;
   margin: 20px 0;
   background: rgba(255,255,255,0.3);
@@ -282,7 +282,7 @@
   font-weight: 700;
 }
 
-.promo-button {
+.home-promo-button {
   display: inline-block;
   background: white;
   color: #da1b60;
@@ -295,7 +295,7 @@
   box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
 
-.promo-button:hover {
+.home-promo-button:hover {
   background: #fff0f5;
   transform: translateY(-3px);
   box-shadow: 0 6px 15px rgba(0,0,0,0.3);
