@@ -50,12 +50,42 @@ const getDashboardStats = async (req, res) => {
       revenue: parseFloat(row.amount),
     }));
 
+    let contactStats = { pending: 0, responded: 0, expired: 0, refunded: 0 };
+    try {
+      const [[cr]] = await pool.query(`
+        SELECT
+          SUM(status = 'pending')   AS pending,
+          SUM(status = 'responded') AS responded,
+          SUM(status = 'expired')   AS expired,
+          SUM(status = 'refunded')  AS refunded
+        FROM contact_requests`);
+      contactStats = {
+        pending:   parseInt(cr.pending   || 0),
+        responded: parseInt(cr.responded || 0),
+        expired:   parseInt(cr.expired   || 0),
+        refunded:  parseInt(cr.refunded  || 0),
+      };
+    } catch {}
+
+    let productPayments = { count: 0, revenue: 0 };
+    try {
+      const [[pp]] = await pool.query(
+        `SELECT COUNT(*) AS count, COALESCE(SUM(amount), 0) AS revenue FROM product_payments WHERE status = 'paid'`
+      );
+      productPayments = { count: parseInt(pp.count || 0), revenue: parseFloat(pp.revenue || 0) };
+    } catch {}
+
+    let suspendedFarmers = 0;
+    try {
+      const [[sus]] = await pool.query(`SELECT COUNT(*) AS count FROM users WHERE suspended = 1`);
+      suspendedFarmers = parseInt(sus.count || 0);
+    } catch {}
+
     res.json({
       users: {
         total: parseInt(stats.total_users, 10),
         farmers: parseInt(stats.total_farmers, 10),
         consumers: parseInt(stats.total_consumers, 10),
-        growth: { total: 0, farmers: 0, consumers: 0 },
       },
       revenue: {
         total: parseFloat(stats.total_revenue),
@@ -72,8 +102,10 @@ const getDashboardStats = async (req, res) => {
         pending: transactionStatus.pending,
         failed: transactionStatus.failed,
       },
-      recentTransactions: [],
       activityData,
+      contactRequests: contactStats,
+      productPayments,
+      suspendedFarmers,
     });
   } catch (error) {
     console.error('Dashboard stats error:', error);

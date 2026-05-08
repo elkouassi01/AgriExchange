@@ -150,7 +150,7 @@ const ActivityChart = ({ data, title = 'Activité des utilisateurs', subtitle })
 
   // Formatage des données pour le graphique
   const chartData = {
-    labels: data.map(item => item.jour),
+    labels: data.map(item => item.mois),
     datasets: [
       {
         label: 'Transactions',

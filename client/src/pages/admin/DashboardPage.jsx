@@ -1,10 +1,8 @@
-// src/pages/admin/DashboardPage.jsx
 import './DashboardPage.css';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import StatCard from '../../components/admin/StatCard';
 import ActivityChart from '../../components/admin/ActivityChart';
-import RecentTransactions from '../../components/admin/RecentTransactions';
 import { fetchDashboardStats } from '../../services/adminService';
 
 const DashboardPage = () => {
@@ -13,18 +11,10 @@ const DashboardPage = () => {
   const { admin } = useAdminAuth();
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        const data = await fetchDashboardStats();
-        setStats(data);
-      } catch (error) {
-        console.error("Erreur lors du chargement des statistiques :", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadStats();
+    fetchDashboardStats()
+      .then(setStats)
+      .catch(err => console.error('Dashboard stats error:', err))
+      .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -36,147 +26,154 @@ const DashboardPage = () => {
     );
   }
 
+  const totalSubs = stats?.subscriptions?.reduce((a, s) => a + s.count, 0) || 0;
+
   return (
     <div className="dashboard-container">
+
       {/* En-tête */}
       <div className="dashboard-header">
         <div>
-          <h1 className="dashboard-title">Bienvenue {admin?.nom || 'Administrateur'} </h1>
-          <p className="dashboard-subtitle">Aperçu général de la plateforme AgriNet Exchange</p>
+          <h1 className="dashboard-title">Tableau de bord</h1>
+          <p className="dashboard-subtitle">Bonjour, {admin?.nom || 'Administrateur'} 👋</p>
         </div>
-        <div className="dashboard-header-right">
-          <div className="current-date">
-            <span className="date-day">{new Date().toLocaleDateString('fr-FR', { weekday: 'long' })}</span>
-            <span className="date-full">{new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-          </div>
+        <div className="current-date">
+          <span className="date-day">
+            {new Date().toLocaleDateString('fr-FR', { weekday: 'long' })}
+          </span>
+          <span className="date-full">
+            {new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
         </div>
       </div>
 
-      {/* Statistiques principales */}
+      {/* KPI */}
       <div className="stats-grid">
         <StatCard
           title="Utilisateurs"
           icon="👥"
-          value={stats?.totalUsers || 0}
-          change={stats?.userGrowth || 0}
-          description="vs mois précédent"
+          value={stats?.users?.total || 0}
+          change={0}
+          description="inscrits au total"
         />
         <StatCard
           title="Agriculteurs"
           icon="🌾"
-          value={stats?.totalFarmers || 0}
-          change={stats?.farmerGrowth || 0}
-          description="vs mois précédent"
+          value={stats?.users?.farmers || 0}
+          change={0}
+          description="comptes vendeurs"
         />
         <StatCard
           title="Consommateurs"
           icon="🛒"
-          value={stats?.totalConsumers || 0}
-          change={stats?.consumerGrowth || 0}
-          description="vs mois précédent"
+          value={stats?.users?.consumers || 0}
+          change={0}
+          description="comptes acheteurs"
         />
         <StatCard
           title="Revenu total"
-          icon="💳"
-          value={`${stats?.totalRevenue?.toLocaleString() || '0'} XOF`}
-          change={stats?.revenueGrowth || 0}
-          description="vs mois précédent"
+          icon="💰"
+          value={`${(stats?.revenue?.total || 0).toLocaleString('fr-FR')} XOF`}
+          change={stats?.revenue?.growth || 0}
+          description="transactions réussies"
         />
       </div>
 
-      {/* Graphiques et transactions */}
+      {/* Graphique + Stats transactions */}
       <div className="charts-container">
         <div className="activity-card">
           <div className="card-header">
             <h2 className="card-title">Activité mensuelle</h2>
-            <div className="card-actions">
-              <button className="time-filter active">30j</button>
-              <button className="time-filter">90j</button>
-              <button className="time-filter">1an</button>
-            </div>
           </div>
           <ActivityChart data={stats?.activityData || []} />
         </div>
 
         <div className="transactions-card">
           <div className="card-header">
-            <h2 className="card-title">Transactions récentes</h2>
-            <button className="view-all-btn">Voir tout</button>
+            <h2 className="card-title">Transactions</h2>
           </div>
-          <RecentTransactions transactions={stats?.recentTransactions || []} />
+          <div className="stats-boxes">
+            <StatBox label="Total"      value={stats?.transactions?.total     || 0} bg="blue"   />
+            <StatBox label="Réussies"   value={stats?.transactions?.completed || 0} bg="green"  />
+            <StatBox label="En attente" value={stats?.transactions?.pending   || 0} bg="yellow" />
+            <StatBox label="Échouées"   value={stats?.transactions?.failed    || 0} bg="red"    />
+          </div>
         </div>
       </div>
 
-      {/* Abonnements et statistiques supplémentaires */}
+      {/* Bas de page */}
       <div className="bottom-grid">
+
+        {/* Abonnements */}
         <div className="subscriptions-card">
           <div className="card-header">
             <h2 className="card-title">Abonnements actifs</h2>
+            <span className="badge-count">{totalSubs}</span>
           </div>
           <div className="subscriptions-content">
-            {stats?.activeSubscriptions?.length > 0 ? (
-              <>
-                <div className="subscriptions-chart">
-                  {stats.activeSubscriptions.map((sub, idx) => (
-                    <div 
-                      key={idx} 
-                      className="subscription-bar"
-                      style={{ height: `${(sub.count / stats.activeSubscriptions.reduce((acc, curr) => acc + curr.count, 0)) * 100}%` }}
-                    >
-                      <div className="bar-value">{sub.count}</div>
-                      <div className="bar-label capitalize">{sub.formule}</div>
-                    </div>
-                  ))}
-                </div>
-                <ul className="subscriptions-list">
-                  {stats.activeSubscriptions.map((sub, idx) => (
-                    <li key={idx} className="subscription-item">
+            {totalSubs > 0 ? (
+              <ul className="subscriptions-list">
+                {stats.subscriptions.map((sub, i) => {
+                  const pct = totalSubs ? Math.round((sub.count / totalSubs) * 100) : 0;
+                  return (
+                    <li key={i} className="subscription-item">
                       <div className="subscription-info">
-                        <span className="subscription-name capitalize">{sub.formule}</span>
+                        <span className={`sub-dot sub-${sub.formule.toLowerCase()}`}></span>
+                        <span className="subscription-name">{sub.formule}</span>
                         <span className="subscription-count">{sub.count} abonnés</span>
                       </div>
-                      <div className="subscription-percent">
-                        {Math.round((sub.count / stats.activeSubscriptions.reduce((acc, curr) => acc + curr.count, 0)) * 100)}%
+                      <div className="subscription-bar-row">
+                        <div className="subscription-bar-track">
+                          <div
+                            className={`subscription-bar-fill fill-${sub.formule.toLowerCase()}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <span className="subscription-percent">{pct}%</span>
                       </div>
                     </li>
-                  ))}
-                </ul>
-              </>
+                  );
+                })}
+              </ul>
             ) : (
               <p className="empty-state">Aucun abonnement actif</p>
             )}
           </div>
         </div>
 
-        <div className="transaction-stats-card">
+        {/* Demandes vendeur */}
+        <div className="contact-card">
           <div className="card-header">
-            <h2 className="card-title">Statistiques des transactions</h2>
+            <h2 className="card-title">Demandes vendeur</h2>
           </div>
           <div className="stats-boxes">
-            <StatBox label="Total" value={stats?.totalTransactions || 0} bg="blue" />
-            <StatBox label="Réussies" value={stats?.completedTransactions || 0} bg="green" />
-            <StatBox label="En attente" value={stats?.pendingTransactions || 0} bg="yellow" />
-            <StatBox label="Échouées" value={stats?.failedTransactions || 0} bg="red" />
+            <StatBox label="En attente" value={stats?.contactRequests?.pending   || 0} bg="yellow" />
+            <StatBox label="Répondus"   value={stats?.contactRequests?.responded || 0} bg="green"  />
+            <StatBox label="Expirés"    value={stats?.contactRequests?.expired   || 0} bg="red"    />
+            <StatBox label="Paiements"  value={stats?.productPayments?.count     || 0} bg="blue"   />
           </div>
+          <div className="payment-revenue">
+            <span>Revenus coordonnées vendeur</span>
+            <strong>{(stats?.productPayments?.revenue || 0).toLocaleString('fr-FR')} XOF</strong>
+          </div>
+          {(stats?.suspendedFarmers || 0) > 0 && (
+            <div className="suspended-alert">
+              ⚠️ {stats.suspendedFarmers} agriculteur(s) suspendu(s) — en attente de régularisation
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   );
 };
 
-// Boîte statique de transaction
 const StatBox = ({ label, value, bg }) => {
-  const bgColor = {
-    blue: 'stat-box-blue',
-    green: 'stat-box-green',
-    yellow: 'stat-box-yellow',
-    red: 'stat-box-red',
-  };
-
+  const cls = { blue: 'stat-box-blue', green: 'stat-box-green', yellow: 'stat-box-yellow', red: 'stat-box-red' };
   return (
-    <div className={`stat-box ${bgColor[bg]}`}>
-      <p className="stat-box-label">{label}</p>
+    <div className={`stat-box ${cls[bg]}`}>
       <p className="stat-box-value">{value}</p>
+      <p className="stat-box-label">{label}</p>
     </div>
   );
 };

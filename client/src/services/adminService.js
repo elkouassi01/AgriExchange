@@ -60,7 +60,7 @@ export const fetchSubscriptions = async () => {
 // 🔹 Statistiques pour le tableau de bord admin
 export const fetchDashboardStats = async () => {
   try {
-    const response = await api.get('/admin/dashboard-stats');
+    const response = await api.get('/admin/dashboard');
     return response.data;
   } catch (error) {
     const message = error.response?.data?.message || "Erreur lors de la récupération des statistiques du tableau de bord";

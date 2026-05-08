@@ -1,5 +1,6 @@
 // src/components/admin/StatCard.jsx
 import React from 'react';
+import './StatCard.css';
 
 const StatCard = ({ title, value, icon, change, description }) => {
   const isPositive = change >= 0;
