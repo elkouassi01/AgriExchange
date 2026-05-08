@@ -6,10 +6,15 @@ const PromoBanner = () => {
   const [currentPromoIndex, setCurrentPromoIndex] = useState(0);
   
   const promotions = [
-    "🎉 Nouveauté ! - tous les contacts sont certifés",
-    "🚚 Le consommateur peut discuter de l a livraison lui meme avec le vendeur",
-    "🌱 Eléveurs et Cultivateur rejoignez-nous gratuitement et exposé vos produits librement",
-    "⭐ Abonnement GOLD pour les consommateurs: 3 mois offerts pour tout nouvel abonnement !"
+    "🎉 Agriculteurs — Inscription 100% GRATUITE jusqu'au 31 décembre 2026, quelle que soit la formule !",
+    "🌾 Des centaines de produits agricoles frais disponibles — légumes, céréales, fruits, élevage et plus encore",
+    "📞 Obtenez les coordonnées d'un vendeur dès 150 FCFA pour les membres, 300 FCFA sans compte",
+    "🔒 Paiements sécurisés via CinetPay — Mobile Money, carte bancaire, Orange Money acceptés",
+    "🚚 Discutez directement avec l'agriculteur pour organiser la livraison selon vos besoins",
+    "✅ Tous les contacts vendeurs sont vérifiés — achetez en toute confiance",
+    "📲 Recevez vos confirmations d'achat directement sur WhatsApp après chaque transaction",
+    "🌱 Éleveurs et cultivateurs — rejoignez-nous gratuitement et publiez vos produits dès aujourd'hui",
+    "⭐ Formule PLATINUM agriculteur : visibilité maximale, produits illimités et support prioritaire",
   ];
 
   useEffect(() => {
