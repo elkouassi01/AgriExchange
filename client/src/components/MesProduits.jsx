@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './MesProduits.css';
-import { buildApiUrl, buildUploadUrl } from '../config/api';
+import { buildUploadUrl } from '../config/api';
+import api from '../services/axiosConfig';
 
 const MesProduits = () => {
   const [produits, setProduits] = useState([]);
@@ -22,23 +23,8 @@ const MesProduits = () => {
       setLoading(true);
       setError(null);
 
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('Vous devez etre connecte pour voir vos produits');
-      }
-
-      const response = await fetch(buildApiUrl('/products/my-products'), {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || `Erreur ${response.status}: ${response.statusText}`);
-      }
+      const res = await api.get('/products/my-products');
+      const data = res.data;
 
       let produitsData = [];
       if (Array.isArray(data)) produitsData = data;
@@ -46,7 +32,6 @@ const MesProduits = () => {
       else if (data.success && Array.isArray(data.data?.products)) produitsData = data.data.products;
       else if (data.success && Array.isArray(data.data)) produitsData = data.data;
       else if (Array.isArray(data.data)) produitsData = data.data;
-      else throw new Error("Format de reponse inattendu de l'API");
 
       setProduits(
         produitsData.map((produit) => ({
@@ -63,18 +48,13 @@ const MesProduits = () => {
         }))
       );
     } catch (err) {
-      let errorMessage = err.message || 'Erreur lors du chargement des produits';
-
-      if (err.message.includes('Failed to fetch') || err.message.includes('Network Error')) {
-        errorMessage = 'Impossible de se connecter au serveur. Verifiez votre connexion Internet.';
-      } else if (err.message.includes('401') || err.message.includes('token')) {
-        errorMessage = 'Session expiree. Veuillez vous reconnecter.';
+      const status = err.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Session expirée. Veuillez vous reconnecter.');
         setTimeout(() => navigate('/login'), 2000);
-      } else if (err.message.includes('404')) {
-        errorMessage = "Endpoint non trouve. Verifiez l'URL de l'API.";
+      } else {
+        setError(err.response?.data?.message || err.message || 'Erreur lors du chargement des produits');
       }
-
-      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,21 +66,11 @@ const MesProduits = () => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(buildApiUrl(`/products/${produitId}`), {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.message || 'Erreur lors de la suppression');
-      }
-
+      await api.delete(`/products/${produitId}`);
       setProduits((prev) => prev.filter((produit) => produit.id !== produitId));
       alert('Produit supprime avec succes.');
     } catch (err) {
-      alert(`Erreur lors de la suppression: ${err.message}`);
+      alert(`Erreur lors de la suppression: ${err.response?.data?.message || err.message}`);
     }
   };
 

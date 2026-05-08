@@ -162,9 +162,14 @@ function ProductDetail() {
     }
   };
 
-  const handleVisitorPay = (e) => {
+  const handleVisitorPay = async (e) => {
     e.preventDefault();
     setShowLoginModal(false);
+    // Envoyer le message WhatsApp de bienvenue (sans bloquer le paiement)
+    api.post('/auth/welcome-visitor', {
+      phone: visitorForm.phone,
+      email: visitorForm.email,
+    }).catch(() => {/* silencieux — le paiement continue même si le WA échoue */});
     initiatePayment({ email: visitorForm.email, phone: visitorForm.phone });
   };
 

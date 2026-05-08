@@ -1,77 +1,143 @@
-/* Structure générale */
+/* ── Layout ── */
 .users-page {
   padding: 24px;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f9fafb;
+  min-height: 100%;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f9fafb;
   color: #111827;
+  gap: 0;
 }
 
-/* En-tête */
 .users-header {
-  margin-bottom: 24px;
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1f2937;
+  margin-bottom: 20px;
 }
 
-/* Barre de recherche */
-.users-search-bar {
-  padding: 16px;
+/* ── Error ── */
+.users-error {
+  padding: 14px 18px;
+  background: #fef2f2;
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+  margin-bottom: 16px;
+}
+
+/* ── Stat cards ── */
+.users-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.ustat-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
-  background-color: #ffffff;
+  gap: 12px;
+  padding: 14px 18px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  min-width: 130px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  max-width: 200px;
 }
 
-/* Chargement */
+.ustat-card--warn {
+  border-color: #fed7aa;
+  background: #fff7ed;
+}
+
+.ustat-icon {
+  font-size: 1.25rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ustat-icon--gray    { background: #f1f5f9; }
+.ustat-icon--green   { background: #dcfce7; }
+.ustat-icon--blue    { background: #dbeafe; }
+.ustat-icon--emerald { background: #d1fae5; }
+.ustat-icon--orange  { background: #ffedd5; }
+
+.ustat-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ustat-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1;
+}
+
+.ustat-value--warn { color: #c2410c; }
+
+.ustat-label {
+  font-size: 0.73rem;
+  color: #6b7280;
+  margin-top: 3px;
+  white-space: nowrap;
+}
+
+/* ── Search bar ── */
+.users-search-bar {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  background: #fff !important;
+  border-radius: 12px !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ── Loading ── */
 .users-loading {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 300px;
-  font-size: 1.25rem;
-  color: #6b7280;
+  height: 280px;
 }
 
-/* Erreur */
-.users-error {
-  padding: 24px;
-  background-color: #fdecea;
-  border-radius: 8px;
-  color: #d32f2f;
-  text-align: center;
-  font-weight: 600;
-}
-
-/* Tableau */
+/* ── Table wrapper ── */
 .users-table {
-  height: 70vh;
+  height: 65vh;
   width: 100%;
   flex-grow: 1;
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
 }
 
-/* Colonnes personnalisées */
-
-/* Colonne "Nom" */
+/* ── User cell ── */
 .user-nom {
   display: flex;
   align-items: center;
-  gap: 0px;
+  gap: 10px;
+  width: 100%;
+  overflow: hidden;
 }
 
 .user-avatar {
   width: 36px;
   height: 36px;
-  font-size: 0.9rem;
-  background-color: #e0f2fe;
-  color: #0369a1;
-  font-weight: bold;
+  font-size: 0.88rem;
+  color: #fff;
+  font-weight: 700;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -80,45 +146,130 @@
   user-select: none;
 }
 
-/* Nom principal */
+.user-nom-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .user-nom-principal {
   font-weight: 600;
   color: #111827;
-  font-size: 0.95rem;
-  line-height: 1.2;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Email (sous-texte) */
 .user-email {
-  font-size: 0.75rem;
-  color: #6b7280;
+  font-size: 0.72rem;
+  color: #9ca3af;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Contact */
 .user-contact {
   color: #374151;
   font-size: 0.85rem;
   font-weight: 500;
 }
 
-/* Actions */
+.user-date {
+  color: #6b7280;
+  font-size: 0.82rem;
+}
+
+.user-muted {
+  color: #d1d5db;
+  font-size: 0.85rem;
+}
+
+/* ── Plan badge ── */
+.user-plan-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1.5px solid;
+  border-radius: 6px;
+  padding: 2px 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.user-plan-none {
+  color: #d1d5db;
+  font-size: 0.8rem;
+}
+
+/* ── Status cell ── */
+.user-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.user-status-flags {
+  display: flex;
+  gap: 3px;
+}
+
+.status-flag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.status-flag--ok   { background: #dcfce7; color: #15803d; }
+.status-flag--warn { background: #fef9c3; color: #92400e; }
+.status-flag--err  { background: #fee2e2; color: #b91c1c; }
+
+/* ── Actions ── */
 .user-actions {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
 }
 
-.user-actions button {
-  background-color: #10b981;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+/* ── Detail modal grid ── */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 10px 16px;
+  align-items: start;
 }
 
-.user-actions button:hover {
-  background-color: #059669;
+.detail-divider {
+  grid-column: 1 / -1;
+  height: 1px;
+  background: #f1f5f9;
+  margin: 2px 0;
+}
+
+.detail-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding-top: 3px;
+}
+
+.detail-value {
+  font-size: 0.88rem;
+  color: #111827;
+  line-height: 1.4;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .users-page { padding: 16px; }
+  .ustat-card { min-width: 0; flex: 1 1 calc(50% - 6px); max-width: none; }
+  .users-table { height: 55vh; }
 }

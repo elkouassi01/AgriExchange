@@ -20,9 +20,16 @@ const mapUserRow = (row) => {
     otpExpire: row.otp_expire,
     isVerified: Boolean(row.is_verified),
     estActif: Boolean(row.est_actif),
+    suspended: Boolean(row.suspended || 0),
+    suspendedAt: row.suspended_at || null,
     derniereConnexion: row.derniere_connexion,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    abonnement: row.sub_formule ? {
+      formule: row.sub_formule,
+      status: row.sub_status,
+      dateExpiration: row.sub_date_expiration,
+    } : null,
   };
 };
 
@@ -188,20 +195,33 @@ const listUsers = async (filters = {}, pagination = {}) => {
   const pool = getMysqlPool();
   const { page = 1, limit = 10, role, search } = pagination;
 
-  let query = 'SELECT * FROM users WHERE 1 = 1';
+  let query = `
+    SELECT u.*,
+      a.formule        AS sub_formule,
+      a.status         AS sub_status,
+      a.date_expiration AS sub_date_expiration
+    FROM users u
+    LEFT JOIN abonnements a ON a.utilisateur_id = u.id
+      AND a.id = (
+        SELECT id FROM abonnements
+        WHERE utilisateur_id = u.id
+        ORDER BY date_debut DESC LIMIT 1
+      )
+    WHERE 1 = 1
+  `;
   const values = [];
 
   if (role) {
-    query += ' AND role = ?';
+    query += ' AND u.role = ?';
     values.push(role);
   }
 
   if (search) {
-    query += ' AND (nom LIKE ? OR email LIKE ?)';
+    query += ' AND (u.nom LIKE ? OR u.email LIKE ?)';
     values.push(`%${search}%`, `%${search}%`);
   }
 
-  query += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+  query += ' ORDER BY u.created_at DESC LIMIT ? OFFSET ?';
   values.push(limit, (page - 1) * limit);
 
   const [rows] = await pool.query(query, values);

@@ -1,290 +1,206 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { Link } from "react-router-dom";
-import axios from "axios";
-import "./ConsumerDashboard.css";
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  ShoppingCart,
-  Heart,
-  User,
-  ScrollText,
-  Eye,
-  AlertCircle,
-  Timer,
-  RefreshCw
-} from "lucide-react";
-import { useUser } from "../contexts/UserContext";
+  ShoppingBag, Phone, User, TrendingUp,
+  CheckCircle, Clock, XCircle, RefreshCw,
+  MapPin, ShoppingCart,
+} from 'lucide-react';
+import './ConsumerDashboard.css';
+import { useUser } from '../contexts/UserContext';
+import api from '../services/axiosConfig';
+
+const STATUS_META = {
+  pending:   { label: 'En attente',  icon: Clock,        cls: 'status--pending'   },
+  responded: { label: 'Répondu',     icon: CheckCircle,  cls: 'status--responded' },
+  expired:   { label: 'Expiré',      icon: XCircle,      cls: 'status--expired'   },
+  refunded:  { label: 'Remboursé',   icon: RefreshCw,    cls: 'status--refunded'  },
+};
+
+const fmtPrice = (n) => `${Number(n).toLocaleString('fr-FR')} FCFA`;
+
+const fmtDate = (d) => {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 const ConsumerDashboard = () => {
   const { user, loading: userLoading } = useUser();
-  const [abonnementData, setAbonnementData] = useState(null);
-  const [error, setError] = useState(null);
-  const [expired, setExpired] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [daysRemaining, setDaysRemaining] = useState(0);
-  const [viewsUsed, setViewsUsed] = useState(0);
+  const [contacts, setContacts]   = useState([]);
+  const [stats, setStats]         = useState({ total: 0, actifs: 0, depense: 0 });
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
 
-   /**
-    * 🔁 Récupère les infos d'abonnement à partir de l'ID utilisateur
-    */
-   const fetchAbonnement = useCallback(async () => {
-     // Définir les quotas de vues par formule
-     const FORMULE_QUOTAS = {
-       BLEU: 1,
-       GOLD: 5,
-       PLATINUM: Infinity  // Illimité
-     };
-     if (!user || !user._id) {
-       console.warn("❌ Aucun utilisateur authentifié !");
-       setError("Utilisateur non authentifié");
-       return;
-     }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const res = await axios.get(`/api/v1/users/${user._id}/forfait`, {
-          withCredentials: true,
-        });
-
-        const data = res.data;
-        console.log("✅ Données abonnement :", data);
-
-        // Vérifier si l'abonnement est présent
-        if (!data.abonnement || !data.abonnement.statut) {
-          setExpired(false);
-          setAbonnementData(null);
-          return;
-        }
-
-        // Vérifier si l'abonnement est actif et non expiré
-        const today = new Date();
-        const endDate = new Date(data.abonnement.dateFin);
-        
-        // Calculer les jours restants (même si expiré)
-        const diffTime = endDate - today;
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        setDaysRemaining(diffDays > 0 ? diffDays : 0);
-        
-        // Calculer les vues utilisées
-        const viewsCount = data.productViews?.length || 0;
-        setViewsUsed(viewsCount);
-        
-        // Déterminer le quota en fonction de la formule
-        const formule = data.abonnement.formule;
-        const quota = FORMULE_QUOTAS[formule] || 0;
-        
-        // Calculer les vues restantes (sauf pour PLATINUM qui est illimité)
-        const remainingViews = formule === "PLATINUM" 
-          ? Infinity 
-          : Math.max(0, quota - viewsCount);
-
-        // Vérifier l'expiration
-        const isExpired = endDate < today;
-        setExpired(isExpired);
-
-        // Toujours mettre à jour les données d'abonnement
-        setAbonnementData({
-          formule,
-          dateFin: data.abonnement.dateFin,
-          montant: data.abonnement.montant,
-          quotaTotal: quota,
-          quotaRestant: remainingViews,
-          statut: data.abonnement.statut
-        });
-
-      } catch (err) {
-        console.error("❌ Erreur récupération abonnement :", err);
-        setError("Impossible de récupérer les informations de votre abonnement.");
-        setAbonnementData(null);
-        setExpired(false);
-      } finally {
-        setLoading(false);
-      }
-   }, [user]);
-
-  /**
-   * ▶️ Déclenche le chargement après que le user soit dispo
-   */
-  useEffect(() => {
-    if (!userLoading && user && user._id) {
-      fetchAbonnement();
+  const fetchContacts = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get('/auth/mes-contacts');
+      setContacts(res.data.contacts || []);
+      setStats(res.data.stats   || { total: 0, actifs: 0, depense: 0 });
+    } catch {
+      setError('Impossible de charger vos contacts débloqués.');
+    } finally {
+      setLoading(false);
     }
-  }, [fetchAbonnement, userLoading, user]);
+  }, []);
 
-  /**
-   * 🔃 Affichage tant que user en attente
-   */
+  useEffect(() => {
+    if (!userLoading && user) fetchContacts();
+  }, [fetchContacts, userLoading, user]);
+
+  const today = new Date().toLocaleDateString('fr-FR', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+
   if (userLoading) {
     return (
-      <main className="dashboard-container">
-        <div className="spinner"></div>
-        <p>Chargement du profil utilisateur...</p>
-      </main>
+      <div className="cd-container">
+        <div className="cd-spinner" />
+      </div>
     );
   }
 
-  // Fonction pour formater la date
-  const formatDate = (dateString) => {
-    if (!dateString) return "Non spécifiée";
-    const options = { year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('fr-FR', options);
-  };
-
-  // Formater le montant
-  const formatMontant = (montant) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF',
-      minimumFractionDigits: 0
-    }).format(montant);
-  };
-
-  // Obtenir le nom affichable de la formule
-  const getFormuleDisplayName = (formule) => {
-    const noms = {
-      BLEU: "Bleu",
-      GOLD: "Gold",
-      PLATINUM: "Platinum"
-    };
-    return noms[formule] || formule;
-  };
-
-  /**
-   * 🧑‍💼 Rendu principal du tableau de bord consommateur
-   */
   return (
-    <main className="dashboard-container" aria-live="polite" aria-busy={loading}>
-      <h1>
-        Bienvenue, <span className="user-name">{user?.prenom || user?.nom || "Utilisateur"}</span>
-      </h1>
+    <div className="cd-container" role="main">
+
+      {/* ── Header ── */}
+      <div className="cd-header">
+        <div className="cd-header__left">
+          <div className="cd-header__icon">
+            <ShoppingBag size={26} strokeWidth={1.8} />
+          </div>
+          <div>
+            <h1 className="cd-greeting">
+              Bonjour, <span className="cd-greeting__name">{user?.nom || 'Acheteur'}</span>
+            </h1>
+            <div className="cd-header__meta">
+              {user?.localisation && (
+                <span className="cd-meta-chip">
+                  <MapPin size={12} /> {user.localisation}
+                </span>
+              )}
+            </div>
+            <p className="cd-header__date">{today}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Stats ── */}
+      <div className="cd-stats">
+        <div className="cd-stat">
+          <div className="cd-stat__icon cd-stat__icon--blue">
+            <Phone size={20} strokeWidth={1.8} />
+          </div>
+          <div className="cd-stat__body">
+            <span className="cd-stat__value">{stats.total}</span>
+            <span className="cd-stat__label">Contacts débloqués</span>
+          </div>
+        </div>
+
+        <div className="cd-stat">
+          <div className="cd-stat__icon cd-stat__icon--green">
+            <CheckCircle size={20} strokeWidth={1.8} />
+          </div>
+          <div className="cd-stat__body">
+            <span className="cd-stat__value cd-stat__value--active">{stats.actifs}</span>
+            <span className="cd-stat__label">Contacts actifs</span>
+          </div>
+        </div>
+
+        <div className="cd-stat">
+          <div className="cd-stat__icon cd-stat__icon--teal">
+            <TrendingUp size={20} strokeWidth={1.8} />
+          </div>
+          <div className="cd-stat__body">
+            <span className="cd-stat__value">{fmtPrice(stats.depense)}</span>
+            <span className="cd-stat__label">Total dépensé</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Actions rapides ── */}
+      <p className="cd-section-label">
+        <ShoppingCart size={13} strokeWidth={2} /> Actions rapides
+      </p>
+      <nav className="cd-actions" aria-label="Navigation">
+        <Link to="/produits" className="cd-action-card" style={{ animationDelay: '0s' }}>
+          <div className="cd-action-card__icon">
+            <ShoppingCart size={30} strokeWidth={1.5} />
+          </div>
+          <span className="cd-action-card__text">Parcourir les produits</span>
+          <span className="cd-action-card__desc">Trouver de nouveaux vendeurs</span>
+        </Link>
+        <Link to="/profil" className="cd-action-card" style={{ animationDelay: '0.07s' }}>
+          <div className="cd-action-card__icon">
+            <User size={30} strokeWidth={1.5} />
+          </div>
+          <span className="cd-action-card__text">Mon profil</span>
+          <span className="cd-action-card__desc">Modifier vos informations</span>
+        </Link>
+      </nav>
+
+      {/* ── Historique contacts ── */}
+      <p className="cd-section-label" style={{ marginTop: '2rem' }}>
+        <Phone size={13} strokeWidth={2} /> Historique des contacts débloqués
+      </p>
 
       {loading && (
-        <section className="loading-state" aria-label="Chargement des données">
-          <div className="spinner" aria-hidden="true"></div>
-          <p>Chargement des informations de votre abonnement...</p>
-        </section>
-      )}
-
-      {!loading && error && (
-        <section className="error-message" role="alert" aria-live="assertive">
-          <AlertCircle size={24} color="#c62828" />
-          <p>{error}</p>
-          <button className="retry-button" onClick={fetchAbonnement} aria-label="Réessayer">
-            <RefreshCw size={18} /> Réessayer
-          </button>
-        </section>
-      )}
-
-      {!loading && !error && abonnementData && (
-        <div className="abonnement-container">
-          <section className="abonnement-info" aria-label="Statut de l'abonnement">
-            <div className="abonnement-header">
-              <Eye size={32} color={expired ? "#ef6c00" : "#2e7d32"} />
-              <h2>Votre abonnement {getFormuleDisplayName(abonnementData.formule)}</h2>
-              <span className={`status-badge ${abonnementData.statut === "actif" && !expired ? "active" : "inactive"}`}>
-                {abonnementData.statut === "actif" && !expired ? "Actif" : expired ? "Expiré" : "Inactif"}
-              </span>
-            </div>
-            
-            <div className="abonnement-stats">
-              <div className="stat-card">
-                <h3>Vues utilisées</h3>
-                {abonnementData.formule === "PLATINUM" ? (
-                  <p className="stat-value">{viewsUsed} (Illimité)</p>
-                ) : (
-                  <>
-                    <p className="stat-value">{viewsUsed} / {abonnementData.quotaTotal}</p>
-                    <div className="progress-bar">
-                      <div 
-                        className="progress-fill" 
-                        style={{ width: `${Math.min(100, (viewsUsed / abonnementData.quotaTotal) * 100)}%` }}
-                      ></div>
-                    </div>
-                    {abonnementData.quotaRestant <= (abonnementData.quotaTotal * 0.2) && abonnementData.quotaRestant > 0 && (
-                      <p className="warning-message" role="alert">
-                        ⚠️ Il vous reste {abonnementData.quotaRestant} vue{abonnementData.quotaRestant > 1 ? 's' : ''}
-                      </p>
-                    )}
-                    {abonnementData.quotaRestant === 0 && (
-                      <p className="error-message" role="alert">
-                        ❌ Vous avez épuisé vos vues
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-              
-              <div className="stat-card">
-                <h3>Date d'expiration</h3>
-                <p className="stat-value">{formatDate(abonnementData.dateFin)}</p>
-                {!expired && daysRemaining > 0 && daysRemaining <= 7 && (
-                  <p className="warning-message" role="alert">
-                    ⚠️ Expire dans {daysRemaining} jour{daysRemaining > 1 ? 's' : ''}
-                  </p>
-                )}
-                {expired && (
-                  <p className="error-message" role="alert">
-                    ❌ Expiré
-                  </p>
-                )}
-              </div>
-              
-              <div className="stat-card">
-                <h3>Montant</h3>
-                <p className="stat-value">{formatMontant(abonnementData.montant)}</p>
-                <p className="stat-note">Abonnement {getFormuleDisplayName(abonnementData.formule)}</p>
-              </div>
-            </div>
-          </section>
-          
-          <div className="abonnement-actions">
-            {expired ? (
-              <Link to="/offres" className="renew-button">
-                Renouveler mon abonnement
-              </Link>
-            ) : (
-              <Link to="/offres" className="upgrade-button">
-                Modifier mon abonnement
-              </Link>
-            )}
-          </div>
+        <div className="cd-loading">
+          <div className="cd-spinner" />
+          <span>Chargement…</span>
         </div>
       )}
 
-      {!loading && !error && !abonnementData && !expired && (
-        <section className="no-abonnement">
-          <div className="no-abonnement-header">
-            <AlertCircle size={32} color="#1976d2" />
-            <h2>Aucun abonnement actif</h2>
-          </div>
-          <p>Vous n'avez pas encore souscrit à un abonnement.</p>
-          <p>Souscrivez à un abonnement pour accéder aux contacts des producteurs.</p>
-          <Link to="/offres" className="subscribe-button">
-            Voir les offres disponibles
-          </Link>
-        </section>
+      {!loading && error && (
+        <div className="cd-error">
+          <span>{error}</span>
+          <button className="cd-retry" onClick={fetchContacts}>
+            <RefreshCw size={14} /> Réessayer
+          </button>
+        </div>
       )}
 
-      <section className="dashboard-actions" aria-label="Actions principales du tableau de bord">
-        <Link to="/produits" className="dashboard-link">
-          <ShoppingCart size={24} />
-          Parcourir les produits
-        </Link>
-        <Link to="/favoris" className="dashboard-link">
-          <Heart size={24} />
-          Voir mes favoris
-        </Link>
-        <Link to="/profil-consommateur" className="dashboard-link">
-          <User size={24} />
-          Mon profil
-        </Link>
-        <Link to="/historique-commande" className="dashboard-link">
-          <ScrollText size={24} />
-          Historique Achats
-        </Link>
-      </section>
-    </main>
+      {!loading && !error && contacts.length === 0 && (
+        <div className="cd-empty">
+          <Phone size={36} strokeWidth={1.2} />
+          <p>Vous n'avez pas encore débloqué de contact vendeur.</p>
+          <Link to="/produits" className="cd-cta-btn">Voir les produits →</Link>
+        </div>
+      )}
+
+      {!loading && !error && contacts.length > 0 && (
+        <div className="cd-contacts-list">
+          {contacts.map((c) => {
+            const meta = STATUS_META[c.status] || STATUS_META.pending;
+            const StatusIcon = meta.icon;
+            return (
+              <div key={c.id} className="cd-contact-row">
+                <div className="cd-contact-row__icon">
+                  <Phone size={18} strokeWidth={1.8} />
+                </div>
+                <div className="cd-contact-row__info">
+                  <span className="cd-contact-row__product">{c.product_nom || 'Produit'}</span>
+                  <span className="cd-contact-row__seller">
+                    {c.seller_nom ? `Vendeur : ${c.seller_nom}` : ''}
+                    {c.seller_phone ? ` · ${c.seller_phone}` : ''}
+                  </span>
+                </div>
+                <div className="cd-contact-row__right">
+                  <span className={`cd-status-chip ${meta.cls}`}>
+                    <StatusIcon size={11} strokeWidth={2.5} />
+                    {meta.label}
+                  </span>
+                  <span className="cd-contact-row__date">
+                    {c.expires_at ? `Exp. ${fmtDate(c.expires_at)}` : ''}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+    </div>
   );
 };
 

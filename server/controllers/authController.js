@@ -149,6 +149,52 @@ exports.getProfile = async (req, res) => {
   res.status(200).json({ utilisateur: sanitizeUser(req.user) });
 };
 
+exports.updateProfile = async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'Non authentifié' });
+
+  const { nom, contact, fermeNom, localisation, typeExploitation, surface, description } = req.body;
+  const userId = req.user.id;
+
+  const ALLOWED = {
+    nom:              v => v && v.trim().length >= 2 && v.trim().length <= 50 ? v.trim() : null,
+    contact:          v => v || null,
+    ferme_nom:        v => fermeNom !== undefined ? (v || null) : undefined,
+    localisation:     v => v || null,
+    type_exploitation:v => v || null,
+    surface:          v => v || null,
+    description:      v => v || null,
+  };
+
+  const fieldMap = { nom, contact, ferme_nom: fermeNom, localisation, type_exploitation: typeExploitation, surface, description };
+  const setClauses = [];
+  const values = [];
+
+  for (const [col, raw] of Object.entries(fieldMap)) {
+    if (raw === undefined) continue;
+    const sanitize = ALLOWED[col];
+    const val = sanitize ? sanitize(raw) : raw;
+    if (val === undefined) continue;
+    setClauses.push(`${col} = ?`);
+    values.push(val);
+  }
+
+  if (setClauses.length === 0) {
+    return res.status(400).json({ message: 'Aucun champ à mettre à jour' });
+  }
+
+  try {
+    const { getMysqlPool } = require('../config/mysql');
+    const pool = getMysqlPool();
+    values.push(userId);
+    await pool.query(`UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+    const updated = await mysqlUserRepository.findUserById(userId);
+    res.json({ utilisateur: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('[AUTH][UPDATE-PROFILE]', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du profil' });
+  }
+};
+
 exports.logout = (req, res) => {
   res.clearCookie('token');
   res.status(200).json({ message: 'Déconnecté avec succès' });

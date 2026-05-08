@@ -4,7 +4,7 @@ import api from './axiosConfig';
 // 🔹 Récupère la liste des utilisateurs
 export const fetchUsers = async () => {
   try {
-    const response = await api.get('/admin/users');
+    const response = await api.get('/admin/users?limit=500&page=1');
     return response.data;
   } catch (error) {
     // En cas d'erreur, afficher le message axios si disponible

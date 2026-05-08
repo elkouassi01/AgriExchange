@@ -12,6 +12,10 @@ router.post('/connexion', authController.login);
 // Retourne les infos du profil utilisateur connecté (protégé)
 router.get('/me', protect, authController.getProfile);
 
+// PUT /api/v1/auth/profil
+// Mise à jour du profil utilisateur connecté
+router.put('/profil', protect, authController.updateProfile);
+
 // POST /api/v1/auth/logout
 // Déconnexion (optionnel, supprime cookie, token, etc.)
 router.post('/logout', protect, authController.logout);

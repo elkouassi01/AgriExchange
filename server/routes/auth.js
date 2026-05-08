@@ -20,7 +20,7 @@ const sendOtpWhatsApp = async (phone, otp) => {
 
 const otpRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 3,
+  max: process.env.NODE_ENV === 'development' ? 10000 : 3,
   keyGenerator: (req) => req.body.telephone || req.ip,
   handler: (req, res) => {
     res.status(429).json({
@@ -32,7 +32,7 @@ const otpRateLimit = rateLimit({
 
 const verifyOtpRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 5,
+  max: process.env.NODE_ENV === 'development' ? 10000 : 5,
   keyGenerator: (req) => req.body.telephone || req.ip,
   handler: (req, res) => {
     res.status(429).json({
@@ -195,6 +195,84 @@ router.get('/me', protect, async (req, res) => {
   }
 });
 
+router.get('/mes-contacts', protect, async (req, res) => {
+  try {
+    const { getMysqlPool } = require('../config/mysql');
+    const pool = getMysqlPool();
+    const email   = req.user.email   || '';
+    const contact = req.user.contact || '';
+
+    const [rows] = await pool.query(
+      `SELECT cr.id, cr.product_id, cr.product_nom, cr.seller_phone,
+              cr.status, cr.expires_at,
+              u.nom AS seller_nom
+       FROM contact_requests cr
+       LEFT JOIN users u ON u.id = cr.seller_id
+       WHERE cr.buyer_email = ? OR cr.buyer_phone = ?
+       ORDER BY cr.expires_at DESC
+       LIMIT 50`,
+      [email, contact]
+    );
+
+    const PRIX_CONTACT = 300;
+    const actifs  = rows.filter(r => r.status !== 'expired' && r.status !== 'refunded');
+    const depense = rows.filter(r => r.status !== 'refunded').length * PRIX_CONTACT;
+
+    return res.json({
+      contacts: rows,
+      stats: {
+        total:   rows.length,
+        actifs:  actifs.length,
+        depense,
+      },
+    });
+  } catch (error) {
+    console.error('[mes-contacts]', error);
+    return res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+router.put('/profil', protect, async (req, res) => {
+  if (!req.user) return res.status(401).json({ message: 'Non authentifié' });
+
+  const { nom, contact, fermeNom, localisation, typeExploitation, surface, description } = req.body;
+  const userId = req.user.id || req.user._id;
+
+  const fieldMap = {
+    nom:               nom,
+    contact:           contact,
+    ferme_nom:         fermeNom,
+    localisation:      localisation,
+    type_exploitation: typeExploitation,
+    surface:           surface,
+    description:       description,
+  };
+
+  const setClauses = [];
+  const values = [];
+  for (const [col, val] of Object.entries(fieldMap)) {
+    if (val === undefined) continue;
+    setClauses.push(`${col} = ?`);
+    values.push(val || null);
+  }
+
+  if (setClauses.length === 0) {
+    return res.status(400).json({ message: 'Aucun champ à mettre à jour' });
+  }
+
+  try {
+    const { getMysqlPool } = require('../config/mysql');
+    const pool = getMysqlPool();
+    values.push(userId);
+    await pool.query(`UPDATE users SET ${setClauses.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+    const updated = await mysqlUserRepository.findUserById(userId);
+    return res.json({ success: true, utilisateur: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('[Profil PUT]', error);
+    return res.status(500).json({ message: 'Erreur lors de la mise à jour du profil' });
+  }
+});
+
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
@@ -243,6 +321,32 @@ router.post('/inscription-consommateur', otpRateLimit, async (req, res) => {
   } catch (err) {
     console.error('[Inscription consommateur]', err);
     return res.status(500).json({ message: 'Erreur serveur.' });
+  }
+});
+
+// Message de bienvenue WhatsApp pour les visiteurs sans compte
+router.post('/welcome-visitor', async (req, res) => {
+  const { phone, email } = req.body;
+  if (!phone) {
+    return res.status(400).json({ success: false, message: 'Numéro WhatsApp requis' });
+  }
+
+  const message =
+    `🌿 *Bienvenue chez VivriMarket !* Merci de votre visite !\n\n` +
+    `Bonjour à vous ! C'est un plaisir de vous compter parmi nos visiteurs.\n\n` +
+    `Merci de l'intérêt que vous portez à *VivriMarket*.\n` +
+    `Vous faites désormais partie de notre communauté.\n\n` +
+    `Vous recevrez bientôt des nouvelles exclusives de notre part.\n` +
+    `En attendant, n'hésitez pas à visiter notre site pour découvrir nos derniers articles.\n\n` +
+    `Cordialement,\n*L'équipe VivriMarket* 🌾`;
+
+  try {
+    const result = await sendWhatsApp(phone, message);
+    console.log(`[Welcome] ${phone} (${email || 'sans email'}) — envoi: ${result.simulated ? 'simulé' : result.success ? 'OK' : 'échec'}`);
+    return res.json({ success: true, simulated: result.simulated || false });
+  } catch (err) {
+    console.error('[Welcome WA]', err.message);
+    return res.json({ success: false, error: err.message });
   }
 });
 

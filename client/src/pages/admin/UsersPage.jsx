@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import './UsersPage.css';
 import { fetchUsers, updateUserStatus, deleteUser } from '../../services/adminService';
 import {
@@ -19,6 +19,7 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  Divider,
   IconButton,
   MenuItem,
   Paper,
@@ -30,12 +31,27 @@ import {
 import {
   Delete as DeleteIcon,
   Search as SearchIcon,
+  InfoOutlined,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 
 const ROLE_LABELS = {
   agriculteur: { label: 'Agriculteur', color: 'success' },
-  consommateur: { label: 'Consommateur', color: 'info' },
+  consommateur: { label: 'Acheteur', color: 'info' },
   admin: { label: 'Admin', color: 'secondary' },
+};
+
+const PLAN_COLORS = {
+  BLEU: '#2563eb',
+  GOLD: '#d97706',
+  PLATINUM: '#7c3aed',
+};
+
+const avatarBg = (role) => {
+  if (role === 'agriculteur') return '#16a34a';
+  if (role === 'consommateur') return '#2563eb';
+  if (role === 'admin') return '#7c3aed';
+  return '#6b7280';
 };
 
 const UsersPage = () => {
@@ -47,6 +63,7 @@ const UsersPage = () => {
   const [roleFilter, setRoleFilter] = useState('tous');
   const [selectedUser, setSelectedUser] = useState(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [detailUser, setDetailUser] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
 
   const loadUsers = async () => {
@@ -105,19 +122,28 @@ const UsersPage = () => {
     }
   };
 
+  const counts = useMemo(() => ({
+    tous: users.length,
+    agriculteur: users.filter(u => u.role === 'agriculteur').length,
+    consommateur: users.filter(u => u.role === 'consommateur').length,
+    admin: users.filter(u => u.role === 'admin').length,
+    actif: users.filter(u => u.estActif).length,
+    suspendu: users.filter(u => u.suspended).length,
+  }), [users]);
+
   const columns = [
     {
       field: 'nom',
       headerName: 'Utilisateur',
-      flex: 1.4,
-      minWidth: 200,
+      flex: 1.5,
+      minWidth: 220,
       renderCell: ({ row }) => (
         <div className="user-nom">
-          <div className="user-avatar" style={{ background: avatarColor(row.role) }}>
+          <div className="user-avatar" style={{ background: avatarBg(row.role) }}>
             {(row.nom || '?').charAt(0).toUpperCase()}
           </div>
-          <div>
-            <div className="user-nom-principal">{row.nom}</div>
+          <div className="user-nom-info">
+            <div className="user-nom-principal">{row.nom || '—'}</div>
             <div className="user-email">{row.email}</div>
           </div>
         </div>
@@ -126,14 +152,14 @@ const UsersPage = () => {
     {
       field: 'contact',
       headerName: 'Contact',
-      flex: 1,
+      flex: 0.9,
       minWidth: 130,
       renderCell: ({ row }) => <span className="user-contact">{row.contact || '—'}</span>,
     },
     {
       field: 'role',
       headerName: 'Rôle',
-      flex: 0.8,
+      flex: 0.75,
       minWidth: 120,
       renderCell: ({ row }) => {
         const r = ROLE_LABELS[row.role] || { label: row.role, color: 'default' };
@@ -141,80 +167,94 @@ const UsersPage = () => {
       },
     },
     {
-      field: 'estActif',
+      field: 'abonnement',
+      headerName: 'Plan',
+      flex: 0.7,
+      minWidth: 100,
+      sortable: false,
+      renderCell: ({ row }) => {
+        if (row.role !== 'agriculteur') return <span className="user-muted">—</span>;
+        const formule = row.abonnement?.formule;
+        if (!formule) return <span className="user-plan-none">Aucun</span>;
+        return (
+          <span
+            className="user-plan-badge"
+            style={{ color: PLAN_COLORS[formule] || '#6b7280', borderColor: PLAN_COLORS[formule] || '#e5e7eb' }}
+          >
+            {formule}
+          </span>
+        );
+      },
+    },
+    {
+      field: 'statut',
       headerName: 'Statut',
-      flex: 0.7,
-      minWidth: 100,
+      flex: 1.1,
+      minWidth: 150,
+      sortable: false,
       renderCell: ({ row }) => (
-        <Chip
-          label={row.estActif ? 'Actif' : 'Inactif'}
-          color={row.estActif ? 'success' : 'default'}
-          variant={row.estActif ? 'filled' : 'outlined'}
-          size="small"
-        />
-      ),
-    },
-    {
-      field: 'isVerified',
-      headerName: 'Vérifié',
-      flex: 0.6,
-      minWidth: 90,
-      renderCell: ({ row }) => (
-        <Chip
-          label={row.isVerified ? 'OUI' : 'NON'}
-          color={row.isVerified ? 'success' : 'warning'}
-          variant="outlined"
-          size="small"
-        />
-      ),
-    },
-    {
-      field: 'suspended',
-      headerName: 'Suspendu',
-      flex: 0.7,
-      minWidth: 100,
-      renderCell: ({ row }) =>
-        row.role === 'agriculteur' ? (
+        <div className="user-status-cell">
           <Chip
-            label={row.suspended ? 'OUI' : 'NON'}
-            color={row.suspended ? 'error' : 'default'}
-            variant={row.suspended ? 'filled' : 'outlined'}
+            label={row.estActif ? 'Actif' : 'Inactif'}
             size="small"
+            sx={{
+              fontWeight: 700,
+              fontSize: '0.7rem',
+              height: 22,
+              backgroundColor: row.estActif ? '#dcfce7' : '#fee2e2',
+              color: row.estActif ? '#15803d' : '#b91c1c',
+              border: 'none',
+            }}
           />
-        ) : <span className="user-contact">—</span>,
+          <div className="user-status-flags">
+            {row.isVerified
+              ? <span className="status-flag status-flag--ok" title="Compte vérifié">✓</span>
+              : <span className="status-flag status-flag--warn" title="Non vérifié">?</span>
+            }
+            {row.suspended && (
+              <span className="status-flag status-flag--err" title="Compte suspendu">⚠</span>
+            )}
+          </div>
+        </div>
+      ),
     },
     {
       field: 'createdAt',
       headerName: 'Inscription',
-      flex: 0.9,
-      minWidth: 120,
+      flex: 0.85,
+      minWidth: 110,
       renderCell: ({ row }) =>
         row.createdAt
-          ? new Date(row.createdAt).toLocaleDateString('fr-FR')
-          : '—',
+          ? <span className="user-date">{new Date(row.createdAt).toLocaleDateString('fr-FR')}</span>
+          : <span className="user-muted">—</span>,
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: 1,
-      minWidth: 160,
+      flex: 0.95,
+      minWidth: 150,
       sortable: false,
       filterable: false,
       renderCell: ({ row }) => (
         <div className="user-actions">
-          <Tooltip title={row.estActif ? 'Désactiver' : 'Activer'}>
+          <Tooltip title="Voir les détails">
+            <IconButton size="small" onClick={() => setDetailUser(row)}>
+              <InfoOutlined fontSize="small" sx={{ color: '#6b7280' }} />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={row.estActif ? 'Désactiver le compte' : 'Activer le compte'}>
             <Button
               size="small"
               variant="outlined"
               color={row.estActif ? 'warning' : 'success'}
               disabled={actionLoading === row.id}
               onClick={() => handleToggleStatus(row.id, row.estActif)}
-              sx={{ textTransform: 'none', fontSize: '0.75rem' }}
+              sx={{ textTransform: 'none', fontSize: '0.7rem', minWidth: 70, px: 1, height: 26 }}
             >
-              {actionLoading === row.id ? '...' : (row.estActif ? 'Désactiver' : 'Activer')}
+              {actionLoading === row.id ? '…' : (row.estActif ? 'Désactiver' : 'Activer')}
             </Button>
           </Tooltip>
-          <Tooltip title="Supprimer">
+          <Tooltip title="Supprimer l'utilisateur">
             <IconButton
               size="small"
               color="error"
@@ -230,7 +270,7 @@ const UsersPage = () => {
 
   function CustomToolbar() {
     return (
-      <GridToolbarContainer>
+      <GridToolbarContainer sx={{ px: 1.5, py: 0.5 }}>
         <GridToolbarColumnsButton />
         <GridToolbarFilterButton />
         <GridToolbarDensitySelector />
@@ -239,34 +279,71 @@ const UsersPage = () => {
     );
   }
 
-  const counts = {
-    tous: users.length,
-    agriculteur: users.filter(u => u.role === 'agriculteur').length,
-    consommateur: users.filter(u => u.role === 'consommateur').length,
-    admin: users.filter(u => u.role === 'admin').length,
-  };
-
   return (
     <Box className="users-page">
+
       <Box className="users-header">
-        <Typography variant="h5" fontWeight={700}>Gestion des utilisateurs</Typography>
-        <Typography variant="body2" color="text.secondary">
-          {users.length} utilisateurs inscrits sur VivriMarket
+        <Typography variant="h5" fontWeight={700} color="#1f2937">
+          Gestion des utilisateurs
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.25}>
+          {users.length} comptes inscrits sur VivriMarket
         </Typography>
       </Box>
 
       {error && (
-        <Box className="users-error" mb={2}>
-          <Typography color="error">{error}</Typography>
+        <Box className="users-error">
+          <Typography color="error" fontSize="0.9rem">{error}</Typography>
         </Box>
       )}
 
+      {/* Stat cards */}
+      <div className="users-stats">
+        <div className="ustat-card">
+          <div className="ustat-icon ustat-icon--gray">👥</div>
+          <div className="ustat-body">
+            <span className="ustat-value">{counts.tous}</span>
+            <span className="ustat-label">Total</span>
+          </div>
+        </div>
+        <div className="ustat-card">
+          <div className="ustat-icon ustat-icon--green">🌾</div>
+          <div className="ustat-body">
+            <span className="ustat-value">{counts.agriculteur}</span>
+            <span className="ustat-label">Agriculteurs</span>
+          </div>
+        </div>
+        <div className="ustat-card">
+          <div className="ustat-icon ustat-icon--blue">🛒</div>
+          <div className="ustat-body">
+            <span className="ustat-value">{counts.consommateur}</span>
+            <span className="ustat-label">Acheteurs</span>
+          </div>
+        </div>
+        <div className="ustat-card">
+          <div className="ustat-icon ustat-icon--emerald">✅</div>
+          <div className="ustat-body">
+            <span className="ustat-value">{counts.actif}</span>
+            <span className="ustat-label">Actifs</span>
+          </div>
+        </div>
+        {counts.suspendu > 0 && (
+          <div className="ustat-card ustat-card--warn">
+            <div className="ustat-icon ustat-icon--orange">⚠️</div>
+            <div className="ustat-body">
+              <span className="ustat-value ustat-value--warn">{counts.suspendu}</span>
+              <span className="ustat-label">Suspendus</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Filtres */}
-      <Paper className="users-search-bar">
+      <Paper className="users-search-bar" elevation={0}>
         <TextField
           variant="outlined"
           size="small"
-          placeholder="Rechercher par nom, email, contact..."
+          placeholder="Rechercher par nom, email, contact…"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           InputProps={{ startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} /> }}
@@ -276,11 +353,11 @@ const UsersPage = () => {
           size="small"
           value={roleFilter}
           onChange={e => setRoleFilter(e.target.value)}
-          sx={{ minWidth: 160 }}
+          sx={{ minWidth: 190 }}
         >
-          <MenuItem value="tous">Tous ({counts.tous})</MenuItem>
+          <MenuItem value="tous">Tous les rôles ({counts.tous})</MenuItem>
           <MenuItem value="agriculteur">Agriculteurs ({counts.agriculteur})</MenuItem>
-          <MenuItem value="consommateur">Consommateurs ({counts.consommateur})</MenuItem>
+          <MenuItem value="consommateur">Acheteurs ({counts.consommateur})</MenuItem>
           <MenuItem value="admin">Admins ({counts.admin})</MenuItem>
         </Select>
       </Paper>
@@ -288,6 +365,9 @@ const UsersPage = () => {
       {loading ? (
         <Box className="users-loading">
           <CircularProgress color="success" />
+          <Typography color="text.secondary" mt={1.5} fontSize="0.9rem">
+            Chargement des utilisateurs…
+          </Typography>
         </Box>
       ) : (
         <Box className="users-table">
@@ -295,8 +375,8 @@ const UsersPage = () => {
             rows={filteredUsers}
             columns={columns}
             getRowId={row => row.id}
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-            pageSizeOptions={[10, 25, 50]}
+            initialState={{ pagination: { paginationModel: { pageSize: 25 } } }}
+            pageSizeOptions={[10, 25, 50, 100]}
             disableRowSelectionOnClick
             slots={{ toolbar: CustomToolbar }}
             localeText={{
@@ -307,42 +387,228 @@ const UsersPage = () => {
               toolbarColumns: 'Colonnes',
               toolbarDensity: 'Densité',
               noRowsLabel: 'Aucun utilisateur trouvé',
+              footerRowSelected: (count) => `${count} ligne(s) sélectionnée(s)`,
             }}
             sx={{
               border: 'none',
-              '& .MuiDataGrid-columnHeaders': { backgroundColor: '#f8fafc', fontWeight: 700 },
-              '& .MuiDataGrid-cell': { borderBottom: '1px solid #f1f5f9' },
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f8fafc',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                borderBottom: '2px solid #e5e7eb',
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #f1f5f9',
+                display: 'flex',
+                alignItems: 'center',
+              },
               '& .MuiDataGrid-row:hover': { backgroundColor: '#f0fdf4' },
+              '& .MuiDataGrid-footerContainer': {
+                borderTop: '1px solid #e5e7eb',
+                backgroundColor: '#f8fafc',
+              },
             }}
           />
         </Box>
       )}
 
-      {/* Dialog suppression */}
-      <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
+      {/* Modal détail utilisateur */}
+      <Dialog
+        open={Boolean(detailUser)}
+        onClose={() => setDetailUser(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: 3, overflow: 'hidden' } }}
+      >
+        {detailUser && (
+          <>
+            <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1.5, pt: 2 }}>
+              <div
+                className="user-avatar"
+                style={{ background: avatarBg(detailUser.role), width: 46, height: 46, fontSize: '1.15rem' }}
+              >
+                {(detailUser.nom || '?').charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <Typography fontWeight={700} fontSize="1rem">{detailUser.nom || '—'}</Typography>
+                <Typography fontSize="0.8rem" color="text.secondary">{detailUser.email}</Typography>
+              </div>
+              <IconButton size="small" onClick={() => setDetailUser(null)} sx={{ ml: 1 }}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </DialogTitle>
+
+            <Divider />
+
+            <DialogContent sx={{ pt: 2, pb: 1 }}>
+              <div className="detail-grid">
+                <DetailRow label="Rôle">
+                  <Chip
+                    label={ROLE_LABELS[detailUser.role]?.label || detailUser.role}
+                    color={ROLE_LABELS[detailUser.role]?.color || 'default'}
+                    size="small"
+                  />
+                </DetailRow>
+                <DetailRow label="Contact">{detailUser.contact || '—'}</DetailRow>
+                {detailUser.localisation && (
+                  <DetailRow label="Localisation">{detailUser.localisation}</DetailRow>
+                )}
+                {detailUser.fermeNom && (
+                  <DetailRow label="Ferme">{detailUser.fermeNom}</DetailRow>
+                )}
+                {detailUser.typeExploitation && (
+                  <DetailRow label="Exploitation">{detailUser.typeExploitation}</DetailRow>
+                )}
+                {detailUser.surface && (
+                  <DetailRow label="Surface">{detailUser.surface}</DetailRow>
+                )}
+                {detailUser.description && (
+                  <DetailRow label="Description">{detailUser.description}</DetailRow>
+                )}
+
+                <div className="detail-divider" />
+
+                <DetailRow label="Compte">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Chip
+                      label={detailUser.estActif ? 'Actif' : 'Inactif'}
+                      size="small"
+                      sx={{
+                        backgroundColor: detailUser.estActif ? '#dcfce7' : '#fee2e2',
+                        color: detailUser.estActif ? '#15803d' : '#b91c1c',
+                        fontWeight: 700,
+                        fontSize: '0.72rem',
+                      }}
+                    />
+                    <Chip
+                      label={detailUser.isVerified ? 'Vérifié' : 'Non vérifié'}
+                      size="small"
+                      sx={{
+                        backgroundColor: detailUser.isVerified ? '#dbeafe' : '#fef9c3',
+                        color: detailUser.isVerified ? '#1d4ed8' : '#92400e',
+                        fontWeight: 600,
+                        fontSize: '0.72rem',
+                      }}
+                    />
+                    {detailUser.suspended && (
+                      <Chip
+                        label="Suspendu"
+                        size="small"
+                        sx={{
+                          backgroundColor: '#fee2e2',
+                          color: '#b91c1c',
+                          fontWeight: 700,
+                          fontSize: '0.72rem',
+                        }}
+                      />
+                    )}
+                  </div>
+                </DetailRow>
+
+                {detailUser.abonnement && (
+                  <>
+                    <div className="detail-divider" />
+                    <DetailRow label="Formule">
+                      <span
+                        className="user-plan-badge"
+                        style={{
+                          color: PLAN_COLORS[detailUser.abonnement.formule] || '#6b7280',
+                          borderColor: PLAN_COLORS[detailUser.abonnement.formule] || '#e5e7eb',
+                        }}
+                      >
+                        {detailUser.abonnement.formule}
+                      </span>
+                    </DetailRow>
+                    {detailUser.abonnement.dateExpiration && (
+                      <DetailRow label="Expiration">
+                        {new Date(detailUser.abonnement.dateExpiration).toLocaleDateString('fr-FR')}
+                      </DetailRow>
+                    )}
+                    <DetailRow label="Statut abo.">
+                      {detailUser.abonnement.status === 'actif' ? '✅ Actif' : detailUser.abonnement.status || '—'}
+                    </DetailRow>
+                  </>
+                )}
+
+                <div className="detail-divider" />
+
+                <DetailRow label="Inscrit le">
+                  {detailUser.createdAt
+                    ? new Date(detailUser.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+                    : '—'}
+                </DetailRow>
+                {detailUser.derniereConnexion && (
+                  <DetailRow label="Dernière connexion">
+                    {new Date(detailUser.derniereConnexion).toLocaleDateString('fr-FR')}
+                  </DetailRow>
+                )}
+              </div>
+            </DialogContent>
+
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1 }}>
+              <Button
+                variant="outlined"
+                color={detailUser.estActif ? 'warning' : 'success'}
+                size="small"
+                disabled={actionLoading === detailUser.id}
+                onClick={() => handleToggleStatus(detailUser.id, detailUser.estActif)}
+                sx={{ textTransform: 'none', fontSize: '0.82rem' }}
+              >
+                {detailUser.estActif ? 'Désactiver le compte' : 'Activer le compte'}
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                size="small"
+                onClick={() => {
+                  setSelectedUser(detailUser);
+                  setDetailUser(null);
+                  setOpenDeleteDialog(true);
+                }}
+                sx={{ textTransform: 'none', fontSize: '0.82rem' }}
+              >
+                Supprimer
+              </Button>
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
+
+      {/* Confirmation suppression */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={() => setOpenDeleteDialog(false)}
+        PaperProps={{ sx: { borderRadius: 2 } }}
+      >
         <DialogTitle>Confirmer la suppression</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Supprimer <strong>{selectedUser?.nom}</strong> ({selectedUser?.email}) ?
+            Supprimer <strong>{selectedUser?.nom}</strong>{selectedUser?.email ? ` (${selectedUser.email})` : ''} ?{' '}
             Cette action est <strong>irréversible</strong>.
           </DialogContentText>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDeleteDialog(false)}>Annuler</Button>
-          <Button onClick={handleDeleteUser} color="error" variant="contained">
-            Supprimer
+        <DialogActions sx={{ px: 2.5, pb: 2 }}>
+          <Button onClick={() => setOpenDeleteDialog(false)} sx={{ textTransform: 'none' }}>
+            Annuler
+          </Button>
+          <Button onClick={handleDeleteUser} color="error" variant="contained" sx={{ textTransform: 'none' }}>
+            Supprimer définitivement
           </Button>
         </DialogActions>
       </Dialog>
+
     </Box>
   );
 };
 
-const avatarColor = (role) => {
-  if (role === 'agriculteur') return '#dcfce7';
-  if (role === 'consommateur') return '#dbeafe';
-  if (role === 'admin') return '#f3e8ff';
-  return '#f1f5f9';
-};
+const DetailRow = ({ label, children }) => (
+  <>
+    <span className="detail-label">{label}</span>
+    <span className="detail-value">{children}</span>
+  </>
+);
 
 export default UsersPage;
