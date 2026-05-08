@@ -1,7 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import api from '../services/axiosConfig'; // Axios déjà configuré
+import api from '../services/axiosConfig';
 
-// 🧩 Création du contexte utilisateur
 const UserContext = createContext(null);
 
 export const UserProvider = ({ children }) => {
@@ -12,31 +11,29 @@ export const UserProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
-  // 🛡️ Intercepteur global pour gérer les erreurs 401 (session expirée)
+  // Intercepteur global : session expirée -> nettoyage local
   useEffect(() => {
     const responseInterceptor = api.interceptors.response.use(
       res => res,
       err => {
         if (err.response?.status === 401) {
           clearSession();
-          console.warn('⛔ Session expirée — déconnexion automatique.');
         }
         return Promise.reject(err);
       }
     );
-
     return () => {
       api.interceptors.response.eject(responseInterceptor);
     };
   }, []);
 
-  // 🔐 Récupère l’utilisateur connecté via le token
+  // Recupere l'utilisateur connecte via le cookie httpOnly
   const fetchUser = async () => {
     try {
       const res = await api.get('/auth/me');
       const currentUser = res.data.utilisateur || res.data.user;
-
       const userId = currentUser?.id || currentUser?._id;
+
       if (currentUser && userId) {
         const abonnement = await fetchUserAbonnement(userId);
         const fullUser = {
@@ -44,24 +41,23 @@ export const UserProvider = ({ children }) => {
           abonnement: abonnement.formule ? abonnement : null,
           vuesDetails: abonnement.vuesDetails,
         };
-
         setUser(fullUser);
         localStorage.setItem('userData', JSON.stringify(fullUser));
       } else {
         clearSession();
       }
     } catch (err) {
-      console.warn('⚠️ Erreur fetchUser :', err.message);
+      console.warn('Erreur fetchUser :', err.message);
       clearSession();
     } finally {
       setLoading(false);
     }
   };
 
-  // 📦 Récupère les infos d’abonnement
+  // Recupere les infos d'abonnement
   const fetchUserAbonnement = async (userId) => {
     try {
-      const res = await api.get(`/users/${userId}/forfait`);
+      const res = await api.get('/users/' + userId + '/forfait');
       return {
         formule: res.data.formule,
         statut: res.data.statut || 'inactif',
@@ -71,8 +67,7 @@ export const UserProvider = ({ children }) => {
           produitsVus: res.data.produitsVus ?? [],
         },
       };
-    } catch (err) {
-      console.error('❌ Erreur fetchUserAbonnement :', err.message);
+    } catch {
       return {
         formule: null,
         statut: 'inactif',
@@ -82,7 +77,7 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // 🔄 Rafraîchit les données utilisateur + abonnement
+  // Rafraichit les donnees utilisateur + abonnement
   const refreshUserData = async () => {
     const uid = user?.id || user?._id;
     if (!uid) return;
@@ -90,7 +85,7 @@ export const UserProvider = ({ children }) => {
     try {
       const [userRes, abonnementRes] = await Promise.all([
         api.get('/auth/me'),
-        api.get(`/users/${uid}/forfait`),
+        api.get('/users/' + uid + '/forfait'),
       ]);
 
       const currentUser = userRes.data.utilisateur || userRes.data.user;
@@ -119,29 +114,29 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // 🔑 Connexion — enregistre l’utilisateur (le token est dans le cookie httpOnly)
+  // Connexion — le token est dans le cookie httpOnly, on stocke seulement le profil
   const login = (userData) => {
     setUser(userData);
-    localStorage.setItem(‘userData’, JSON.stringify(userData));
+    localStorage.setItem('userData', JSON.stringify(userData));
   };
 
-  // 🚪 Déconnexion — efface le cookie côté serveur puis nettoie localement
+  // Deconnexion — efface le cookie cote serveur puis nettoie localement
   const logout = async () => {
     try {
-      await api.post(‘/auth/logout’);
+      await api.post('/auth/logout');
     } catch {
-      // ignore — on nettoie quand même
+      // cookie peut deja etre absent, on continue
     }
     clearSession();
   };
 
-  // 🧹 Nettoyage local de la session (appelé sur 401 ou logout)
+  // Nettoyage local (appele sur 401 ou logout)
   const clearSession = () => {
     setUser(null);
-    localStorage.removeItem(‘userData’);
+    localStorage.removeItem('userData');
   };
 
-  // 🧭 Au chargement : tente de restaurer la session via le cookie httpOnly
+  // Au chargement : tente de restaurer la session via le cookie httpOnly
   useEffect(() => {
     fetchUser();
   }, []);
@@ -162,5 +157,4 @@ export const UserProvider = ({ children }) => {
   );
 };
 
-// 🪶 Hook personnalisé pour accéder au contexte
 export const useUser = () => useContext(UserContext);
