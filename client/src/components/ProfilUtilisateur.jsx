@@ -17,6 +17,10 @@ const ProfilUtilisateur = () => {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [formData, setFormData] = useState({});
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [photoSuccess, setPhotoSuccess] = useState('');
+  const photoInputRef = React.useRef(null);
 
   if (!user) {
     return (
@@ -76,9 +80,51 @@ const ProfilUtilisateur = () => {
     }
   };
 
+  const clearPhotoFeedback = () => { setPhotoError(''); setPhotoSuccess(''); };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    clearPhotoFeedback();
+    setPhotoUploading(true);
+    const fd = new FormData();
+    fd.append('photo', file);
+    try {
+      await api.post('/auth/photo-profil', fd);
+      await refreshUserData();
+      setPhotoSuccess('Photo mise à jour.');
+      setTimeout(() => setPhotoSuccess(''), 3000);
+    } catch (err) {
+      setPhotoError(err.response?.data?.message || "Erreur lors de l'upload.");
+    } finally {
+      setPhotoUploading(false);
+      if (photoInputRef.current) photoInputRef.current.value = '';
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    clearPhotoFeedback();
+    setPhotoUploading(true);
+    try {
+      await api.delete('/auth/photo-profil');
+      await refreshUserData();
+      setPhotoSuccess('Photo supprimée.');
+      setTimeout(() => setPhotoSuccess(''), 3000);
+    } catch (err) {
+      setPhotoError(err.response?.data?.message || 'Erreur lors de la suppression.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
   const planMeta = user.abonnement?.formule
     ? { BLEU: { color: '#2563eb', bg: '#dbeafe' }, GOLD: { color: '#d97706', bg: '#fef9c3' }, PLATINUM: { color: '#7c3aed', bg: '#ede9fe' } }[user.abonnement.formule]
     : null;
+
+  const dashboardPath =
+    user.role === 'agriculteur' ? '/profil-agriculteur' :
+    user.role === 'admin'       ? '/admin/dashboard' :
+                                  '/profil-consommateur';
 
   return (
     <div className="profil-wrap">
@@ -86,9 +132,52 @@ const ProfilUtilisateur = () => {
 
         {/* Avatar + identité */}
         <div className="profil-hero">
-          <div className="profil-avatar">
-            {(user.nom || '?').charAt(0).toUpperCase()}
+
+          {/* Colonne avatar */}
+          <div className="profil-avatar-col">
+            <div className="profil-avatar">
+              {photoUploading ? (
+                <span className="profil-avatar__spinner" />
+              ) : user.photo ? (
+                <img src={user.photo} alt="Photo de profil" className="profil-avatar__img" />
+              ) : (
+                (user.nom || '?').charAt(0).toUpperCase()
+              )}
+            </div>
+
+            <div className="profil-photo-actions">
+              <button
+                type="button"
+                className="profil-photo-btn"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={photoUploading}
+              >
+                {user.photo ? 'Changer' : '+ Photo'}
+              </button>
+              {user.photo && (
+                <button
+                  type="button"
+                  className="profil-photo-btn profil-photo-btn--delete"
+                  onClick={handleDeletePhoto}
+                  disabled={photoUploading}
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
+
+            {photoError && <p className="profil-photo-msg profil-photo-msg--error">{photoError}</p>}
+            {photoSuccess && <p className="profil-photo-msg profil-photo-msg--success">{photoSuccess}</p>}
+
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={handlePhotoUpload}
+            />
           </div>
+
           <div className="profil-hero-info">
             <h1 className="profil-name">{user.nom}</h1>
             <p className="profil-email">{user.email}</p>
@@ -249,6 +338,17 @@ const ProfilUtilisateur = () => {
             </div>
           </div>
         )}
+
+        {/* Retour au dashboard */}
+        <div className="profil-footer">
+          <button
+            className="profil-btn profil-btn--back"
+            onClick={() => navigate(dashboardPath)}
+          >
+            ← Retour au tableau de bord
+          </button>
+        </div>
+
       </div>
     </div>
   );

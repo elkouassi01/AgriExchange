@@ -312,6 +312,150 @@ const deleteProduct = async (id, sellerId) => {
   return result.affectedRows > 0;
 };
 
+const addProductImages = async (productId, urls) => {
+  const pool = getMysqlPool();
+  for (const url of urls) {
+    await pool.query(
+      'INSERT INTO product_images (id, product_id, url) VALUES (?, ?, ?)',
+      [randomUUID(), productId, url]
+    );
+  }
+};
+
+const deleteProductImage = async (productId, imageId, sellerId) => {
+  const pool = getMysqlPool();
+  // Vérifie que le produit appartient au vendeur avant de supprimer
+  const [product] = await pool.query(
+    'SELECT id FROM products WHERE id = ? AND seller_id = ?',
+    [productId, sellerId]
+  );
+  if (!product.length) return false;
+  const [result] = await pool.query(
+    'DELETE FROM product_images WHERE id = ? AND product_id = ?',
+    [imageId, productId]
+  );
+  return result.affectedRows > 0;
+};
+
+const getSponsoredProducts = async (limit = 8) => {
+  const pool = getMysqlPool();
+  // Inclure : sponsorisation gratuite (is_featured=1) OU payante non expirée
+  const [rows] = await pool.query(
+    `${baseSelect}
+     WHERE (
+       p.is_featured = 1
+       OR (p.paid_sponsor_until IS NOT NULL AND p.paid_sponsor_until > NOW())
+     )
+     AND p.stock > 0
+     AND (u.suspended IS NULL OR u.suspended = 0)
+     ORDER BY p.paid_sponsor_until DESC, p.updated_at DESC
+     LIMIT ?`,
+    [limit],
+  );
+  return rows.map((row) => ({
+    ...normalizeProductRow(row),
+    isPaidSponsor: row.paid_sponsor_until && new Date(row.paid_sponsor_until) > new Date(),
+    paidSponsorUntil: row.paid_sponsor_until || null,
+  }));
+};
+
+const toggleSponsor = async (productId, sellerId, activate) => {
+  const pool = getMysqlPool();
+  const [result] = await pool.query(
+    'UPDATE products SET is_featured = ? WHERE id = ? AND seller_id = ?',
+    [activate ? 1 : 0, productId, sellerId],
+  );
+  return result.affectedRows > 0;
+};
+
+const countSponsoredBySeller = async (sellerId) => {
+  const pool = getMysqlPool();
+  const [[row]] = await pool.query(
+    'SELECT COUNT(*) AS cnt FROM products WHERE seller_id = ? AND is_featured = 1',
+    [sellerId],
+  );
+  return Number(row.cnt || 0);
+};
+
+const getSellerStats = async (sellerId) => {
+  const pool = getMysqlPool();
+
+  const [[prodStats]] = await pool.query(
+    `SELECT
+       COUNT(*)                                          AS total_products,
+       SUM(CASE WHEN stock > 0  THEN 1 ELSE 0 END)      AS in_stock,
+       SUM(CASE WHEN stock = 0  THEN 1 ELSE 0 END)      AS out_of_stock,
+       ROUND(AVG(prix), 0)                              AS avg_price,
+       MAX(created_at)                                  AS last_product_at
+     FROM products WHERE seller_id = ?`,
+    [sellerId],
+  );
+
+  const [[viewStats]] = await pool.query(
+    `SELECT
+       COUNT(*)                                                                              AS total_views,
+       SUM(CASE WHEN pv.month_key = DATE_FORMAT(NOW(),'%Y-%m') THEN 1 ELSE 0 END)           AS views_this_month
+     FROM product_views pv
+     JOIN products p ON p.id = pv.product_id
+     WHERE p.seller_id = ?`,
+    [sellerId],
+  );
+
+  const [[msgStats]] = await pool.query(
+    `SELECT COUNT(DISTINCT sender_id) AS unique_contacts
+     FROM messages
+     WHERE receiver_id = ?`,
+    [sellerId],
+  );
+
+  const [[reviewStats]] = await pool.query(
+    `SELECT ROUND(AVG(rating), 1) AS avg_rating, COUNT(*) AS review_count
+     FROM seller_reviews WHERE seller_id = ?`,
+    [sellerId],
+  );
+
+  const [[payStats]] = await pool.query(
+    `SELECT COUNT(*) AS paid_count
+     FROM product_payments pp
+     JOIN products p ON p.id = pp.product_id
+     WHERE p.seller_id = ? AND pp.status = 'paid'`,
+    [sellerId],
+  );
+
+  const [categories] = await pool.query(
+    `SELECT categorie, COUNT(*) AS count
+     FROM products WHERE seller_id = ?
+     GROUP BY categorie ORDER BY count DESC LIMIT 6`,
+    [sellerId],
+  );
+
+  return {
+    products: {
+      total:       Number(prodStats.total_products || 0),
+      inStock:     Number(prodStats.in_stock       || 0),
+      outOfStock:  Number(prodStats.out_of_stock   || 0),
+      avgPrice:    Number(prodStats.avg_price       || 0),
+      lastProductAt: prodStats.last_product_at || null,
+    },
+    views: {
+      total:     Number(viewStats.total_views    || 0),
+      thisMonth: Number(viewStats.views_this_month || 0),
+    },
+    contacts: {
+      uniqueBuyers: Number(msgStats.unique_contacts || 0),
+    },
+    reviews: {
+      avgRating:   reviewStats.avg_rating !== null ? Number(reviewStats.avg_rating) : null,
+      count:       Number(reviewStats.review_count || 0),
+    },
+    payments: {
+      paidCount:        Number(payStats.paid_count || 0),
+      estimatedRevenue: Number(payStats.paid_count || 0) * 150,
+    },
+    categories: categories.map((r) => ({ categorie: r.categorie, count: Number(r.count) })),
+  };
+};
+
 module.exports = {
   createProduct,
   deleteProduct,
@@ -319,4 +463,10 @@ module.exports = {
   listProducts,
   parseArrayParam,
   updateProduct,
+  addProductImages,
+  deleteProductImage,
+  getSellerStats,
+  getSponsoredProducts,
+  toggleSponsor,
+  countSponsoredBySeller,
 };

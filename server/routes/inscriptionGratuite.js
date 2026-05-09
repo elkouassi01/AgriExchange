@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { isMysql } = require('../utils/authHelpers');
 const { sendWhatsApp } = require('../utils/whatsappClient');
+const { protect } = require('../middlewares/auth');
 
 const VALID_FORMULES = ['BLEU', 'GOLD', 'PLATINUM'];
 
@@ -140,6 +141,112 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: messages.join(', ') });
     }
     res.status(500).json({ message: 'Erreur interne du serveur' });
+  }
+});
+
+// GET /api/v1/inscription-gratuite/mon-abonnement
+router.get('/mon-abonnement', protect, async (req, res) => {
+  if (req.user.role !== 'agriculteur') {
+    return res.status(403).json({ message: 'Réservé aux agriculteurs' });
+  }
+
+  try {
+    const userId = req.user.id || req.user._id;
+    const abonnement = await mysqlUserRepository.getActiveSubscriptionForUser(userId);
+
+    if (!abonnement) {
+      return res.json({ abonnement: null });
+    }
+
+    const dateFin = abonnement.dateFin ? new Date(abonnement.dateFin) : null;
+    const joursRestants = dateFin
+      ? Math.max(0, Math.ceil((dateFin - new Date()) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    return res.json({
+      abonnement: {
+        formule: abonnement.formule,
+        statut: abonnement.statut,
+        dateDebut: abonnement.dateDebut,
+        dateFin: abonnement.dateFin,
+        joursRestants,
+      },
+    });
+  } catch (err) {
+    console.error('[mon-abonnement]', err);
+    return res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/v1/inscription-gratuite/renouveler
+router.post('/renouveler', protect, async (req, res) => {
+  if (req.user.role !== 'agriculteur') {
+    return res.status(403).json({ message: 'Réservé aux agriculteurs' });
+  }
+
+  const { formule: rawFormule } = req.body;
+
+  try {
+    const userId = req.user.id || req.user._id;
+
+    const currentSub = await mysqlUserRepository.getActiveSubscriptionForUser(userId);
+
+    const FORMULE_RANK = { BLEU: 1, GOLD: 2, PLATINUM: 3 };
+    const currentRank = FORMULE_RANK[currentSub?.formule] || 0;
+    const formule = VALID_FORMULES.includes(rawFormule)
+      ? rawFormule
+      : (currentSub?.formule || 'BLEU');
+    const requestedRank = FORMULE_RANK[formule] || 0;
+    const isUpgrade = requestedRank > currentRank;
+
+    // Bloquer le renouvellement si l'abonnement est encore bien actif (> 30 j)
+    // sauf si c'est un upgrade vers une formule supérieure
+    if (currentSub?.dateFin && !isUpgrade) {
+      const joursRestantsActuel = Math.ceil(
+        (new Date(currentSub.dateFin) - new Date()) / (1000 * 60 * 60 * 24)
+      );
+      if (joursRestantsActuel > 30) {
+        return res.status(403).json({
+          message: `Renouvellement impossible : votre abonnement est actif encore ${joursRestantsActuel} jours. Vous pouvez upgrader vers une formule supérieure.`,
+        });
+      }
+    }
+
+    const durationMonths = FORMULE_DURATIONS_MONTHS[formule];
+
+    // Upgrade → repart d'aujourd'hui ; renouvellement → prolonge depuis dateFin
+    const now = new Date();
+    const currentFin = currentSub?.dateFin ? new Date(currentSub.dateFin) : null;
+    const baseDate = isUpgrade ? now : (currentFin && currentFin > now ? currentFin : now);
+    const dateFin = new Date(baseDate);
+    dateFin.setMonth(dateFin.getMonth() + durationMonths);
+
+    await mysqlUserRepository.updateUserSubscription(userId, {
+      formule,
+      dateDebut: now,
+      dateFin,
+      montant: 0,
+      statut: 'actif',
+    });
+
+    const joursRestants = Math.ceil((dateFin - now) / (1000 * 60 * 60 * 24));
+
+    console.log(`[Renouvellement] Agriculteur ${userId} → ${formule} jusqu'au ${dateFin.toLocaleDateString('fr-FR')}`);
+
+    return res.json({
+      success: true,
+      message: `Abonnement ${formule} renouvelé avec succès !`,
+      abonnement: {
+        formule,
+        statut: 'actif',
+        dateDebut: now,
+        dateFin,
+        joursRestants,
+      },
+    });
+  } catch (err) {
+    console.error('[renouveler]', err);
+    return res.status(500).json({ message: 'Erreur lors du renouvellement' });
   }
 });
 

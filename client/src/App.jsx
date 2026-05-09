@@ -23,6 +23,7 @@ import PaiementReussi from './components/PaiementReussi';
 import PaiementEchec from './components/PaiementEchec';
 import TermsPage from './components/TermsPage';
 import ForgotPassword from './components/ForgotPassword';
+import SearchPage from './components/SearchPage';
 import ApproposPage from './components/Apropo';
 import NoservicePage from './components/Noservices';
 import VerifyOtp from './components/VerifyOtp';
@@ -36,6 +37,7 @@ import ProfilUtilisateur from './components/ProfilUtilisateur';
 
 // 👤 Consommateur
 import ConsumerDashboard from './components/ConsumerDashboard';
+import MessagesPage from './components/MessagesPage';
 
 // ⚙️ Admin
 import AdminLayout from './components/admin/AdminLayout';
@@ -101,10 +103,12 @@ const AppContent = () => {
         <Route path="/Appropos" element={<ApproposPage />} />
         <Route path="/Noservice" element={<NoservicePage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
+        <Route path="/recherche" element={<SearchPage />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/mes-produits" element={<MesProduits />} />
         <Route path="/abonne" element={<GestionAbonnes />} />
         <Route path="/profil" element={<ProfilUtilisateur />} />
+        <Route path="/messages" element={<MessagesPage />} />
 
         {/* 👨‍🌾 Routes agriculteur protégées */}
         <Route

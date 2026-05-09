@@ -1,0 +1,243 @@
+/* SellerReviews */
+
+.sr-root {
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* ── En-tête ── */
+.sr-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.sr-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.sr-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.sr-avg {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #f59e0b;
+  line-height: 1;
+}
+
+.sr-count {
+  font-size: 0.82rem;
+  color: #6b7280;
+}
+
+/* ── Étoiles ── */
+.sr-star-row {
+  display: inline-flex;
+  gap: 1px;
+}
+
+.sr-star-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  line-height: 1;
+  color: #d1d5db;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.sr-star-btn--on {
+  color: #f59e0b;
+}
+
+.sr-star-btn:hover {
+  transform: scale(1.15);
+}
+
+/* ── Formulaire ── */
+.sr-form {
+  background: #f9fafb;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1.25rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.sr-form__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin: 0;
+}
+
+.sr-form__textarea {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 9px;
+  font-size: 0.9rem;
+  color: #111827;
+  background: #fff;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.sr-form__textarea:focus {
+  outline: none;
+  border-color: #16a34a;
+}
+
+.sr-form__msg {
+  font-size: 0.82rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.sr-form__msg--err { color: #ef4444; }
+.sr-form__msg--ok  { color: #16a34a; }
+
+.sr-form__btn {
+  align-self: flex-start;
+  padding: 0.55rem 1.4rem;
+  background: #16a34a;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.sr-form__btn:hover:not(:disabled) { background: #15803d; }
+.sr-form__btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Hint connexion ── */
+.sr-login-hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 1.25rem;
+}
+
+.sr-login-hint a {
+  color: #16a34a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.sr-login-hint a:hover { text-decoration: underline; }
+
+/* ── Liste ── */
+.sr-loading,
+.sr-empty {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  text-align: center;
+  padding: 1.5rem 0;
+}
+
+.sr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ── Carte avis ── */
+.sr-card {
+  background: #fff;
+  border: 1px solid #f1f5f9;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.sr-card__head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ── Avatar ── */
+.sr-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #4ade80;
+  color: #0d1f12;
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sr-avatar--img {
+  object-fit: cover;
+  background: none;
+  padding: 0;
+}
+
+.sr-card__meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sr-card__name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.sr-card__date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.sr-card__comment {
+  font-size: 0.88rem;
+  color: #374151;
+  line-height: 1.55;
+  margin: 0;
+  padding-left: calc(36px + 0.7rem);
+}
+
+.sr-delete-btn {
+  background: none;
+  border: none;
+  color: #d1d5db;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.sr-delete-btn:hover { color: #ef4444; }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .sr-form { padding: 1rem; }
+  .sr-card__comment { padding-left: 0; margin-top: 0.4rem; }
+  .sr-card__date { font-size: 0.7rem; }
+}

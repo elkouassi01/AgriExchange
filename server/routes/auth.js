@@ -8,6 +8,8 @@ const { protect } = require('../middlewares/auth');
 const { sendWhatsApp } = require('../utils/whatsappClient');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { isMysql, sanitizeUser } = require('../utils/authHelpers');
+const { upload, cloudinary } = require('../config/upload');
+const sharp = require('sharp');
 
 const sendOtpWhatsApp = async (phone, otp) => {
   const msg =
@@ -270,6 +272,143 @@ router.put('/profil', protect, async (req, res) => {
   } catch (error) {
     console.error('[Profil PUT]', error);
     return res.status(500).json({ message: 'Erreur lors de la mise à jour du profil' });
+  }
+});
+
+// Mot de passe oublié — envoie un OTP via WhatsApp
+router.post('/forgot-password', otpRateLimit, async (req, res) => {
+  const { telephone } = req.body;
+  if (!telephone) {
+    return res.status(400).json({ success: false, message: 'Numéro de téléphone requis' });
+  }
+
+  try {
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByContact(telephone)
+      : await User.findOne({ contact: telephone });
+
+    // On ne révèle pas si le numéro existe — réponse identique dans tous les cas
+    if (user) {
+      const otp = generateOtp();
+      const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
+
+      if (isMysql()) {
+        await mysqlUserRepository.updateUserOtp(user.id, String(otp), otpExpire);
+      } else {
+        user.otp = otp;
+        user.otpExpire = otpExpire.getTime();
+        await user.save();
+      }
+
+      const msg =
+        `🔐 *VivriMarket* — Réinitialisation de mot de passe\n\n` +
+        `Votre code de réinitialisation est : *${otp}*\n\n` +
+        `Ce code expire dans *10 minutes*.\n` +
+        `Ne le partagez avec personne.`;
+      await sendWhatsApp(telephone, msg).catch((e) => console.error('[Reset OTP WA]', e.message));
+    }
+
+    return res.json({ success: true, message: 'Si ce numéro est enregistré, vous recevrez un code WhatsApp.' });
+  } catch (error) {
+    console.error('[Forgot Password]', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// Réinitialisation du mot de passe avec OTP
+router.post('/reset-password', async (req, res) => {
+  const { telephone, otp, nouveauMotDePasse } = req.body;
+  if (!telephone || !otp || !nouveauMotDePasse) {
+    return res.status(400).json({ success: false, message: 'Tous les champs sont requis' });
+  }
+
+  if (nouveauMotDePasse.length < 6) {
+    return res.status(400).json({ success: false, message: 'Le mot de passe doit contenir au moins 6 caractères' });
+  }
+
+  try {
+    const user = isMysql()
+      ? await mysqlUserRepository.findUserByContact(telephone)
+      : await User.findOne({ contact: telephone });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Numéro introuvable' });
+    }
+
+    if (String(user.otp) !== String(otp)) {
+      return res.status(400).json({ success: false, message: 'Code OTP incorrect' });
+    }
+
+    if (user.otpExpire && new Date(user.otpExpire).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'Code OTP expiré. Demandez un nouveau code.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(nouveauMotDePasse, 12);
+
+    if (isMysql()) {
+      await mysqlUserRepository.updateUserPassword(user.id, hashedPassword);
+    } else {
+      user.motDePasse = hashedPassword;
+      user.otp = null;
+      user.otpExpire = null;
+      await user.save();
+    }
+
+    return res.json({ success: true, message: 'Mot de passe mis à jour avec succès !' });
+  } catch (error) {
+    console.error('[Reset Password]', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// Upload photo de profil
+router.post('/photo-profil', protect, upload.single('photo'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: 'Aucune image fournie' });
+
+  try {
+    const userId = req.user.id || req.user._id;
+
+    const buffer = await sharp(req.file.buffer)
+      .resize(300, 300, { fit: 'cover' })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    const photoUrl = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: 'profils', public_id: `user_${userId}`, overwrite: true },
+        (err, result) => (err ? reject(err) : resolve(result.secure_url))
+      );
+      stream.end(buffer);
+    });
+
+    const pool = require('../config/mysql').getMysqlPool();
+    await pool.query('UPDATE users SET photo = ?, updated_at = NOW() WHERE id = ?', [photoUrl, userId]);
+
+    const updated = await mysqlUserRepository.findUserById(userId);
+    return res.json({ success: true, photo: photoUrl, utilisateur: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('[Photo Profil]', error);
+    return res.status(500).json({ message: "Erreur lors de l'upload de la photo" });
+  }
+});
+
+// Suppression photo de profil
+router.delete('/photo-profil', protect, async (req, res) => {
+  try {
+    const userId = req.user.id || req.user._id;
+    const pool = require('../config/mysql').getMysqlPool();
+
+    // Supprimer de Cloudinary si possible (best-effort)
+    try {
+      await cloudinary.uploader.destroy(`profils/user_${userId}`);
+    } catch { /* ignore */ }
+
+    await pool.query('UPDATE users SET photo = NULL, updated_at = NOW() WHERE id = ?', [userId]);
+    const updated = await mysqlUserRepository.findUserById(userId);
+    return res.json({ success: true, utilisateur: sanitizeUser(updated) });
+  } catch (error) {
+    console.error('[Delete Photo]', error);
+    return res.status(500).json({ message: 'Erreur lors de la suppression' });
   }
 });
 

@@ -16,6 +16,7 @@ const mapUserRow = (row) => {
     typeExploitation: row.type_exploitation,
     surface: row.surface,
     description: row.description,
+    photo: row.photo || null,
     otp: row.otp,
     otpExpire: row.otp_expire,
     isVerified: Boolean(row.is_verified),
@@ -248,6 +249,14 @@ const deleteUser = async (id) => {
   return result.affectedRows > 0;
 };
 
+const updateUserPassword = async (id, hashedPassword) => {
+  const pool = getMysqlPool();
+  await pool.query(
+    'UPDATE users SET mot_de_passe = ?, otp = NULL, otp_expire = NULL WHERE id = ?',
+    [hashedPassword, id]
+  );
+};
+
 module.exports = {
   findUserByEmail,
   findUserByContact,
@@ -263,4 +272,5 @@ module.exports = {
   listUsers,
   countUsers,
   deleteUser,
+  updateUserPassword,
 };

@@ -23,6 +23,7 @@ const sanitizeUser = (user) => {
     fermeNom: user.fermeNom,
     localisation: user.localisation,
     typeExploitation: user.typeExploitation,
+    photo: user.photo || null,
     estActif: user.estActif,
     isVerified: user.isVerified,
     derniereConnexion: user.derniereConnexion,

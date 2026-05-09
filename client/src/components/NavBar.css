@@ -115,6 +115,55 @@
   color: #E53935;
 }
 
+/* ── Barre de recherche navbar ── */
+.navbar-search {
+  display: flex;
+  align-items: center;
+  background: #f4fef7;
+  border: 1.5px solid #d1fae5;
+  border-radius: 8px;
+  overflow: hidden;
+  height: 36px;
+  transition: border-color 0.2s;
+}
+
+.navbar-search:focus-within {
+  border-color: #22c55e;
+}
+
+.navbar-search-input {
+  border: none;
+  background: transparent;
+  padding: 0 0.75rem;
+  font-size: 0.875rem;
+  outline: none;
+  width: 180px;
+  font-family: inherit;
+  color: var(--text-color);
+}
+
+.navbar-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.navbar-search-btn {
+  background: #22c55e;
+  border: none;
+  color: white;
+  padding: 0 0.75rem;
+  height: 100%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+
+.navbar-search-btn:hover {
+  background: #16a34a;
+}
+
 /* Version mobile */
 @media (max-width: 768px) {
   .menu-toggle {
@@ -145,6 +194,18 @@
     width: 100%;
     padding: 1rem 0;
     border-bottom: 1px solid #eee;
+  }
+
+  .navbar-search {
+    width: 100%;
+    height: 44px;
+    border-radius: 10px;
+  }
+
+  .navbar-search-input {
+    width: 100%;
+    flex: 1;
+    font-size: 1rem;
   }
 }
 .initials-circle {
@@ -177,6 +238,51 @@
 
 @media (max-width: 768px) {
   .initials-circle {
+    margin-left: 0;
+    margin-top: 5px;
+  }
+}
+
+/* ── Messages badge ── */
+.navbar-messages-icon-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.navbar-msg-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.navbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: 8px;
+  border: 2px solid #22c55e;
+  display: block;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .navbar-avatar {
     margin-left: 0;
     margin-top: 5px;
   }

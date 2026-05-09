@@ -1,0 +1,190 @@
+/* ── Section globale ─────────────────────────────────────────────────────── */
+.sp-section {
+  max-width: 1200px;
+  margin: 2.5rem auto;
+  padding: 0 1.25rem;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  gap: 1rem;
+}
+
+.sp-header__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sp-header__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.sp-header__title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.sp-header__sub {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin: 0.1rem 0 0;
+}
+
+/* ── Navigation ─────────────────────────────────────────────────────────── */
+.sp-nav {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.sp-nav__btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid #d1fae5;
+  background: #fff;
+  color: #16a34a;
+  font-size: 1.3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+
+.sp-nav__btn:hover {
+  background: #f0fdf4;
+  border-color: #22c55e;
+}
+
+/* ── Carousel track ─────────────────────────────────────────────────────── */
+.sp-track {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0.5rem;
+}
+
+.sp-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── Carte produit ──────────────────────────────────────────────────────── */
+.sp-card {
+  flex: 0 0 220px;
+  scroll-snap-align: start;
+  background: #fff;
+  border: 1.5px solid #e5f5eb;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.sp-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(22,163,74,0.13);
+  border-color: #86efac;
+}
+
+/* Image */
+.sp-card__img-wrap {
+  position: relative;
+  width: 100%;
+  height: 145px;
+  overflow: hidden;
+  background: #f0fdf4;
+}
+
+.sp-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+
+.sp-card:hover .sp-card__img {
+  transform: scale(1.04);
+}
+
+/* Badge sponsorisé */
+.sp-card__badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 6px rgba(217,119,6,0.35);
+  white-space: nowrap;
+}
+
+/* Contenu texte */
+.sp-card__body {
+  padding: 0.75rem 0.9rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sp-card__nom {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sp-card__prix {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #16a34a;
+  margin: 0;
+}
+
+.sp-card__ferme {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .sp-card {
+    flex: 0 0 175px;
+  }
+
+  .sp-card__img-wrap {
+    height: 115px;
+  }
+
+  .sp-header__title {
+    font-size: 1.05rem;
+  }
+}

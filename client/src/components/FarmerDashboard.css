@@ -304,10 +304,469 @@
   transform: translateY(-1px);
 }
 
+/* ── Section renouvellement ── */
+.fd-renew-card {
+  padding: 1.25rem 1.5rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 16px;
+  margin-top: 1.5rem;
+}
+
+.fd-renew-card--warning {
+  border-color: rgba(251,146,60,0.4);
+  background: rgba(251,146,60,0.05);
+}
+
+.fd-renew-card--expired {
+  border-color: rgba(239,68,68,0.5);
+  background: rgba(239,68,68,0.06);
+}
+
+.fd-renew-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.fd-renew-card__info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.fd-renew-card__icon {
+  color: #4ade80;
+  flex-shrink: 0;
+}
+
+.fd-renew-card--warning .fd-renew-card__icon { color: #fb923c; }
+.fd-renew-card--expired .fd-renew-card__icon  { color: #ef4444; }
+
+.fd-renew-card__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2f0e8;
+  margin: 0 0 0.15rem;
+}
+
+.fd-renew-card--warning .fd-renew-card__title { color: #fb923c; }
+.fd-renew-card--expired .fd-renew-card__title  { color: #ef4444; }
+
+.fd-renew-card__sub {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.fd-renew-card__btn {
+  padding: 0.55rem 1.3rem;
+  background: #4ade80;
+  color: #0d1f12;
+  font-weight: 700;
+  font-size: 0.85rem;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.fd-renew-card--warning .fd-renew-card__btn { background: #fb923c; color: #fff; }
+.fd-renew-card--expired .fd-renew-card__btn  { background: #ef4444; color: #fff; }
+
+.fd-renew-card__btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
+
+.fd-renew-card__badge-active {
+  padding: 0.45rem 1.1rem;
+  background: rgba(74, 222, 128, 0.15);
+  color: #4ade80;
+  font-weight: 600;
+  font-size: 0.82rem;
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.03em;
+}
+
+/* Barre de progression */
+.fd-progress-bar {
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+
+.fd-progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 999px;
+  transition: width 0.6s ease;
+}
+
+.fd-renew-card--warning .fd-progress-bar__fill { background: linear-gradient(90deg, #fb923c, #f97316); }
+.fd-renew-card--expired .fd-progress-bar__fill  { background: #ef4444; }
+
+.fd-progress-label {
+  font-size: 0.73rem;
+  color: #6b7280;
+  margin: 0;
+  text-align: right;
+}
+
+/* ── Modal renouvellement ── */
+.fd-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.fd-modal {
+  background: #0f2318;
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 20px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.fd-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.fd-modal__header h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #f0fdf4;
+  margin: 0;
+}
+
+.fd-modal__close {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 6px;
+  display: flex;
+  transition: color 0.2s;
+}
+
+.fd-modal__close:hover { color: #ef4444; }
+
+.fd-modal__sub {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0 0 1.5rem;
+  line-height: 1.5;
+}
+
+.fd-plan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.fd-plan-option {
+  background: rgba(255,255,255,0.04);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1.1rem 0.9rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.fd-plan-option:hover {
+  background: rgba(255,255,255,0.07);
+}
+
+.fd-plan-option--selected {
+  background: rgba(74,222,128,0.06);
+}
+
+.fd-plan-option__label {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.fd-plan-option__duration {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.fd-plan-option__features {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  font-size: 0.72rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.fd-plan-option__price {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #4ade80;
+  margin-top: 0.3rem;
+}
+
+.fd-modal__error {
+  font-size: 0.85rem;
+  color: #ef4444;
+  background: rgba(239,68,68,0.1);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  margin: 0 0 1rem;
+}
+
+.fd-modal__success {
+  font-size: 0.85rem;
+  color: #4ade80;
+  background: rgba(74,222,128,0.1);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  margin: 0 0 1rem;
+}
+
+.fd-modal__confirm {
+  width: 100%;
+  padding: 0.8rem;
+  background: #4ade80;
+  color: #0d1f12;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.fd-modal__confirm:hover:not(:disabled) {
+  background: #22c55e;
+  transform: translateY(-1px);
+}
+
+.fd-modal__confirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── Section Performances ── */
+.fd-perf-loading,
+.fd-perf-empty {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: center;
+  padding: 1rem 0 1.5rem;
+}
+
+.fd-perf {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+/* KPI cards grid */
+.fd-perf-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.fd-perf-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 1.1rem 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  transition: background 0.2s;
+}
+
+.fd-perf-card:hover { background: rgba(255,255,255,0.07); }
+
+.fd-perf-card__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fd-perf-card--blue  .fd-perf-card__icon { background: rgba(96,165,250,0.15); color: #60a5fa; }
+.fd-perf-card--teal  .fd-perf-card__icon { background: rgba(20,184,166,0.15); color: #2dd4bf; }
+.fd-perf-card--yellow .fd-perf-card__icon { background: rgba(251,191,36,0.15); color: #fbbf24; }
+.fd-perf-card--green .fd-perf-card__icon { background: rgba(74,222,128,0.15); color: #4ade80; }
+
+.fd-perf-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.fd-perf-card__value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #f0fdf4;
+  line-height: 1;
+}
+
+.fd-perf-card--blue  .fd-perf-card__value { color: #60a5fa; }
+.fd-perf-card--teal  .fd-perf-card__value { color: #2dd4bf; }
+.fd-perf-card--yellow .fd-perf-card__value { color: #fbbf24; }
+.fd-perf-card--green .fd-perf-card__value { color: #4ade80; }
+
+.fd-perf-card__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fd-perf-card__sub {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Résumé stock */
+.fd-stock-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.fd-stock-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.82rem;
+  color: #9ca3af;
+}
+
+.fd-stock-chip--good { background: rgba(74,222,128,0.1); border-color: rgba(74,222,128,0.25); color: #4ade80; }
+.fd-stock-chip--bad  { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.25);  color: #f87171; }
+
+.fd-stock-chip__val   { font-weight: 700; }
+.fd-stock-chip__label { color: inherit; opacity: 0.85; }
+
+/* Graphe catégories */
+.fd-catbar {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
+}
+
+.fd-catbar__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.9rem;
+}
+
+.fd-catbar__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.fd-catbar__label {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  color: #d1d5db;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+}
+
+.fd-catbar__track {
+  flex: 1;
+  height: 8px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.fd-catbar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  border-radius: 999px;
+  min-width: 4px;
+  transition: width 0.6s ease;
+}
+
+.fd-catbar__count {
+  width: 28px;
+  text-align: right;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #4ade80;
+}
+
+/* Étoiles */
+.fd-stars-row {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(251,191,36,0.07);
+  border: 1px solid rgba(251,191,36,0.2);
+  border-radius: 12px;
+  padding: 0.7rem 1rem;
+}
+
+.fd-star--filled { color: #fbbf24; fill: #fbbf24; }
+.fd-star--empty  { color: rgba(251,191,36,0.25); }
+
+.fd-stars-label {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-left: 0.4rem;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .fd-stats   { grid-template-columns: repeat(2, 1fr); }
   .fd-actions { grid-template-columns: repeat(2, 1fr); }
+  .fd-perf-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 600px) {
@@ -318,4 +777,8 @@
   .fd-actions   { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
   .fd-action-card { padding: 1.5rem 0.75rem; }
   .fd-stat__value { font-size: 1.25rem; }
+  .fd-plan-grid   { grid-template-columns: 1fr; }
+  .fd-modal       { padding: 1.5rem 1.25rem; }
+  .fd-perf-grid   { grid-template-columns: repeat(2, 1fr); }
+  .fd-catbar__label { width: 80px; }
 }

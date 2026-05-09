@@ -1,12 +1,24 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../services/axiosConfig';
-import './CategoriePage.css';
 import { buildUploadUrl } from '../config/api';
+import './CategoriePage.css';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
 
-const ETATS = ['', 'frais', 'sec', 'transforme', 'congele', 'bio'];
+const CATEGORIES = [
+  { value: '', label: 'Toutes catégories' },
+  { value: 'fruits', label: 'Fruits' },
+  { value: 'légumes', label: 'Légumes' },
+  { value: 'viandes', label: 'Viandes' },
+  { value: 'produits laitiers', label: 'Produits laitiers' },
+  { value: 'céréales', label: 'Céréales' },
+  { value: 'épices', label: 'Épices' },
+  { value: 'autres', label: 'Autres' },
+];
+
+const ETATS = ['frais', 'sec', 'congelé', 'transformé', 'séché', 'fermenté', 'autre'];
+
 const SORT_OPTIONS = [
   { value: 'createdAt-desc', label: 'Plus récents' },
   { value: 'createdAt-asc', label: 'Plus anciens' },
@@ -17,34 +29,29 @@ const SORT_OPTIONS = [
 ];
 
 const ProductImage = ({ src, alt }) => {
-  const [imageSrc, setImageSrc] = useState(DEFAULT_IMAGE);
-
-  useEffect(() => {
-    setImageSrc(src ? buildUploadUrl(src) : DEFAULT_IMAGE);
-  }, [src]);
-
+  const [imgSrc, setImgSrc] = useState(DEFAULT_IMAGE);
+  useEffect(() => { setImgSrc(src ? buildUploadUrl(src) : DEFAULT_IMAGE); }, [src]);
   return (
     <img
-      src={imageSrc}
+      src={imgSrc}
       alt={alt}
       className="product-image"
-      onError={() => setImageSrc(DEFAULT_IMAGE)}
+      onError={() => setImgSrc(DEFAULT_IMAGE)}
     />
   );
 };
 
-const CategoriePage = () => {
-  const { nomCategorie } = useParams();
+const hasActiveSearch = (f) =>
+  Boolean(f.search || f.categorie || f.etat || f.minPrix || f.maxPrix);
+
+const SearchPage = () => {
   const navigate = useNavigate();
+  const [urlParams] = useSearchParams();
 
-  const [produits, setProduits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [erreur, setErreur] = useState(null);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalProducts: 0 });
-  const [filtersOpen, setFiltersOpen] = useState(false);
-
+  const [searchInput, setSearchInput] = useState(urlParams.get('q') || '');
   const [filters, setFilters] = useState({
-    search: '',
+    search: urlParams.get('q') || '',
+    categorie: '',
     etat: '',
     minPrix: '',
     maxPrix: '',
@@ -54,25 +61,33 @@ const CategoriePage = () => {
     limit: 12,
   });
 
-  const [searchInput, setSearchInput] = useState('');
+  const [produits, setProduits] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [erreur, setErreur] = useState(null);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 0, totalProducts: 0 });
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const fetchProduits = useCallback(async (params) => {
+    if (!hasActiveSearch(params)) {
+      setProduits([]);
+      setPagination({ currentPage: 1, totalPages: 0, totalProducts: 0 });
+      return;
+    }
+    setLoading(true);
+    setErreur(null);
     try {
-      setLoading(true);
-      setErreur(null);
+      const q = new URLSearchParams();
+      q.set('page', params.page);
+      q.set('limit', params.limit);
+      q.set('sortBy', params.sortBy);
+      q.set('sortOrder', params.sortOrder);
+      if (params.search) q.set('search', params.search);
+      if (params.categorie) q.set('categorie', params.categorie);
+      if (params.etat) q.set('etat', params.etat);
+      if (params.minPrix) q.set('minPrix', params.minPrix);
+      if (params.maxPrix) q.set('maxPrix', params.maxPrix);
 
-      const query = new URLSearchParams();
-      query.set('categorie', nomCategorie);
-      query.set('page', params.page);
-      query.set('limit', params.limit);
-      query.set('sortBy', params.sortBy);
-      query.set('sortOrder', params.sortOrder);
-      if (params.search) query.set('search', params.search);
-      if (params.etat) query.set('etat', params.etat);
-      if (params.minPrix) query.set('minPrix', params.minPrix);
-      if (params.maxPrix) query.set('maxPrix', params.maxPrix);
-
-      const res = await api.get(`/products?${query.toString()}`);
+      const res = await api.get(`/products?${q.toString()}`);
       const data = res.data;
 
       let docs = [];
@@ -83,35 +98,37 @@ const CategoriePage = () => {
         pag = data.data.pagination || pag;
       } else if (Array.isArray(data)) {
         docs = data;
-      } else if (Array.isArray(data.data)) {
-        docs = data.data;
       }
 
-      const formattes = docs.map((p) => ({
+      setProduits(docs.map((p) => ({
         ...p,
         nom: p.nom || p.name || 'Produit sans nom',
         description: p.description || '',
         imageUrl: p.imageUrl || p.image || '',
         prixFormate: `${Number(p.prix || 0).toLocaleString('fr-FR')} FCFA / ${p.unite || 'kg'}`,
-      }));
-
-      setProduits(formattes);
+      })));
       setPagination(pag);
     } catch (err) {
-      console.error('Erreur chargement produits :', err);
-      setErreur('Erreur lors du chargement des produits.');
+      console.error('[SearchPage]', err);
+      setErreur('Erreur lors de la recherche. Réessayez.');
     } finally {
       setLoading(false);
     }
-  }, [nomCategorie]);
+  }, []);
+
+  // Sync URL ?q= → update filters when navigating from navbar
+  useEffect(() => {
+    const q = urlParams.get('q') || '';
+    setSearchInput(q);
+    setFilters((prev) => ({ ...prev, search: q, page: 1 }));
+  }, [urlParams]);
 
   useEffect(() => {
     fetchProduits(filters);
   }, [filters, fetchProduits]);
 
-  const updateFilter = (key, value) => {
+  const updateFilter = (key, value) =>
     setFilters((prev) => ({ ...prev, [key]: value, page: 1 }));
-  };
 
   const handleSortChange = (value) => {
     const [sortBy, sortOrder] = value.split('-');
@@ -127,6 +144,7 @@ const CategoriePage = () => {
     setSearchInput('');
     setFilters({
       search: '',
+      categorie: '',
       etat: '',
       minPrix: '',
       maxPrix: '',
@@ -139,6 +157,7 @@ const CategoriePage = () => {
 
   const activeFiltersCount = [
     filters.search,
+    filters.categorie,
     filters.etat,
     filters.minPrix,
     filters.maxPrix,
@@ -150,18 +169,21 @@ const CategoriePage = () => {
   return (
     <div className="category-container">
       <div className="category-header">
-        <h1>{nomCategorie}</h1>
-        <span className="product-count">{pagination.totalProducts} produit(s)</span>
+        <h1>Recherche de produits</h1>
+        {pagination.totalProducts > 0 && (
+          <span className="product-count">{pagination.totalProducts} résultat(s)</span>
+        )}
       </div>
 
       {/* Barre de recherche */}
       <form className="search-bar" onSubmit={handleSearch}>
         <input
           type="text"
-          placeholder="Rechercher un produit..."
+          placeholder="Nom du produit, description, tags..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="search-input"
+          autoFocus
         />
         <button type="submit" className="search-btn">Rechercher</button>
         <button
@@ -178,15 +200,22 @@ const CategoriePage = () => {
         <div className="filters-panel">
           <div className="filters-grid">
             <div className="filter-group">
+              <label>Catégorie</label>
+              <select value={filters.categorie} onChange={(e) => updateFilter('categorie', e.target.value)}>
+                {CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="filter-group">
               <label>État du produit</label>
               <select value={filters.etat} onChange={(e) => updateFilter('etat', e.target.value)}>
                 <option value="">Tous les états</option>
-                {ETATS.filter(Boolean).map((e) => (
+                {ETATS.map((e) => (
                   <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>
                 ))}
               </select>
             </div>
-
             <div className="filter-group">
               <label>Prix min (FCFA)</label>
               <input
@@ -197,7 +226,6 @@ const CategoriePage = () => {
                 onChange={(e) => updateFilter('minPrix', e.target.value)}
               />
             </div>
-
             <div className="filter-group">
               <label>Prix max (FCFA)</label>
               <input
@@ -208,7 +236,6 @@ const CategoriePage = () => {
                 onChange={(e) => updateFilter('maxPrix', e.target.value)}
               />
             </div>
-
             <div className="filter-group">
               <label>Trier par</label>
               <select value={currentSortValue} onChange={(e) => handleSortChange(e.target.value)}>
@@ -218,25 +245,30 @@ const CategoriePage = () => {
               </select>
             </div>
           </div>
-
           {activeFiltersCount > 0 && (
             <button className="reset-btn" onClick={handleReset}>Réinitialiser les filtres</button>
           )}
         </div>
       )}
 
-      {/* Tags filtres actifs */}
+      {/* Chips filtres actifs */}
       {activeFiltersCount > 0 && (
         <div className="active-filters">
           {filters.search && (
             <span className="filter-chip">
-              Recherche : "{filters.search}"
+              "{filters.search}"
               <button onClick={() => { setSearchInput(''); updateFilter('search', ''); }}>×</button>
+            </span>
+          )}
+          {filters.categorie && (
+            <span className="filter-chip">
+              {CATEGORIES.find((c) => c.value === filters.categorie)?.label || filters.categorie}
+              <button onClick={() => updateFilter('categorie', '')}>×</button>
             </span>
           )}
           {filters.etat && (
             <span className="filter-chip">
-              État : {filters.etat}
+              {filters.etat}
               <button onClick={() => updateFilter('etat', '')}>×</button>
             </span>
           )}
@@ -259,36 +291,51 @@ const CategoriePage = () => {
       {loading ? (
         <div className="loading-container">
           <div className="loading-spinner" />
-          <p>Chargement...</p>
+          <p>Recherche en cours...</p>
         </div>
       ) : erreur ? (
         <div className="error-container">
           <p>{erreur}</p>
-          <button onClick={() => fetchProduits(filters)}>Réessayer</button>
+          <button className="retry-button" onClick={() => fetchProduits(filters)}>Réessayer</button>
+        </div>
+      ) : !hasActiveSearch(filters) ? (
+        <div className="empty-container">
+          <p style={{ fontSize: '1.1rem' }}>
+            Entrez un terme ou sélectionnez un filtre pour trouver des produits agricoles.
+          </p>
         </div>
       ) : produits.length === 0 ? (
         <div className="empty-container">
           <p>Aucun produit trouvé pour ces critères.</p>
-          {activeFiltersCount > 0 && (
-            <button onClick={handleReset}>Effacer les filtres</button>
-          )}
+          <button className="back-button" onClick={handleReset}>Effacer les filtres</button>
         </div>
       ) : (
         <div className="products-grid">
           {produits.map((produit) => (
-            <div key={produit._id || produit.id} className={`product-card${produit.isFeatured || produit.is_featured ? ' product-card--sponsored' : ''}`}>
+            <div key={produit._id || produit.id} className="product-card">
               <div className="image-container">
                 <ProductImage src={produit.imageUrl} alt={produit.nom} />
-                {(produit.isFeatured || produit.is_featured) && (
-                  <span className="sponsored-badge">⭐ Sponsorisé</span>
-                )}
               </div>
               <div className="product-info">
                 <h3>{produit.nom}</h3>
-                {produit.etat && <span className="etat-badge">{produit.etat}</span>}
-                {produit.description && <p className="product-description">{produit.description}</p>}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {produit.categorie && (
+                    <span className="etat-badge">{produit.categorie}</span>
+                  )}
+                  {produit.etat && (
+                    <span className="etat-badge" style={{ background: 'rgba(245,158,11,0.12)', color: '#b45309' }}>
+                      {produit.etat}
+                    </span>
+                  )}
+                </div>
+                {produit.description && (
+                  <p className="product-description">{produit.description}</p>
+                )}
                 <p className="product-price">{produit.prixFormate}</p>
-                <button className="product-button" onClick={() => navigate(`/produits/${produit._id || produit.id}`)}>
+                <button
+                  className="product-button"
+                  onClick={() => navigate(`/produits/${produit._id || produit.id}`)}
+                >
                   Voir l'étal
                 </button>
               </div>
@@ -317,11 +364,11 @@ const CategoriePage = () => {
       )}
 
       <div className="category-footer">
-        <button onClick={() => navigate('/categories')}>Catégories</button>
+        <button onClick={() => navigate('/produits')}>Catégories</button>
         <button onClick={() => navigate('/')}>Accueil</button>
       </div>
     </div>
   );
 };
 
-export default CategoriePage;
+export default SearchPage;

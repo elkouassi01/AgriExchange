@@ -35,7 +35,10 @@ export const UserProvider = ({ children }) => {
       const userId = currentUser?.id || currentUser?._id;
 
       if (currentUser && userId) {
-        const abonnement = await fetchUserAbonnement(userId);
+        const emptyAbonnement = { formule: null, statut: 'inactif', dateFin: null, vuesDetails: { quotaRestant: 0, produitsVus: [] } };
+        const abonnement = currentUser.role === 'consommateur'
+          ? await fetchUserAbonnement(userId)
+          : emptyAbonnement;
         const fullUser = {
           ...currentUser,
           abonnement: abonnement.formule ? abonnement : null,
@@ -83,21 +86,24 @@ export const UserProvider = ({ children }) => {
     if (!uid) return;
 
     try {
-      const [userRes, abonnementRes] = await Promise.all([
-        api.get('/auth/me'),
-        api.get('/users/' + uid + '/forfait'),
-      ]);
-
+      const userRes = await api.get('/auth/me');
       const currentUser = userRes.data.utilisateur || userRes.data.user;
-      const abonnement = {
-        formule: abonnementRes.data.formule,
-        statut: abonnementRes.data.statut || 'inactif',
-        dateFin: abonnementRes.data.dateFin,
-        vuesDetails: {
-          quotaRestant: abonnementRes.data.quotaRestant ?? 0,
-          produitsVus: abonnementRes.data.produitsVus ?? [],
-        },
-      };
+
+      const emptyAbonnement = { formule: null, statut: 'inactif', dateFin: null, vuesDetails: { quotaRestant: 0, produitsVus: [] } };
+      let abonnement = emptyAbonnement;
+
+      if ((currentUser?.role ?? user?.role) === 'consommateur') {
+        const abonnementRes = await api.get('/users/' + uid + '/forfait');
+        abonnement = {
+          formule: abonnementRes.data.formule,
+          statut: abonnementRes.data.statut || 'inactif',
+          dateFin: abonnementRes.data.dateFin,
+          vuesDetails: {
+            quotaRestant: abonnementRes.data.quotaRestant ?? 0,
+            produitsVus: abonnementRes.data.produitsVus ?? [],
+          },
+        };
+      }
 
       const fullUser = {
         ...currentUser,

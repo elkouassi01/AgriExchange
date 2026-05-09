@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   ferme_nom    VARCHAR(120),
   localisation VARCHAR(255),
   type_exploitation VARCHAR(50),
+  photo        TEXT,
   otp          VARCHAR(10),
   otp_expire   DATETIME,
   is_verified  TINYINT(1)   NOT NULL DEFAULT 0,

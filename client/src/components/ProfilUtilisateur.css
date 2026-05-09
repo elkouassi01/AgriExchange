@@ -29,19 +29,101 @@
   position: relative;
 }
 
+/* ── Avatar column ── */
+.profil-avatar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  flex-shrink: 0;
+}
+
 .profil-avatar {
-  width: 68px;
-  height: 68px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   background: #4ade80;
   color: #0d1f12;
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  border: 3px solid rgba(255,255,255,0.2);
 }
+
+.profil-avatar__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+.profil-avatar__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(13,31,18,0.3);
+  border-top-color: #0d1f12;
+  border-radius: 50%;
+  animation: profil-spin 0.8s linear infinite;
+}
+
+@keyframes profil-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Boutons actions photo */
+.profil-photo-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.profil-photo-btn {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.1);
+  color: #f0fdf4;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.profil-photo-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.2);
+}
+
+.profil-photo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profil-photo-btn--delete {
+  border-color: rgba(252,165,165,0.4);
+  color: #fca5a5;
+  background: rgba(239,68,68,0.1);
+}
+
+.profil-photo-btn--delete:hover:not(:disabled) {
+  background: rgba(239,68,68,0.2);
+}
+
+/* Feedback photo */
+.profil-photo-msg {
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-align: center;
+  margin: 0;
+  max-width: 100px;
+}
+
+.profil-photo-msg--error   { color: #fca5a5; }
+.profil-photo-msg--success { color: #86efac; }
 
 .profil-hero-info {
   flex: 1;
@@ -242,6 +324,26 @@
 .profil-btn--cancel {
   background: #f1f5f9;
   color: #374151;
+}
+
+.profil-btn--back {
+  background: transparent;
+  color: #6b7280;
+  border: 1.5px solid #e5e7eb;
+}
+
+.profil-btn--back:hover {
+  background: #f9fafb;
+  color: #111827;
+  opacity: 1;
+}
+
+/* ── Footer ── */
+.profil-footer {
+  padding: 1.25rem 2rem 1.5rem;
+  border-top: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: flex-start;
 }
 
 /* ── Abonnement ── */

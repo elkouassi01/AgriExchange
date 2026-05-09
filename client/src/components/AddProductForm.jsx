@@ -32,6 +32,11 @@ const AddProductForm = () => {
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Galerie supplémentaire (max 4 photos)
+  const [galleryFiles, setGalleryFiles] = useState([]);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
+  const galleryInputRef = useRef(null);
+
   // ---------- REDIRECTIONS ----------
   useEffect(() => {
     if (!userLoading) {
@@ -102,6 +107,29 @@ const AddProductForm = () => {
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files[0]) processImageFile(e.dataTransfer.files[0]);
+  };
+
+  // ---------- GALERIE ----------
+  const handleGalleryFiles = (files) => {
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const remaining = 4 - galleryFiles.length;
+    const toAdd = Array.from(files).slice(0, remaining);
+    const newFiles = [];
+    const newPreviews = [];
+    for (const file of toAdd) {
+      if (!validTypes.includes(file.type)) continue;
+      if (file.size > 5 * 1024 * 1024) continue;
+      newFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+    }
+    setGalleryFiles((prev) => [...prev, ...newFiles]);
+    setGalleryPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  const removeGalleryImage = (index) => {
+    URL.revokeObjectURL(galleryPreviews[index]);
+    setGalleryFiles((prev) => prev.filter((_, i) => i !== index));
+    setGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
   // ---------- UTILITAIRE ----------
@@ -187,6 +215,20 @@ const AddProductForm = () => {
       console.log("✅ Réponse de l'API:", res.data);
 
       if (res.data.success) {
+        const productId = res.data.product?.id || res.data.product?._id;
+        if (productId && galleryFiles.length > 0) {
+          try {
+            const galleryFd = new FormData();
+            galleryFiles.forEach((f) => galleryFd.append('images', f));
+            await axios.post(
+              buildApiUrl(`/products/${productId}/images`),
+              galleryFd,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+          } catch (galleryErr) {
+            console.warn('Galerie non uploadée:', galleryErr.message);
+          }
+        }
         setSuccess(true);
         setFormData({
           nom: "",
@@ -203,6 +245,9 @@ const AddProductForm = () => {
           imageUrl: ""
         });
         setImagePreview(null);
+        galleryPreviews.forEach((url) => URL.revokeObjectURL(url));
+        setGalleryFiles([]);
+        setGalleryPreviews([]);
         setTimeout(() => navigate("/mes-produits"), 2000);
       }
     } catch (err) {
@@ -570,6 +615,65 @@ const AddProductForm = () => {
                   Formats supportés: JPEG, PNG, WEBP (max. 5MB)
                 </div>
               </>
+            )}
+          </div>
+        </div>
+
+        {/* --- Galerie supplémentaire --- */}
+        <div className="form-section">
+          <div className="section-header">
+            <span className="section-icon">📷</span>
+            <h3 className="section-title">
+              Photos supplémentaires{' '}
+              <span style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--text-muted)' }}>
+                (optionnel, max 4)
+              </span>
+            </h3>
+          </div>
+
+          <div
+            className="gallery-upload-area"
+            onClick={() => galleryFiles.length < 4 && galleryInputRef.current?.click()}
+            style={{ cursor: galleryFiles.length < 4 ? 'pointer' : 'default' }}
+          >
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/jpeg, image/jpg, image/png, image/webp"
+              multiple
+              onChange={(e) => handleGalleryFiles(e.target.files)}
+              style={{ display: 'none' }}
+            />
+
+            {galleryPreviews.length === 0 ? (
+              <>
+                <div className="upload-icon">📷</div>
+                <div className="upload-text">Cliquez pour ajouter des photos</div>
+                <div className="upload-hint">JPEG, PNG, WEBP · 5 Mo max par photo · max 4 photos</div>
+              </>
+            ) : (
+              <div className="gallery-preview-grid" onClick={(e) => e.stopPropagation()}>
+                {galleryPreviews.map((src, i) => (
+                  <div key={i} className="gallery-preview-item">
+                    <img src={src} alt={`Galerie ${i + 1}`} className="gallery-preview-img" />
+                    <button
+                      type="button"
+                      className="gallery-remove-btn"
+                      onClick={() => removeGalleryImage(i)}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {galleryFiles.length < 4 && (
+                  <div
+                    className="gallery-add-more"
+                    onClick={() => galleryInputRef.current?.click()}
+                  >
+                    <span>+</span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

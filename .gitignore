@@ -2,3 +2,18 @@ node_modules
 .env
 server/.env
 client/.env
+
+# WhatsApp session (données sensibles)
+.wwebjs_auth/
+.wwebjs_cache/
+server/.wwebjs_auth/
+
+# Logs temporaires
+tmp_client.log
+tmp_server.log
+
+# Screenshots générées automatiquement
+screenshots/
+
+# Claude Code (local)
+.claude/settings.local.json

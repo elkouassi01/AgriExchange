@@ -1,14 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import './MesProduits.css';
 import { buildUploadUrl } from '../config/api';
 import api from '../services/axiosConfig';
+import SponsorPayModal from './SponsorPayModal';
 
 const MesProduits = () => {
   const [produits, setProduits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Modal paiement sponsoring
+  const [sponsorPayProduct, setSponsorPayProduct] = useState(null);
+
+  // Retour CinetPay après paiement sponsoring
+  const [sponsorCheckMsg, setSponsorCheckMsg] = useState('');
 
   const getStatutProduit = (produit) => {
     const quantite = produit.quantite || produit.quantity || produit.stock || 0;
@@ -44,7 +52,8 @@ const MesProduits = () => {
           description: produit.description || produit.desc || '',
           imageUrl: produit.imageUrl || produit.image || '',
           statut: getStatutProduit(produit),
-          dateAjout: produit.createdAt || produit.dateAjout || 'Date inconnue'
+          dateAjout: produit.createdAt || produit.dateAjout || 'Date inconnue',
+          isFeatured: Boolean(produit.isFeatured || produit.is_featured),
         }))
       );
     } catch (err) {
@@ -59,6 +68,31 @@ const MesProduits = () => {
       setLoading(false);
     }
   }, [navigate]);
+
+  const [sponsorLoading, setSponsorLoading] = useState(null); // produitId en cours
+  const [sponsorError, setSponsorError] = useState('');
+
+  const handleToggleSponsor = async (produit) => {
+    setSponsorLoading(produit.id);
+    setSponsorError('');
+    try {
+      const activate = !produit.isFeatured;
+      await api.put(`/products/${produit.id}/sponsor`, { activate });
+      setProduits((prev) =>
+        prev.map((p) => (p.id === produit.id ? { ...p, isFeatured: activate } : p))
+      );
+    } catch (err) {
+      const data = err.response?.data;
+      // Limite gratuite atteinte → proposer le paiement
+      if (data?.limitReached && data?.paymentAvailable) {
+        setSponsorPayProduct(produit);
+      } else {
+        setSponsorError(data?.message || 'Erreur lors de la mise à jour.');
+      }
+    } finally {
+      setSponsorLoading(null);
+    }
+  };
 
   const handleSupprimerProduit = async (produitId) => {
     if (!window.confirm('Etes-vous sur de vouloir supprimer ce produit ?')) {
@@ -77,6 +111,32 @@ const MesProduits = () => {
   useEffect(() => {
     fetchMesProduits();
   }, [fetchMesProduits]);
+
+  // Retour de CinetPay après paiement sponsoring
+  useEffect(() => {
+    const txId  = searchParams.get('sponsor_tx');
+    const pid   = searchParams.get('sponsor_pid');
+    if (!txId || !pid) return;
+
+    // Nettoyer l'URL immédiatement
+    setSearchParams({}, { replace: true });
+    setSponsorCheckMsg('Vérification du paiement…');
+
+    api.get(`/products/${pid}/sponsor/check?tx_id=${txId}`)
+      .then((res) => {
+        if (res.data.paid) {
+          const until = res.data.endDate
+            ? new Date(res.data.endDate).toLocaleDateString('fr-FR')
+            : '';
+          setSponsorCheckMsg(`✅ Sponsoring activé${until ? ` jusqu'au ${until}` : ''} !`);
+          // Rafraîchir la liste pour refléter is_featured
+          fetchMesProduits();
+        } else {
+          setSponsorCheckMsg('⚠️ Paiement non confirmé. Réessayez dans quelques instants.');
+        }
+      })
+      .catch(() => setSponsorCheckMsg('⚠️ Erreur lors de la vérification du paiement.'));
+  }, [searchParams, setSearchParams, fetchMesProduits]);
 
   const formatPrix = (prix) => `${Number(prix).toLocaleString('fr-FR')} FCFA`;
 
@@ -184,6 +244,20 @@ const MesProduits = () => {
         </Link>
       </div>
 
+      {sponsorCheckMsg && (
+        <div className={`sponsor-check-banner ${sponsorCheckMsg.startsWith('✅') ? 'sponsor-check-banner--ok' : 'sponsor-check-banner--warn'}`}>
+          {sponsorCheckMsg}
+          <button onClick={() => setSponsorCheckMsg('')}>×</button>
+        </div>
+      )}
+
+      {sponsorError && (
+        <div className="sponsor-error-banner">
+          ⚠️ {sponsorError}
+          <button onClick={() => setSponsorError('')}>×</button>
+        </div>
+      )}
+
       <div className="produits-stats">
         <div className="stat-card">
           <div className="stat-icon">📦</div>
@@ -217,9 +291,12 @@ const MesProduits = () => {
 
       <div className="produits-grid">
         {produits.map((produit) => (
-          <div key={produit.id} className="produit-card">
+          <div key={produit.id} className={`produit-card${produit.isFeatured ? ' produit-card--sponsored' : ''}`}>
             <div className="produit-header">
-              <ProductImage src={produit.imageUrl} alt={produit.nom} nom={produit.nom} />
+              <div className="produit-img-wrap">
+                <ProductImage src={produit.imageUrl} alt={produit.nom} nom={produit.nom} />
+                {produit.isFeatured && <span className="produit-sponsored-badge">⭐ Sponsorisé</span>}
+              </div>
               <div className="produit-titre">
                 <h3>{produit.nom}</h3>
                 <span className="produit-categorie">{produit.categorie}</span>
@@ -254,6 +331,18 @@ const MesProduits = () => {
             </div>
 
             <div className="produit-actions">
+              <button
+                className={`btn-sponsor ${produit.isFeatured ? 'btn-sponsor--active' : ''}`}
+                onClick={() => handleToggleSponsor(produit)}
+                disabled={sponsorLoading === produit.id}
+                title={produit.isFeatured ? 'Retirer de la sponsorisation' : 'Sponsoriser ce produit'}
+              >
+                {sponsorLoading === produit.id
+                  ? '…'
+                  : produit.isFeatured
+                    ? '⭐ Sponsorisé'
+                    : '☆ Sponsoriser'}
+              </button>
               <button className="btn-modifier" onClick={() => navigate(`/modifier-produit/${produit.id}`)}>
                 <span className="btn-icon">✏️</span>
                 Modifier
@@ -276,6 +365,14 @@ const MesProduits = () => {
             Ajouter un produit
           </Link>
         </div>
+      )}
+
+      {/* Modal paiement sponsoring */}
+      {sponsorPayProduct && (
+        <SponsorPayModal
+          product={sponsorPayProduct}
+          onClose={() => setSponsorPayProduct(null)}
+        />
       )}
     </div>
   );

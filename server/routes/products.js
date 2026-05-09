@@ -5,7 +5,11 @@ const Product = require('../models/Product');
 const { protect, authorize } = require('../middlewares/auth');
 const { upload, cloudinary } = require('../config/upload');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
+const sponsoredRepo = require('../repositories/mysqlSponsoredRepository');
 const { isMysql } = require('../utils/authHelpers');
+
+const CINETPAY_APIKEY  = process.env.CINETPAY_APIKEY  || '8937149296838988c80faf0.18612017';
+const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
 
 const parseJsonArray = (value) => {
   if (!value) return [];
@@ -329,6 +333,194 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
   }
 });
 
+// GET /products/sponsored — liste publique des produits mis en avant (max 8)
+router.get('/sponsored', async (req, res) => {
+  try {
+    if (!isMysql()) return res.json({ success: true, products: [] });
+    const products = await mysqlProductRepository.getSponsoredProducts(8);
+    return res.json({ success: true, products });
+  } catch (err) {
+    console.error('[sponsored]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /products/:id/sponsor — activer / désactiver la sponsorisation
+const SPONSOR_LIMITS = { BLEU: 1, GOLD: 3, PLATINUM: 5 };
+const abonnementRepo = require('../repositories/mysqlAbonnementRepository');
+
+router.put('/:id/sponsor', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
+  try {
+    if (!isMysql()) return res.status(501).json({ success: false, message: 'Non disponible' });
+
+    const sellerId = req.user.id || req.user._id;
+    const { activate } = req.body; // boolean
+
+    if (activate) {
+      // Vérifier l'abonnement actif et la limite
+      const abonnement = await abonnementRepo.getActiveUserAbonnement(sellerId);
+      if (!abonnement) {
+        return res.status(403).json({ success: false, message: 'Abonnement actif requis pour sponsoriser un produit.' });
+      }
+      const limit = SPONSOR_LIMITS[abonnement.formule] ?? 1;
+      const current = await mysqlProductRepository.countSponsoredBySeller(sellerId);
+      if (current >= limit) {
+        return res.status(403).json({
+          success: false,
+          limitReached: true,
+          paymentAvailable: true,
+          message: `Limite atteinte (${limit} produit${limit > 1 ? 's' : ''} sponsorisé${limit > 1 ? 's' : ''} max avec le plan ${abonnement.formule}).`,
+          limit,
+          current,
+          sponsorAmount: sponsoredRepo.SPONSOR_AMOUNT,
+          sponsorDays:   sponsoredRepo.SPONSOR_DURATION_DAYS,
+        });
+      }
+    }
+
+    const updated = await mysqlProductRepository.toggleSponsor(req.params.id, sellerId, activate);
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Produit introuvable ou non autorisé.' });
+    }
+    return res.json({ success: true, isFeatured: Boolean(activate) });
+  } catch (err) {
+    console.error('[sponsor toggle]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /products/:id/sponsor/initiate — paiement CinetPay 5 000 FCFA / 2 semaines
+router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
+  try {
+    if (!isMysql()) return res.status(501).json({ success: false, message: 'Non disponible' });
+
+    const sellerId  = req.user.id || req.user._id;
+    const productId = req.params.id;
+
+    // Vérifier que le produit appartient à ce vendeur
+    const product = await mysqlProductRepository.findProductById(productId);
+    if (!product || String(product.sellerId) !== String(sellerId)) {
+      return res.status(404).json({ success: false, message: 'Produit introuvable' });
+    }
+
+    const { randomUUID } = require('crypto');
+    const transactionId = `SP${randomUUID().replace(/-/g, '').toUpperCase()}`;
+    const origin    = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
+    const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
+
+    const paymentData = {
+      apikey:                CINETPAY_APIKEY,
+      site_id:               CINETPAY_SITE_ID,
+      transaction_id:        transactionId,
+      amount:                sponsoredRepo.SPONSOR_AMOUNT,
+      currency:              'XOF',
+      description:           `Sponsoring produit "${product.nom}" — ${sponsoredRepo.SPONSOR_DURATION_DAYS} jours`,
+      customer_name:         (req.user.nom || 'Agriculteur').substring(0, 50),
+      customer_email:        req.user.email || 'agriculteur@vivrimarket.com',
+      customer_phone_number: req.user.contact || '',
+      notify_url:            `${serverUrl}/api/v1/products/sponsor/webhook`,
+      return_url:            `${origin}/mes-produits?sponsor_tx=${transactionId}&sponsor_pid=${productId}`,
+      cancel_url:            `${origin}/mes-produits`,
+      channels:              'ALL',
+      lang:                  'fr',
+    };
+
+    const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body:    JSON.stringify(paymentData),
+    });
+
+    const result = await response.json();
+
+    if (result.code === '201' && result.data?.payment_url) {
+      await sponsoredRepo.createPending(productId, sellerId, transactionId);
+      return res.json({
+        success:        true,
+        payment_url:    result.data.payment_url,
+        transaction_id: transactionId,
+        amount:         sponsoredRepo.SPONSOR_AMOUNT,
+        days:           sponsoredRepo.SPONSOR_DURATION_DAYS,
+      });
+    }
+
+    return res.status(400).json({ success: false, message: result.message || 'Erreur paiement' });
+  } catch (err) {
+    console.error('[sponsor initiate]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /products/:id/sponsor/check?tx_id=xxx — vérifie le paiement et active la sponsorisation
+router.get('/:id/sponsor/check', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
+  try {
+    if (!isMysql()) return res.status(501).json({ success: false, message: 'Non disponible' });
+
+    const { tx_id } = req.query;
+    if (!tx_id) return res.status(400).json({ success: false, message: 'tx_id requis' });
+
+    // Vérifier auprès de CinetPay
+    const verifyRes = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body:    JSON.stringify({ apikey: CINETPAY_APIKEY, site_id: CINETPAY_SITE_ID, transaction_id: tx_id }),
+    });
+    const verifyResult = await verifyRes.json();
+    const paid = verifyResult.data?.status === 'ACCEPTED' || verifyResult.code === '00';
+
+    if (!paid) return res.json({ success: false, paid: false });
+
+    const record = await sponsoredRepo.activateSponsor(tx_id);
+    if (!record) return res.status(404).json({ success: false, message: 'Paiement introuvable' });
+
+    return res.json({
+      success:  true,
+      paid:     true,
+      endDate:  record.end_date,
+    });
+  } catch (err) {
+    console.error('[sponsor check]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /products/sponsor/webhook — notification CinetPay async (idempotent)
+router.post('/sponsor/webhook', async (req, res) => {
+  try {
+    const txId = req.body.transaction_id || req.body.cpm_trans_id;
+    if (!txId) return res.status(400).send('Missing transaction_id');
+
+    const verifyRes = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body:    JSON.stringify({ apikey: CINETPAY_APIKEY, site_id: CINETPAY_SITE_ID, transaction_id: txId }),
+    });
+    const verifyResult = await verifyRes.json();
+    const accepted = verifyResult.data?.status === 'ACCEPTED' || verifyResult.code === '00';
+
+    if (accepted && isMysql()) {
+      await sponsoredRepo.activateSponsor(txId);
+    }
+    return res.status(200).send('OK');
+  } catch (err) {
+    console.error('[sponsor webhook]', err.message);
+    return res.status(500).send('Error');
+  }
+});
+
+// GET /products/my-stats — agrégation des statistiques du vendeur connecté
+router.get('/my-stats', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
+  try {
+    const sellerId = req.user.id || req.user._id;
+    if (!isMysql()) return res.json({ success: true, stats: null });
+    const stats = await mysqlProductRepository.getSellerStats(sellerId);
+    return res.json({ success: true, stats });
+  } catch (err) {
+    console.error('[my-stats]', err.message);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     if (isMysql()) {
@@ -515,5 +707,79 @@ router.delete('/:id', protect, authorize(['agriculteur', 'farmer']), async (req,
     });
   }
 });
+
+// Helper : traite un buffer image → Cloudinary
+const uploadImageBuffer = async (buffer) => {
+  const processed = await sharp(buffer)
+    .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 85 })
+    .toBuffer();
+
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ folder: 'farm_products' }, (err, result) => {
+        if (err) return reject(err);
+        resolve(result.secure_url);
+      })
+      .end(processed);
+  });
+};
+
+// POST /products/:id/images — ajoute des photos à la galerie d'un produit
+router.post(
+  '/:id/images',
+  upload.array('images', 4),
+  protect,
+  authorize(['agriculteur', 'farmer']),
+  async (req, res) => {
+    const files = req.files || [];
+    if (files.length === 0) {
+      return res.status(400).json({ success: false, message: 'Aucune image fournie' });
+    }
+
+    try {
+      const uploadedUrls = [];
+      for (const file of files) {
+        const url = await uploadImageBuffer(file.buffer);
+        uploadedUrls.push(url);
+      }
+
+      if (isMysql()) {
+        await mysqlProductRepository.addProductImages(req.params.id, uploadedUrls);
+      }
+
+      return res.json({ success: true, images: uploadedUrls });
+    } catch (err) {
+      console.error('[product images upload]', err);
+      return res.status(500).json({ success: false, message: "Erreur lors de l'upload des images" });
+    }
+  }
+);
+
+// DELETE /products/:id/images/:imageId — supprime une photo de la galerie
+router.delete(
+  '/:id/images/:imageId',
+  protect,
+  authorize(['agriculteur', 'farmer']),
+  async (req, res) => {
+    try {
+      const sellerId = req.user.id || req.user._id;
+      if (isMysql()) {
+        const deleted = await mysqlProductRepository.deleteProductImage(
+          req.params.id,
+          req.params.imageId,
+          sellerId
+        );
+        if (!deleted) {
+          return res.status(404).json({ success: false, message: 'Image non trouvée' });
+        }
+      }
+      return res.json({ success: true, message: 'Image supprimée' });
+    } catch (err) {
+      console.error('[delete product image]', err);
+      return res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
 
 module.exports = router;

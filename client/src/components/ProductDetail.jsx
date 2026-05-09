@@ -1,14 +1,118 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import './ProductDetail.css';
 import api from '../services/axiosConfig';
 import { buildUploadUrl } from '../config/api';
 import { useUser } from '../contexts/UserContext';
 import { PRICE_CONSUMER, PRICE_VISITOR, DEFAULT_PRODUCT_IMAGE } from '../config/constants';
+import SellerReviews from './SellerReviews';
 
 const DEFAULT_IMAGE = DEFAULT_PRODUCT_IMAGE;
 
 const ACCESS_KEY = (productId) => `pv_tx_${productId}`;
+
+// ── Galerie ──────────────────────────────────────────────────────────────────
+
+function ProductGallery({ mainImage, images }) {
+  const allImages = [mainImage, ...(images || [])].filter(Boolean).filter((u, i, arr) => arr.indexOf(u) === i);
+  const [active, setActive] = useState(0);
+  const [lightbox, setLightbox] = useState(false);
+
+  // Navigation lightbox avec les flèches clavier
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e) => {
+      if (e.key === 'ArrowRight') setActive((i) => (i + 1) % allImages.length);
+      else if (e.key === 'ArrowLeft') setActive((i) => (i - 1 + allImages.length) % allImages.length);
+      else if (e.key === 'Escape') setLightbox(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightbox, allImages.length]);
+
+  return (
+    <div className="pg-root">
+      {/* Image principale */}
+      <div className="pg-main" onClick={() => setLightbox(true)} title="Cliquer pour agrandir">
+        <img
+          src={allImages[active] || DEFAULT_IMAGE}
+          alt="Photo du produit"
+          className="pg-main__img"
+          onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
+        />
+        {allImages.length > 1 && (
+          <span className="pg-main__counter">{active + 1} / {allImages.length}</span>
+        )}
+        <span className="pg-main__zoom">🔍</span>
+      </div>
+
+      {/* Bande de vignettes */}
+      {allImages.length > 1 && (
+        <div className="pg-thumbs">
+          {allImages.map((url, i) => (
+            <button
+              key={i}
+              className={`pg-thumb ${i === active ? 'pg-thumb--active' : ''}`}
+              onClick={() => setActive(i)}
+            >
+              <img
+                src={url}
+                alt={`Photo ${i + 1}`}
+                onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="pg-lightbox" onClick={() => setLightbox(false)}>
+          <div className="pg-lightbox__content" onClick={(e) => e.stopPropagation()}>
+            <button className="pg-lb-close" onClick={() => setLightbox(false)}>✕</button>
+
+            {allImages.length > 1 && (
+              <button
+                className="pg-lb-nav pg-lb-nav--prev"
+                onClick={() => setActive((i) => (i - 1 + allImages.length) % allImages.length)}
+              >
+                ‹
+              </button>
+            )}
+
+            <img
+              src={allImages[active] || DEFAULT_IMAGE}
+              alt="Photo agrandie"
+              className="pg-lightbox__img"
+              onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
+            />
+
+            {allImages.length > 1 && (
+              <button
+                className="pg-lb-nav pg-lb-nav--next"
+                onClick={() => setActive((i) => (i + 1) % allImages.length)}
+              >
+                ›
+              </button>
+            )}
+
+            {allImages.length > 1 && (
+              <div className="pg-lb-dots">
+                {allImages.map((_, i) => (
+                  <button
+                    key={i}
+                    className={`pg-lb-dot ${i === active ? 'pg-lb-dot--active' : ''}`}
+                    onClick={() => setActive(i)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const formatFCFA = (amount) =>
   new Intl.NumberFormat('fr-FR', { style: 'decimal', minimumFractionDigits: 0 }).format(amount) + ' FCFA';
@@ -80,8 +184,11 @@ function ProductDetail() {
 
         const imageUrl = buildUploadUrl(product.imageUrl || '') || DEFAULT_IMAGE;
         const prixFormatte = `${formatFCFA(product.prix)} / ${product.unite || 'kg'}`;
+        const images = Array.isArray(product.images)
+          ? product.images.map((u) => buildUploadUrl(u) || u).filter(Boolean)
+          : [];
 
-        setProduit({ ...product, prixFormatte, imageUrl });
+        setProduit({ ...product, prixFormatte, imageUrl, images });
       } catch (err) {
         if (err.response?.status === 404) setError('Produit introuvable');
         else if (err.request) setError('Serveur injoignable. Vérifiez votre connexion.');
@@ -201,14 +308,7 @@ function ProductDetail() {
     <div className="product-detail-container">
       <div className="product-detail-card">
         <div className="product-image">
-          <img
-            src={produit.imageUrl}
-            alt={produit.nom}
-            onError={(e) => {
-              e.target.onerror = null;
-              e.target.src = DEFAULT_IMAGE;
-            }}
-          />
+          <ProductGallery mainImage={produit.imageUrl} images={produit.images} />
         </div>
 
         <div className="product-info">
@@ -262,6 +362,14 @@ function ProductDetail() {
                 {seller.email && <p><strong>Email :</strong> {seller.email}</p>}
                 {seller.adresse && <p><strong>Localisation :</strong> {seller.adresse}</p>}
                 {seller.typeExploitation && <p><strong>Type d'exploitation :</strong> {seller.typeExploitation}</p>}
+                {user && produit.sellerId && (
+                  <Link
+                    to={`/messages?with=${produit.sellerId}&nom=${encodeURIComponent(seller.nom || seller.fermeNom || 'Vendeur')}`}
+                    className="seller-contact-btn"
+                  >
+                    💬 Contacter le vendeur
+                  </Link>
+                )}
               </div>
             )}
 
@@ -364,6 +472,13 @@ function ProductDetail() {
           </div>
         </div>
       </div>
+
+      {/* Avis sur le vendeur */}
+      {produit.sellerId && (
+        <div className="product-reviews-wrapper">
+          <SellerReviews sellerId={produit.sellerId} />
+        </div>
+      )}
 
       <div className="navigation-buttons">
         <button onClick={() => navigate(-1)} className="back-button">← Retour</button>

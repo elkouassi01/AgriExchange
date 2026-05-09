@@ -4,6 +4,7 @@ import './HomePage.css';
 import Footer from './Footer';
 import PromoBanner from './PromoBanner';
 import Fireworks from '../components/Fireworks';
+import SponsoredProducts from './SponsoredProducts';
 
 import tomate from '../assets/tomate.jpg';
 import salade from '../assets/salade.jpg';
@@ -57,6 +58,8 @@ function HomePage() {
         <h1>Bienvenue sur VivriMarket 🌾</h1>
         <p>Votre marche ivoirien de vivriers et d'elevage, ou le client rencontre les agriculteurs.</p>
       </section>
+
+      <SponsoredProducts />
 
       <section className="sample-products">
         <h2>Achetez vos aliments favoris en gros a des tarifs bord champ</h2>

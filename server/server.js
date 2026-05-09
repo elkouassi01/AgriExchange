@@ -14,6 +14,8 @@ if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET === 'CHANGE_
 }
 
 const express = require('express');
+const http = require('http');
+const { Server: SocketIOServer } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
@@ -22,7 +24,9 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const hpp = require('hpp');
 const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
 const { testMysqlConnection } = require('./config/mysql');
+const msgRepo = require('./repositories/mysqlMessageRepository');
 
 const errorHandler = require('./middlewares/errorHandler');
 const { protect } = require('./middlewares/auth');
@@ -40,9 +44,12 @@ const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
 const productPaymentsRoutes = require('./routes/productPayments');
 const contactRequestsRoutes = require('./routes/contactRequests');
 const { startContactRequestCron } = require('./routes/contactRequests');
+const sponsoredRepo = require('./repositories/mysqlSponsoredRepository');
+const reviewsRoutes = require('./routes/reviews');
 const { getClient: initWhatsApp } = require('./utils/whatsappClient');
 
 const app = express();
+const httpServer = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 const DATABASE_PROVIDER = (process.env.DATABASE_PROVIDER || 'mysql').toLowerCase();
@@ -239,6 +246,7 @@ app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/users', protect, userRoutes);
 app.use('/api/v1/product-payments', productPaymentsRoutes);
 app.use('/api/v1/contact-requests', contactRequestsRoutes);
+app.use('/api/v1/reviews', reviewsRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({
@@ -270,13 +278,60 @@ app.use((req, res) => {
 
 app.use(errorHandler);
 
+// ── Socket.IO ────────────────────────────────────────────────────────────────
+const io = new SocketIOServer(httpServer, {
+  cors: { origin: getCorsOrigins(), credentials: true },
+});
+
+// Auth JWT pour les sockets
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error('Non authentifié'));
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id || decoded._id || decoded.userId;
+    next();
+  } catch {
+    next(new Error('Token invalide'));
+  }
+});
+
+io.on('connection', (socket) => {
+  // Chaque utilisateur rejoint sa propre salle personnelle
+  socket.join(socket.userId);
+
+  socket.on('send_message', async ({ receiverId, texte, produitId }) => {
+    if (!receiverId || !texte?.trim()) return;
+    try {
+      const message = await msgRepo.sendMessage({
+        senderId: socket.userId,
+        receiverId,
+        texte: texte.trim(),
+        produitId: produitId || null,
+      });
+      // Envoyer à l'expéditeur ET au destinataire
+      io.to(socket.userId).to(receiverId).emit('new_message', message);
+    } catch (err) {
+      console.error('[Socket send_message]', err.message);
+    }
+  });
+
+  socket.on('mark_read', async ({ otherUserId }) => {
+    if (!otherUserId) return;
+    await msgRepo.markConversationAsRead(socket.userId, otherUserId).catch(() => {});
+  });
+
+  socket.on('disconnect', () => {});
+});
+// ─────────────────────────────────────────────────────────────────────────────
+
 let server;
 
 const startServer = async () => {
   try {
     await connectToDatabase();
 
-    server = app.listen(PORT, () => {
+    server = httpServer.listen(PORT, () => {
       const mode = process.env.NODE_ENV === 'production' ? 'production' : 'development';
       console.log(`Server listening on port ${PORT} (${mode})`);
       console.log(`Database provider: ${DATABASE_PROVIDER}`);
@@ -287,6 +342,14 @@ const startServer = async () => {
       if (process.env.WHATSAPP_ENABLED !== 'false') {
         initWhatsApp();
         startContactRequestCron();
+      }
+
+      // Cron : expirer les sponsorisations payantes toutes les heures
+      if (process.env.DATABASE_PROVIDER !== 'mongo') {
+        setInterval(() => {
+          sponsoredRepo.expireOldSponsorships();
+        }, 60 * 60 * 1000); // toutes les heures
+        sponsoredRepo.expireOldSponsorships(); // run immédiatement au démarrage
       }
     });
   } catch (err) {
