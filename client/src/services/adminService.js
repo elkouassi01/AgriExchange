@@ -57,6 +57,39 @@ export const fetchSubscriptions = async () => {
   }
 };
 
+// 🔹 Crée un nouvel utilisateur
+export const createUser = async (userData) => {
+  try {
+    const response = await api.post('/admin/users', userData);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Échec de la création de l'utilisateur";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Change le rôle d'un utilisateur
+export const changeUserRole = async (userId, role) => {
+  try {
+    const response = await api.put(`/admin/users/${userId}/role`, { role });
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Échec du changement de rôle";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Suspend ou réactive un utilisateur
+export const suspendUser = async (userId, suspended) => {
+  try {
+    const response = await api.put(`/admin/users/${userId}/suspend`, { suspended });
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Échec de la suspension";
+    throw new Error(message);
+  }
+};
+
 // 🔹 Statistiques pour le tableau de bord admin
 export const fetchDashboardStats = async () => {
   try {

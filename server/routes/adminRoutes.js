@@ -38,6 +38,15 @@ const validateRoleUpdate = [
   handleValidationErrors
 ];
 
+const validateCreateUser = [
+  body('nom').trim().notEmpty().withMessage('Nom requis').isLength({ min: 2, max: 50 }),
+  body('email').trim().isEmail().withMessage('Email invalide').normalizeEmail(),
+  body('contact').trim().notEmpty().withMessage('Contact requis'),
+  body('motDePasse').isLength({ min: 6 }).withMessage('Mot de passe : 6 caractères minimum'),
+  body('role').isIn(['agriculteur', 'consommateur', 'admin']).withMessage('Rôle invalide'),
+  handleValidationErrors
+];
+
 // 🔄 Validation pour les updates utilisateur
 const validateUserUpdate = [
   body('nom')
@@ -62,7 +71,7 @@ const validateUserUpdate = [
 router.get('/dashboard', adminController.getDashboardStats);
 
 // 👥 Gestion des utilisateurs
-router.get('/users', 
+router.get('/users',
   validatePagination,
   [
     query('role')
@@ -77,6 +86,8 @@ router.get('/users',
   ],
   adminController.getUsers
 );
+
+router.post('/users', validateCreateUser, adminController.createAdminUser);
 
 router.get('/users/:id', 
   validateId,
@@ -95,9 +106,16 @@ router.put('/users/:id/role',
   adminController.updateUserRole
 );
 
-router.delete('/users/:id', 
+router.delete('/users/:id',
   validateId,
   adminController.deleteUser
+);
+
+router.put('/users/:id/suspend',
+  validateId,
+  body('suspended').isBoolean().withMessage('suspended doit être un booléen'),
+  handleValidationErrors,
+  adminController.suspendUser
 );
 
 router.get('/users/:id/activity',

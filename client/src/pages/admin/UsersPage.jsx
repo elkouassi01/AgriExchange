@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import './UsersPage.css';
-import { fetchUsers, updateUserStatus, deleteUser } from '../../services/adminService';
+import { fetchUsers, updateUserStatus, deleteUser, createUser, changeUserRole, suspendUser } from '../../services/adminService';
 import {
   DataGrid,
   GridToolbarContainer,
@@ -33,6 +33,9 @@ import {
   Search as SearchIcon,
   InfoOutlined,
   Close as CloseIcon,
+  PersonAdd as PersonAddIcon,
+  Block as BlockIcon,
+  CheckCircleOutline as UnblockIcon,
 } from '@mui/icons-material';
 
 const ROLE_LABELS = {
@@ -65,6 +68,13 @@ const UsersPage = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [detailUser, setDetailUser] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+
+  // Modal création
+  const [openCreate, setOpenCreate] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const emptyForm = { nom: '', email: '', contact: '', motDePasse: '', role: 'consommateur', fermeNom: '', localisation: '' };
+  const [createForm, setCreateForm] = useState(emptyForm);
 
   const loadUsers = async () => {
     try {
@@ -119,6 +129,47 @@ const UsersPage = () => {
       setSelectedUser(null);
     } catch {
       setError("Erreur lors de la suppression de l'utilisateur");
+    }
+  };
+
+  const handleCreateUser = async () => {
+    setCreateLoading(true);
+    setCreateError('');
+    try {
+      const res = await createUser(createForm);
+      setUsers(prev => [...prev, res.data]);
+      setOpenCreate(false);
+      setCreateForm(emptyForm);
+    } catch (e) {
+      setCreateError(e.message);
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleChangeRole = async (userId, role) => {
+    setActionLoading(userId + '_role');
+    try {
+      await changeUserRole(userId, role);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+      if (detailUser?.id === userId) setDetailUser(d => ({ ...d, role }));
+    } catch {
+      setError('Erreur lors du changement de rôle');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleSuspend = async (userId, currentSuspended) => {
+    setActionLoading(userId + '_sus');
+    try {
+      await suspendUser(userId, !currentSuspended);
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, suspended: !currentSuspended } : u));
+      if (detailUser?.id === userId) setDetailUser(d => ({ ...d, suspended: !currentSuspended }));
+    } catch {
+      setError('Erreur lors de la suspension');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -237,7 +288,7 @@ const UsersPage = () => {
       filterable: false,
       renderCell: ({ row }) => (
         <div className="user-actions">
-          <Tooltip title="Voir les détails">
+          <Tooltip title="Voir les détails / Changer rôle">
             <IconButton size="small" onClick={() => setDetailUser(row)}>
               <InfoOutlined fontSize="small" sx={{ color: '#6b7280' }} />
             </IconButton>
@@ -253,6 +304,16 @@ const UsersPage = () => {
             >
               {actionLoading === row.id ? '…' : (row.estActif ? 'Désactiver' : 'Activer')}
             </Button>
+          </Tooltip>
+          <Tooltip title={row.suspended ? 'Débloquer' : 'Suspendre'}>
+            <IconButton
+              size="small"
+              disabled={actionLoading === row.id + '_sus'}
+              onClick={() => handleToggleSuspend(row.id, row.suspended)}
+              sx={{ color: row.suspended ? '#16a34a' : '#f59e0b' }}
+            >
+              {row.suspended ? <UnblockIcon fontSize="small" /> : <BlockIcon fontSize="small" />}
+            </IconButton>
           </Tooltip>
           <Tooltip title="Supprimer l'utilisateur">
             <IconButton
@@ -282,13 +343,23 @@ const UsersPage = () => {
   return (
     <Box className="users-page">
 
-      <Box className="users-header">
-        <Typography variant="h5" fontWeight={700} color="#1f2937">
-          Gestion des utilisateurs
-        </Typography>
-        <Typography variant="body2" color="text.secondary" mt={0.25}>
-          {users.length} comptes inscrits sur VivriMarket
-        </Typography>
+      <Box className="users-header" sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <div>
+          <Typography variant="h5" fontWeight={700} color="#1f2937">
+            Gestion des utilisateurs
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mt={0.25}>
+            {users.length} comptes inscrits sur VivriMarket
+          </Typography>
+        </div>
+        <Button
+          variant="contained"
+          startIcon={<PersonAddIcon />}
+          onClick={() => { setCreateForm(emptyForm); setCreateError(''); setOpenCreate(true); }}
+          sx={{ background: '#16a34a', '&:hover': { background: '#15803d' }, textTransform: 'none', fontWeight: 700, borderRadius: 2 }}
+        >
+          Nouvel utilisateur
+        </Button>
       </Box>
 
       {error && (
@@ -548,7 +619,18 @@ const UsersPage = () => {
               </div>
             </DialogContent>
 
-            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1 }}>
+            <DialogActions sx={{ px: 3, pb: 2.5, pt: 1.5, gap: 1, flexWrap: 'wrap' }}>
+              <Select
+                size="small"
+                value={detailUser.role}
+                disabled={actionLoading === detailUser.id + '_role'}
+                onChange={e => handleChangeRole(detailUser.id, e.target.value)}
+                sx={{ fontSize: '0.82rem', minWidth: 140 }}
+              >
+                <MenuItem value="consommateur">Acheteur</MenuItem>
+                <MenuItem value="agriculteur">Agriculteur</MenuItem>
+                <MenuItem value="admin">Admin</MenuItem>
+              </Select>
               <Button
                 variant="outlined"
                 color={detailUser.estActif ? 'warning' : 'success'}
@@ -557,17 +639,23 @@ const UsersPage = () => {
                 onClick={() => handleToggleStatus(detailUser.id, detailUser.estActif)}
                 sx={{ textTransform: 'none', fontSize: '0.82rem' }}
               >
-                {detailUser.estActif ? 'Désactiver le compte' : 'Activer le compte'}
+                {detailUser.estActif ? 'Désactiver' : 'Activer'}
+              </Button>
+              <Button
+                variant="outlined"
+                color={detailUser.suspended ? 'success' : 'warning'}
+                size="small"
+                disabled={actionLoading === detailUser.id + '_sus'}
+                onClick={() => handleToggleSuspend(detailUser.id, detailUser.suspended)}
+                sx={{ textTransform: 'none', fontSize: '0.82rem' }}
+              >
+                {detailUser.suspended ? 'Débloquer' : 'Suspendre'}
               </Button>
               <Button
                 variant="contained"
                 color="error"
                 size="small"
-                onClick={() => {
-                  setSelectedUser(detailUser);
-                  setDetailUser(null);
-                  setOpenDeleteDialog(true);
-                }}
+                onClick={() => { setSelectedUser(detailUser); setDetailUser(null); setOpenDeleteDialog(true); }}
                 sx={{ textTransform: 'none', fontSize: '0.82rem' }}
               >
                 Supprimer
@@ -575,6 +663,42 @@ const UsersPage = () => {
             </DialogActions>
           </>
         )}
+      </Dialog>
+
+      {/* Modal création utilisateur */}
+      <Dialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography fontWeight={700}>Nouvel utilisateur</Typography>
+          <IconButton size="small" onClick={() => setOpenCreate(false)}><CloseIcon fontSize="small" /></IconButton>
+        </DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {createError && <Typography color="error" fontSize="0.85rem">{createError}</Typography>}
+          <TextField label="Nom complet" size="small" fullWidth required value={createForm.nom} onChange={e => setCreateForm(f => ({ ...f, nom: e.target.value }))} />
+          <TextField label="Email" size="small" fullWidth required type="email" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} />
+          <TextField label="Contact (téléphone)" size="small" fullWidth required value={createForm.contact} onChange={e => setCreateForm(f => ({ ...f, contact: e.target.value }))} />
+          <TextField label="Mot de passe" size="small" fullWidth required type="password" value={createForm.motDePasse} onChange={e => setCreateForm(f => ({ ...f, motDePasse: e.target.value }))} />
+          <Select size="small" fullWidth value={createForm.role} onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}>
+            <MenuItem value="consommateur">Acheteur</MenuItem>
+            <MenuItem value="agriculteur">Agriculteur</MenuItem>
+            <MenuItem value="admin">Administrateur</MenuItem>
+          </Select>
+          {createForm.role === 'agriculteur' && <>
+            <TextField label="Nom de la ferme" size="small" fullWidth value={createForm.fermeNom} onChange={e => setCreateForm(f => ({ ...f, fermeNom: e.target.value }))} />
+            <TextField label="Localisation" size="small" fullWidth value={createForm.localisation} onChange={e => setCreateForm(f => ({ ...f, localisation: e.target.value }))} />
+          </>}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+          <Button onClick={() => setOpenCreate(false)} sx={{ textTransform: 'none' }}>Annuler</Button>
+          <Button
+            variant="contained"
+            disabled={createLoading || !createForm.nom || !createForm.email || !createForm.contact || !createForm.motDePasse}
+            onClick={handleCreateUser}
+            sx={{ background: '#16a34a', '&:hover': { background: '#15803d' }, textTransform: 'none', fontWeight: 700 }}
+          >
+            {createLoading ? 'Création…' : 'Créer'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Confirmation suppression */}

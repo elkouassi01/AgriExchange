@@ -1,3 +1,4 @@
+const bcrypt = require('bcryptjs');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const mysqlTransactionRepository = require('../repositories/mysqlTransactionRepository');
 const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
@@ -410,6 +411,58 @@ const getSubscriptions = async (req, res) => {
   }
 };
 
+const createAdminUser = async (req, res) => {
+  try {
+    const { nom, email, motDePasse, contact, role, fermeNom, localisation } = req.body;
+
+    const [existingEmail, existingContact] = await Promise.all([
+      mysqlUserRepository.findUserByEmail(email),
+      mysqlUserRepository.findUserByContact(contact),
+    ]);
+    if (existingEmail) return res.status(409).json({ message: 'Cet email est déjà utilisé' });
+    if (existingContact) return res.status(409).json({ message: 'Ce contact est déjà utilisé' });
+
+    const hashed = await bcrypt.hash(motDePasse, 10);
+    await mysqlUserRepository.createUser({
+      nom,
+      email,
+      motDePasse: hashed,
+      contact,
+      role: role || 'consommateur',
+      fermeNom: role === 'agriculteur' ? fermeNom : null,
+      localisation: role === 'agriculteur' ? localisation : null,
+      isVerified: true,
+    });
+
+    const user = await mysqlUserRepository.findUserByEmail(email);
+    res.status(201).json({ success: true, data: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Create admin user error:', error);
+    res.status(500).json({ message: "Échec de création de l'utilisateur" });
+  }
+};
+
+const suspendUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { suspended } = req.body;
+    const pool = getMysqlPool();
+
+    await pool.query(
+      'UPDATE users SET suspended = ?, suspended_at = ?, updated_at = NOW() WHERE id = ?',
+      [suspended ? 1 : 0, suspended ? new Date() : null, id]
+    );
+
+    const user = await mysqlUserRepository.findUserById(id);
+    if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
+
+    res.json({ success: true, data: sanitizeUser(user) });
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({ message: 'Échec de suspension' });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getUsers,
@@ -420,4 +473,6 @@ module.exports = {
   getUserActivity,
   getTransactions,
   getSubscriptions,
+  createAdminUser,
+  suspendUser,
 };
