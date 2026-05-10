@@ -409,7 +409,7 @@ const getSellerStats = async (sellerId) => {
   );
 
   const [[reviewStats]] = await pool.query(
-    `SELECT ROUND(AVG(COALESCE(rating, note)), 1) AS avg_rating, COUNT(*) AS review_count
+    `SELECT ROUND(AVG(note), 1) AS avg_rating, COUNT(*) AS review_count
      FROM seller_reviews WHERE seller_id = ?`,
     [sellerId],
   );
