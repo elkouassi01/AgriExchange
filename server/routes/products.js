@@ -125,8 +125,8 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
         `📦 Produit : *${payload.nom}*\n` +
         `👨‍🌾 Agriculteur : ${sellerNom}\n` +
         `💰 Prix : ${Number(payload.prix).toLocaleString('fr-FR')} FCFA\n\n` +
-        `👉 Connectez-vous au panel admin pour valider ou rejeter ce produit.\n` +
-        `https://vivrimarket.com/admin/moderation`;
+        `👉 Panel admin :\n` +
+        `https://vivrimarket.com/admin/moderation\n`;
       for (const admin of admins) {
         sendWhatsApp(admin.contact, msgAdmin).catch(() => {});
       }
