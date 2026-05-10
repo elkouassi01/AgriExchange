@@ -46,6 +46,7 @@ import UsersPage from './pages/admin/UsersPage';
 import TransactionsPage from './pages/admin/TransactionsPage';
 import SubscriptionsPage from './pages/admin/SubscriptionsPage';
 import SettingsPage from './pages/admin/SettingsPage';
+import AdminModerationPage from './components/AdminModerationPage';
 
 // 🧠 Contextes
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -146,6 +147,7 @@ const AppContent = () => {
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="subscriptions" element={<SubscriptionsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="moderation" element={<AdminModerationPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>

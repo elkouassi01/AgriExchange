@@ -39,6 +39,8 @@ const normalizeProductRow = (row) => {
     isFeatured: Boolean(row.is_featured),
     rating: Number(row.rating || 0),
     reviewsCount: row.reviews_count || 0,
+    moderationStatus: row.moderation_status || 'approved',
+    moderationNote: row.moderation_note || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     vendeur: row.seller_id
@@ -94,6 +96,15 @@ const buildFilters = (params, values, options = {}) => {
 
   if (options.onlyInStock) {
     clauses.push('p.stock > 0');
+  }
+
+  if (options.onlyApproved) {
+    clauses.push("p.moderation_status = 'approved'");
+  }
+
+  if (params.moderationStatus) {
+    clauses.push('p.moderation_status = ?');
+    values.push(params.moderationStatus);
   }
 
   if (params.categorie) {
@@ -347,6 +358,7 @@ const getSponsoredProducts = async (limit = 8) => {
        OR (p.paid_sponsor_until IS NOT NULL AND p.paid_sponsor_until > NOW())
      )
      AND p.stock > 0
+     AND p.moderation_status = 'approved'
      AND (u.suspended IS NULL OR u.suspended = 0)
      ORDER BY p.paid_sponsor_until DESC, p.updated_at DESC
      LIMIT ?`,

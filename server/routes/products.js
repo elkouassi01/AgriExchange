@@ -6,7 +6,9 @@ const { protect, authorize } = require('../middlewares/auth');
 const { upload, cloudinary } = require('../config/upload');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
 const sponsoredRepo = require('../repositories/mysqlSponsoredRepository');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { isMysql } = require('../utils/authHelpers');
+const { sendWhatsApp } = require('../utils/whatsappClient');
 
 const CINETPAY_APIKEY  = process.env.CINETPAY_APIKEY  || '8937149296838988c80faf0.18612017';
 const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
@@ -114,10 +116,25 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
 
     if (isMysql()) {
       const createdProduct = await mysqlProductRepository.createProduct(payload);
+
+      // Notifier tous les admins via WhatsApp
+      const admins = await mysqlUserRepository.getAdmins().catch(() => []);
+      const sellerNom = req.user.nom || req.user.name || 'un agriculteur';
+      const msgAdmin =
+        `🌿 *VivriMarket — Nouveau produit en attente de validation*\n\n` +
+        `📦 Produit : *${payload.nom}*\n` +
+        `👨‍🌾 Agriculteur : ${sellerNom}\n` +
+        `💰 Prix : ${Number(payload.prix).toLocaleString('fr-FR')} FCFA\n\n` +
+        `👉 Connectez-vous au panel admin pour valider ou rejeter ce produit.\n` +
+        `https://vivrimarket.com/admin/moderation`;
+      for (const admin of admins) {
+        sendWhatsApp(admin.contact, msgAdmin).catch(() => {});
+      }
+
       return res.status(201).json({
         success: true,
         code: 'PRODUCT_CREATED',
-        message: 'Produit ajoute avec succes !',
+        message: 'Produit soumis avec succes ! Il sera visible apres validation par un administrateur.',
         product: createdProduct
       });
     }
@@ -201,7 +218,7 @@ router.get('/', async (req, res) => {
     if (isMysql()) {
       const result = await mysqlProductRepository.listProducts(
         { page, limit, categorie, etat, minPrix, maxPrix, search, sortBy, sortOrder },
-        { onlyInStock: true }
+        { onlyInStock: true, onlyApproved: true }
       );
 
       return res.json({

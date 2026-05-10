@@ -2,15 +2,16 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useUser } from '../../contexts/UserContext';
-import { 
-  HiChartPie, 
-  HiUserGroup, 
-  HiCurrencyDollar, 
-  HiCreditCard, 
-  HiCog, 
+import {
+  HiChartPie,
+  HiUserGroup,
+  HiCurrencyDollar,
+  HiCreditCard,
+  HiCog,
   HiLogout,
   HiChevronLeft,
-  HiChevronRight
+  HiChevronRight,
+  HiShieldCheck
 } from 'react-icons/hi';
 import './AdminSidebar.css'; 
 
@@ -23,6 +24,7 @@ const AdminSidebar = () => {
   const navItems = [
     { path: '/admin', label: 'Tableau de bord', icon: <HiChartPie /> },
     { path: '/admin/users', label: 'Utilisateurs', icon: <HiUserGroup /> },
+    { path: '/admin/moderation', label: 'Modération', icon: <HiShieldCheck /> },
     { path: '/admin/transactions', label: 'Transactions', icon: <HiCurrencyDollar /> },
     { path: '/admin/subscriptions', label: 'Abonnements', icon: <HiCreditCard /> },
     { path: '/admin/settings', label: 'Paramètres', icon: <HiCog /> },

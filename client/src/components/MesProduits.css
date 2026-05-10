@@ -466,6 +466,39 @@
   box-shadow: 0 0 18px rgba(245,158,11,0.15) !important;
 }
 
+/* Badges modération */
+.produit-moderation-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  font-size: 0.63rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 2;
+}
+.produit-moderation-badge--pending {
+  background: rgba(245,158,11,0.85);
+  color: #1a0a00;
+}
+.produit-moderation-badge--rejected {
+  background: rgba(239,68,68,0.85);
+  color: #fff;
+}
+
+/* Note de refus */
+.produit-rejection-note {
+  font-size: 0.8rem;
+  color: #f87171;
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.produit-rejection-note em { font-style: italic; }
+
 /* Bannière retour paiement sponsoring */
 .sponsor-check-banner {
   display: flex;

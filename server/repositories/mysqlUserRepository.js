@@ -257,6 +257,14 @@ const updateUserPassword = async (id, hashedPassword) => {
   );
 };
 
+const getAdmins = async () => {
+  const pool = getMysqlPool();
+  const [rows] = await pool.query(
+    "SELECT id, nom, contact FROM users WHERE role = 'admin' AND est_actif = 1"
+  );
+  return rows;
+};
+
 module.exports = {
   findUserByEmail,
   findUserByContact,
@@ -272,5 +280,6 @@ module.exports = {
   listUsers,
   countUsers,
   deleteUser,
+  getAdmins,
   updateUserPassword,
 };

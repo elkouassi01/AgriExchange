@@ -46,6 +46,7 @@ const contactRequestsRoutes = require('./routes/contactRequests');
 const { startContactRequestCron } = require('./routes/contactRequests');
 const sponsoredRepo = require('./repositories/mysqlSponsoredRepository');
 const reviewsRoutes = require('./routes/reviews');
+const moderationRoutes = require('./routes/moderation');
 const { getClient: initWhatsApp } = require('./utils/whatsappClient');
 
 const app = express();
@@ -247,6 +248,7 @@ app.use('/api/v1/users', protect, userRoutes);
 app.use('/api/v1/product-payments', productPaymentsRoutes);
 app.use('/api/v1/contact-requests', contactRequestsRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);
+app.use('/api/v1/moderation', moderationRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

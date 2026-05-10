@@ -2,9 +2,13 @@ const { getMysqlPool } = require('../config/mysql');
 
 // Colonnes ajoutees apres le schema initial
 const REQUIRED_COLUMNS = [
-  { table: 'users',    column: 'description',       definition: 'TEXT NULL' },
-  { table: 'users',    column: 'surface',            definition: 'VARCHAR(100) NULL' },
-  { table: 'products', column: 'paid_sponsor_until', definition: 'DATETIME NULL' },
+  { table: 'users',    column: 'description',        definition: 'TEXT NULL' },
+  { table: 'users',    column: 'surface',             definition: 'VARCHAR(100) NULL' },
+  { table: 'products', column: 'paid_sponsor_until',  definition: 'DATETIME NULL' },
+  { table: 'products', column: 'moderation_status',   definition: "ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'" },
+  { table: 'products', column: 'moderation_note',     definition: 'TEXT NULL' },
+  { table: 'products', column: 'moderated_by',        definition: 'CHAR(36) NULL' },
+  { table: 'products', column: 'moderated_at',        definition: 'DATETIME NULL' },
 ];
 
 const columnExists = async (pool, table, column) => {

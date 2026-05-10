@@ -54,6 +54,8 @@ const MesProduits = () => {
           statut: getStatutProduit(produit),
           dateAjout: produit.createdAt || produit.dateAjout || 'Date inconnue',
           isFeatured: Boolean(produit.isFeatured || produit.is_featured),
+          moderationStatus: produit.moderationStatus || produit.moderation_status || 'approved',
+          moderationNote: produit.moderationNote || produit.moderation_note || null,
         }))
       );
     } catch (err) {
@@ -296,12 +298,24 @@ const MesProduits = () => {
               <div className="produit-img-wrap">
                 <ProductImage src={produit.imageUrl} alt={produit.nom} nom={produit.nom} />
                 {produit.isFeatured && <span className="produit-sponsored-badge">⭐ Sponsorisé</span>}
+                {produit.moderationStatus === 'pending' && (
+                  <span className="produit-moderation-badge produit-moderation-badge--pending">⏳ En attente</span>
+                )}
+                {produit.moderationStatus === 'rejected' && (
+                  <span className="produit-moderation-badge produit-moderation-badge--rejected">❌ Refusé</span>
+                )}
               </div>
               <div className="produit-titre">
                 <h3>{produit.nom}</h3>
                 <span className="produit-categorie">{produit.categorie}</span>
               </div>
             </div>
+
+            {produit.moderationStatus === 'rejected' && produit.moderationNote && (
+              <div className="produit-rejection-note">
+                📝 Motif de refus : <em>{produit.moderationNote}</em>
+              </div>
+            )}
 
             {produit.description && (
               <div className="produit-description">
