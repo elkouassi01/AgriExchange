@@ -35,7 +35,7 @@ import {
   Close as CloseIcon,
   PersonAdd as PersonAddIcon,
   Block as BlockIcon,
-  CheckCircleOutline as UnblockIcon,
+  LockOpen as UnblockIcon,
 } from '@mui/icons-material';
 
 const ROLE_LABELS = {
