@@ -26,7 +26,7 @@ const validatePagination = [
     .toInt(),
   query('limit')
     .optional()
-    .isInt({ min: 1, max: 100 }).withMessage('La limite doit être entre 1 et 100')
+    .isInt({ min: 1, max: 1000 }).withMessage('La limite doit être entre 1 et 1000')
     .toInt(),
   handleValidationErrors
 ];
