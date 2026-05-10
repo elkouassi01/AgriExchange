@@ -297,11 +297,19 @@ async function run() {
   header('3. Colonnes ajoutées (ALTER TABLE)');
 
   const COLUMNS = [
-    { table: 'users',    column: 'description',       def: 'TEXT NULL' },
+    // users
+    { table: 'users',    column: 'photo',              def: 'TEXT NULL' },
+    { table: 'users',    column: 'description',        def: 'TEXT NULL' },
     { table: 'users',    column: 'surface',            def: 'VARCHAR(100) NULL' },
     { table: 'users',    column: 'suspended',          def: 'TINYINT(1) NOT NULL DEFAULT 0' },
-    { table: 'products', column: 'paid_sponsor_until', def: 'DATETIME NULL' },
+    // products
+    { table: 'products', column: 'rating',             def: 'DECIMAL(3,1) NOT NULL DEFAULT 0' },
     { table: 'products', column: 'views',              def: 'INT NOT NULL DEFAULT 0' },
+    { table: 'products', column: 'is_featured',        def: 'TINYINT(1) NOT NULL DEFAULT 0' },
+    { table: 'products', column: 'paid_sponsor_until', def: 'DATETIME NULL' },
+    { table: 'products', column: 'tags',               def: 'JSON NULL' },
+    { table: 'products', column: 'certifications',     def: 'JSON NULL' },
+    { table: 'products', column: 'mensurations',       def: 'VARCHAR(100) NULL' },
   ];
 
   for (const { table, column, def } of COLUMNS) {
