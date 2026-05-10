@@ -462,24 +462,51 @@ const UsersPage = () => {
             }}
             sx={{
               border: 'none',
+              fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: '#f8fafc',
+                borderBottom: '2px solid #e2e8f0',
+              },
+              '& .MuiDataGrid-columnHeaderTitle': {
                 fontWeight: 700,
-                fontSize: '0.75rem',
-                color: '#6b7280',
+                fontSize: '0.72rem',
+                color: '#64748b',
                 textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                borderBottom: '2px solid #e5e7eb',
+                letterSpacing: '0.06em',
               },
               '& .MuiDataGrid-cell': {
                 borderBottom: '1px solid #f1f5f9',
                 display: 'flex',
                 alignItems: 'center',
+                py: 0.5,
               },
-              '& .MuiDataGrid-row:hover': { backgroundColor: '#f0fdf4' },
+              '& .MuiDataGrid-row': {
+                transition: 'background 0.15s',
+              },
+              '& .MuiDataGrid-row:hover': {
+                backgroundColor: '#f0fdf4',
+                cursor: 'default',
+              },
+              '& .MuiDataGrid-row:nth-of-type(even)': {
+                backgroundColor: '#fafbfc',
+              },
+              '& .MuiDataGrid-row:nth-of-type(even):hover': {
+                backgroundColor: '#f0fdf4',
+              },
               '& .MuiDataGrid-footerContainer': {
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '2px solid #e2e8f0',
                 backgroundColor: '#f8fafc',
+              },
+              '& .MuiDataGrid-toolbarContainer': {
+                padding: '10px 12px 6px',
+                borderBottom: '1px solid #f1f5f9',
+                gap: 1,
+              },
+              '& .MuiButton-root': {
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                color: '#475569',
+                textTransform: 'none',
               },
             }}
           />
