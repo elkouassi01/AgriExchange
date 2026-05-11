@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './UsersPage.css';
 import { fetchUsers, updateUserStatus, deleteUser, createUser, changeUserRole, suspendUser } from '../../services/adminService';
 import {
@@ -41,6 +41,8 @@ const UsersPage = () => {
   const [searchTerm, setSearchTerm]     = useState('');
   const [roleFilter, setRoleFilter]     = useState('tous');
   const [page, setPage]                 = useState(1);
+  const [totalPages, setTotalPages]     = useState(1);
+  const [counts, setCounts]             = useState({ tous: 0, agriculteur: 0, consommateur: 0, admin: 0 });
   const [selectedUser, setSelectedUser] = useState(null);
   const [openDelete, setOpenDelete]     = useState(false);
   const [detailUser, setDetailUser]     = useState(null);
@@ -53,12 +55,17 @@ const UsersPage = () => {
   const emptyForm = { nom: '', email: '', contact: '', motDePasse: '', role: 'consommateur', fermeNom: '', localisation: '' };
   const [createForm, setCreateForm]   = useState(emptyForm);
 
-  const loadUsers = async () => {
+  const searchDebounce = useRef(null);
+
+  const loadUsers = async (p, role, search) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await fetchUsers();
-      const list = Array.isArray(res) ? res : (res.data || []);
-      setUsers(list);
+      const params = { page: p, limit: PAGE_SIZE };
+      if (role !== 'tous') params.role = role;
+      if (search?.trim()) params.search = search.trim();
+      const res = await fetchUsers(params);
+      setUsers(res.data || []);
+      setTotalPages(res.pagination?.totalPages || 1);
     } catch {
       setError('Erreur lors du chargement des utilisateurs');
     } finally {
@@ -66,35 +73,46 @@ const UsersPage = () => {
     }
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  const loadCounts = async () => {
+    try {
+      const [tous, agri, conso, admin] = await Promise.all([
+        fetchUsers({ page: 1, limit: 1 }),
+        fetchUsers({ page: 1, limit: 1, role: 'agriculteur' }),
+        fetchUsers({ page: 1, limit: 1, role: 'consommateur' }),
+        fetchUsers({ page: 1, limit: 1, role: 'admin' }),
+      ]);
+      setCounts({
+        tous:         tous.pagination?.totalItems  || 0,
+        agriculteur:  agri.pagination?.totalItems  || 0,
+        consommateur: conso.pagination?.totalItems || 0,
+        admin:        admin.pagination?.totalItems || 0,
+      });
+    } catch { /* non bloquant */ }
+  };
 
-  const filtered = useMemo(() => {
-    let r = users;
-    if (roleFilter !== 'tous') r = r.filter(u => u.role === roleFilter);
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      r = r.filter(u =>
-        (u.nom || '').toLowerCase().includes(q) ||
-        (u.email || '').toLowerCase().includes(q) ||
-        (u.contact || '').toLowerCase().includes(q)
-      );
-    }
-    return r;
-  }, [users, searchTerm, roleFilter]);
+  useEffect(() => { loadUsers(1, 'tous', ''); loadCounts(); }, []);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const handleRoleChange = (newRole) => {
+    setRoleFilter(newRole);
+    setPage(1);
+    loadUsers(1, newRole, searchTerm);
+  };
 
-  useEffect(() => { setPage(1); }, [searchTerm, roleFilter]);
+  const handleSearchChange = (value) => {
+    setSearchTerm(value);
+    clearTimeout(searchDebounce.current);
+    searchDebounce.current = setTimeout(() => {
+      setPage(1);
+      loadUsers(1, roleFilter, value);
+    }, 400);
+  };
 
-  const counts = useMemo(() => ({
-    tous:        users.length,
-    agriculteur: users.filter(u => u.role === 'agriculteur').length,
-    consommateur:users.filter(u => u.role === 'consommateur').length,
-    admin:       users.filter(u => u.role === 'admin').length,
-    actif:       users.filter(u => u.estActif).length,
-    suspendu:    users.filter(u => u.suspended).length,
-  }), [users]);
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+    loadUsers(newPage, roleFilter, searchTerm);
+  };
+
+  const paginated = users;
 
   /* ── Actions ── */
   const handleToggleStatus = async (userId, current) => {
@@ -131,9 +149,10 @@ const UsersPage = () => {
     if (!selectedUser) return;
     try {
       await deleteUser(selectedUser.id);
-      setUsers(p => p.filter(u => u.id !== selectedUser.id));
       setOpenDelete(false);
       setSelectedUser(null);
+      loadUsers(page, roleFilter, searchTerm);
+      loadCounts();
     } catch { setError("Erreur suppression"); }
   };
 
@@ -141,10 +160,11 @@ const UsersPage = () => {
     setCreateLoading(true);
     setCreateError('');
     try {
-      const res = await createUser(createForm);
-      setUsers(p => [...p, res.data]);
+      await createUser(createForm);
       setOpenCreate(false);
       setCreateForm(emptyForm);
+      loadUsers(1, roleFilter, searchTerm);
+      loadCounts();
     } catch (e) { setCreateError(e.message); }
     finally     { setCreateLoading(false); }
   };
@@ -157,7 +177,7 @@ const UsersPage = () => {
       <div className="up-header">
         <div>
           <h1 className="up-title">Gestion des utilisateurs</h1>
-          <p className="up-sub">{users.length} comptes inscrits sur VivriMarket</p>
+          <p className="up-sub">{counts.tous} comptes inscrits sur VivriMarket</p>
         </div>
         <button className="up-btn-create" onClick={() => { setCreateForm(emptyForm); setCreateError(''); setOpenCreate(true); }}>
           <PersonAddIcon style={{ fontSize: 18 }} />
@@ -170,12 +190,10 @@ const UsersPage = () => {
       {/* Stat chips */}
       <div className="up-stats">
         {[
-          { label: 'Total',        value: counts.tous,        emoji: '👥', cls: '' },
-          { label: 'Agriculteurs', value: counts.agriculteur, emoji: '🌾', cls: 'green' },
-          { label: 'Acheteurs',    value: counts.consommateur,emoji: '🛒', cls: 'blue' },
-          { label: 'Admins',       value: counts.admin,       emoji: '🛡️', cls: 'purple' },
-          { label: 'Actifs',       value: counts.actif,       emoji: '✅', cls: 'emerald' },
-          ...(counts.suspendu > 0 ? [{ label: 'Suspendus', value: counts.suspendu, emoji: '⛔', cls: 'orange' }] : []),
+          { label: 'Total',        value: counts.tous,         emoji: '👥', cls: '' },
+          { label: 'Agriculteurs', value: counts.agriculteur,  emoji: '🌾', cls: 'green' },
+          { label: 'Acheteurs',    value: counts.consommateur, emoji: '🛒', cls: 'blue' },
+          { label: 'Admins',       value: counts.admin,        emoji: '🛡️', cls: 'purple' },
         ].map(s => (
           <div key={s.label} className={`up-stat up-stat--${s.cls}`}>
             <span className="up-stat__emoji">{s.emoji}</span>
@@ -193,10 +211,10 @@ const UsersPage = () => {
             className="up-search__input"
             placeholder="Rechercher par nom, email, contact…"
             value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
+            onChange={e => handleSearchChange(e.target.value)}
           />
           {searchTerm && (
-            <button className="up-search__clear" onClick={() => setSearchTerm('')}>×</button>
+            <button className="up-search__clear" onClick={() => handleSearchChange('')}>×</button>
           )}
         </div>
         <div className="up-role-tabs">
@@ -204,7 +222,7 @@ const UsersPage = () => {
             <button
               key={r}
               className={`up-role-tab ${roleFilter === r ? 'up-role-tab--active' : ''}`}
-              onClick={() => setRoleFilter(r)}
+              onClick={() => handleRoleChange(r)}
             >
               {r === 'tous' ? 'Tous' : ROLE_CONFIG[r]?.label}
               <span className="up-role-tab__count">
@@ -329,10 +347,10 @@ const UsersPage = () => {
           {totalPages > 1 && (
             <div className="up-pagination">
               <span className="up-pagination__info">
-                {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, filtered.length)} sur {filtered.length}
+                Page {page} sur {totalPages}
               </span>
               <div className="up-pagination__btns">
-                <button className="up-page-btn" disabled={page === 1} onClick={() => setPage(p => p-1)}>‹ Préc.</button>
+                <button className="up-page-btn" disabled={page === 1} onClick={() => handlePageChange(page - 1)}>‹ Préc.</button>
                 {Array.from({ length: totalPages }, (_, i) => i+1)
                   .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
                   .reduce((acc, p, i, arr) => {
@@ -342,10 +360,10 @@ const UsersPage = () => {
                   }, [])
                   .map((p, i) => p === '…'
                     ? <span key={`e${i}`} className="up-page-ellipsis">…</span>
-                    : <button key={p} className={`up-page-btn ${page === p ? 'up-page-btn--active' : ''}`} onClick={() => setPage(p)}>{p}</button>
+                    : <button key={p} className={`up-page-btn ${page === p ? 'up-page-btn--active' : ''}`} onClick={() => handlePageChange(p)}>{p}</button>
                   )
                 }
-                <button className="up-page-btn" disabled={page === totalPages} onClick={() => setPage(p => p+1)}>Suiv. ›</button>
+                <button className="up-page-btn" disabled={page === totalPages} onClick={() => handlePageChange(page + 1)}>Suiv. ›</button>
               </div>
             </div>
           )}

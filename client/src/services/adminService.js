@@ -1,13 +1,16 @@
 // src/services/adminService.js
 import api from './axiosConfig';
 
-// 🔹 Récupère la liste des utilisateurs
-export const fetchUsers = async () => {
+// 🔹 Récupère la liste des utilisateurs (pagination serveur)
+export const fetchUsers = async (params = {}) => {
   try {
-    const response = await api.get('/admin/users?limit=500&page=1');
+    const { page = 1, limit = 15, role, search } = params;
+    const query = new URLSearchParams({ page, limit });
+    if (role) query.set('role', role);
+    if (search) query.set('search', search);
+    const response = await api.get(`/admin/users?${query}`);
     return response.data;
   } catch (error) {
-    // En cas d'erreur, afficher le message axios si disponible
     const message = error.response?.data?.message || "Erreur lors de la récupération des utilisateurs";
     throw new Error(message);
   }
