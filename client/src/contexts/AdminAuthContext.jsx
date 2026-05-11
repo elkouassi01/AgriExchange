@@ -1,5 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/axiosConfig';
 
 const AdminAuthContext = createContext({
   admin: null,
@@ -33,7 +34,10 @@ export const AdminAuthProvider = ({ children }) => {
     localStorage.setItem('adminData', JSON.stringify(adminData));
   };
 
-  const handleLogout = (redirect = true) => {
+  const handleLogout = async (redirect = true) => {
+    try {
+      await api.post('/auth/logout');
+    } catch { /* ignore */ }
     setAdmin(null);
     localStorage.removeItem('adminData');
     localStorage.removeItem('token');

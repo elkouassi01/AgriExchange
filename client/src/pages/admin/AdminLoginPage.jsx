@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Ajout de Link ici
+import { useNavigate, Link } from 'react-router-dom';
 import { useAdminAuth } from '../../contexts/AdminAuthContext';
+import api from '../../services/axiosConfig';
 import './AdminLoginPage.css';
 
 const AdminLoginPage = () => {
@@ -22,25 +23,22 @@ const AdminLoginPage = () => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      if (credentials.email === 'admin@ex.com' && credentials.password === 'admin1234') {
-        const adminData = {
-          id: 'admin_001',
-          nom: 'Administrateur AgriExchange',
-          email: 'admin@ex.com',
-          role: 'admin'
-        };
-        
-        login(adminData);
-        navigate('/admin/dashboard');
-      } else {
-        throw new Error('Identifiants incorrects. Veuillez réessayer.');
+      const { data } = await api.post('/auth/connexion', {
+        email: credentials.email,
+        motDePasse: credentials.password,
+      });
+
+      if (data.utilisateur?.role !== 'admin') {
+        throw new Error('Accès réservé aux administrateurs.');
       }
+
+      login(data.utilisateur);
+      navigate('/admin/dashboard');
     } catch (err) {
-      setError(err.message);
+      const message = err.response?.data?.message || err.message || 'Erreur serveur. Réessayez.';
+      setError(message);
       setLoading(false);
     }
   };
@@ -88,7 +86,7 @@ const AdminLoginPage = () => {
               autoComplete="email"
               required
               className="input-field"
-              placeholder="admin@ex.com"
+              placeholder="votre@email.com"
               value={credentials.email}
               onChange={handleChange}
             />
