@@ -46,6 +46,7 @@ import UsersPage from './pages/admin/UsersPage';
 import TransactionsPage from './pages/admin/TransactionsPage';
 import SubscriptionsPage from './pages/admin/SubscriptionsPage';
 import SettingsPage from './pages/admin/SettingsPage';
+import AuditLogPage from './pages/admin/AuditLogPage';
 import AdminModerationPage from './components/AdminModerationPage';
 
 // 🧠 Contextes
@@ -147,6 +148,7 @@ const AppContent = () => {
             <Route path="transactions" element={<TransactionsPage />} />
             <Route path="subscriptions" element={<SubscriptionsPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="audit" element={<AuditLogPage />} />
             <Route path="moderation" element={<AdminModerationPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>

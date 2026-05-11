@@ -165,4 +165,7 @@ router.get('/abonnements',
   adminController.getSubscriptions
 );
 
+// 📋 Audit logs
+router.get('/audit-logs', validatePagination, adminController.getAuditLogs);
+
 module.exports = router;

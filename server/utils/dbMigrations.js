@@ -97,4 +97,30 @@ const ensureIndexes = async () => {
   }
 };
 
-module.exports = { ensureIndexes, ensureColumns };
+const ensureAuditLogsTable = async () => {
+  const pool = getMysqlPool();
+  if (await tableExists(pool, 'admin_audit_logs')) return;
+  try {
+    await pool.query(`
+      CREATE TABLE admin_audit_logs (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        admin_id    CHAR(36)     NOT NULL,
+        admin_nom   VARCHAR(255),
+        action      VARCHAR(100) NOT NULL,
+        target_type VARCHAR(50),
+        target_id   VARCHAR(36),
+        target_label VARCHAR(255),
+        details     JSON,
+        created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_audit_admin_id   (admin_id),
+        INDEX idx_audit_created_at (created_at),
+        INDEX idx_audit_action     (action)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log('[DB] Table créée: admin_audit_logs');
+  } catch (e) {
+    console.warn('[DB] Table ignorée: admin_audit_logs —', e.message.split('\n')[0]);
+  }
+};
+
+module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable };

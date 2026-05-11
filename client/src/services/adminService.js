@@ -93,6 +93,21 @@ export const suspendUser = async (userId, suspended) => {
   }
 };
 
+// 🔹 Récupère les logs d'audit admin
+export const fetchAuditLogs = async (params = {}) => {
+  try {
+    const { page = 1, limit = 20, action, adminId } = params;
+    const query = new URLSearchParams({ page, limit });
+    if (action)  query.set('action', action);
+    if (adminId) query.set('adminId', adminId);
+    const response = await api.get(`/admin/audit-logs?${query}`);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Erreur lors de la récupération des logs";
+    throw new Error(message);
+  }
+};
+
 // 🔹 Statistiques pour le tableau de bord admin
 export const fetchDashboardStats = async () => {
   try {

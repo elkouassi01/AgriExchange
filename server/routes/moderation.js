@@ -4,6 +4,7 @@ const { getMysqlPool } = require('../config/mysql');
 const { protect, authorize } = require('../middlewares/auth');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const notificationService = require('../utils/notificationService');
+const auditLog = require('../repositories/mysqlAuditLogRepository');
 
 // GET /api/v1/moderation/pending — liste des produits en attente
 router.get('/pending', protect, authorize(['admin']), async (req, res) => {
@@ -126,6 +127,11 @@ router.put('/:id/approve', protect, authorize(['admin']), async (req, res) => {
        { channels: ['whatsapp', 'email', 'inapp'] }
      ).catch(() => {});
 
+    auditLog.logAction({
+      adminId: req.user.id, adminNom: req.user.nom,
+      action: 'product.approve', targetType: 'product', targetId: id,
+      targetLabel: product.nom,
+    });
     return res.json({ success: true, message: `Produit "${product.nom}" approuvé.` });
   } catch (err) {
     console.error('[moderation/approve]', err.message);
@@ -169,6 +175,11 @@ router.put('/:id/reject', protect, authorize(['admin']), async (req, res) => {
        { channels: ['whatsapp', 'email', 'inapp'] }
      ).catch(() => {});
 
+    auditLog.logAction({
+      adminId: req.user.id, adminNom: req.user.nom,
+      action: 'product.reject', targetType: 'product', targetId: id,
+      targetLabel: product.nom, details: { note: note || null },
+    });
     return res.json({ success: true, message: `Produit "${product.nom}" rejeté.` });
   } catch (err) {
     console.error('[moderation/reject]', err.message);

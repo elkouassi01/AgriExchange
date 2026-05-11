@@ -3,6 +3,7 @@ const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const mysqlTransactionRepository = require('../repositories/mysqlTransactionRepository');
 const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
 const { getMysqlPool } = require('../config/mysql');
+const auditLog = require('../repositories/mysqlAuditLogRepository');
 
 const sanitizeUser = (user) => {
   if (!user) return null;
@@ -240,6 +241,11 @@ const updateUserRole = async (req, res) => {
     }
 
     const user = await mysqlUserRepository.findUserById(id);
+    auditLog.logAction({
+      adminId: req.user.id, adminNom: req.user.nom,
+      action: 'user.role_change', targetType: 'user', targetId: id,
+      targetLabel: user?.nom, details: { newRole: role },
+    });
     res.json(sanitizeUser(user));
   } catch (error) {
     console.error('Update role error:', error);
@@ -249,10 +255,16 @@ const updateUserRole = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   try {
+    const target = await mysqlUserRepository.findUserById(req.params.id);
     const deleted = await mysqlUserRepository.deleteUser(req.params.id);
     if (!deleted) {
       return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Utilisateur non trouvé' });
     }
+    auditLog.logAction({
+      adminId: req.user.id, adminNom: req.user.nom,
+      action: 'user.delete', targetType: 'user', targetId: req.params.id,
+      targetLabel: target?.nom, details: { email: target?.email },
+    });
     res.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (error) {
     console.error('Delete user error:', error);
@@ -435,6 +447,11 @@ const createAdminUser = async (req, res) => {
     });
 
     const user = await mysqlUserRepository.findUserByEmail(email);
+    auditLog.logAction({
+      adminId: req.user.id, adminNom: req.user.nom,
+      action: 'user.create', targetType: 'user', targetId: user?.id,
+      targetLabel: nom, details: { email, role: role || 'consommateur' },
+    });
     res.status(201).json({ success: true, data: sanitizeUser(user) });
   } catch (error) {
     console.error('Create admin user error:', error);
@@ -456,10 +473,31 @@ const suspendUser = async (req, res) => {
     const user = await mysqlUserRepository.findUserById(id);
     if (!user) return res.status(404).json({ message: 'Utilisateur non trouvé' });
 
+    auditLog.logAction({
+      adminId: req.user.id, adminNom: req.user.nom,
+      action: suspended ? 'user.suspend' : 'user.unsuspend',
+      targetType: 'user', targetId: id, targetLabel: user.nom,
+    });
     res.json({ success: true, data: sanitizeUser(user) });
   } catch (error) {
     console.error('Suspend user error:', error);
     res.status(500).json({ message: 'Échec de suspension' });
+  }
+};
+
+const getAuditLogs = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, action, adminId } = req.query;
+    const result = await auditLog.getLogs({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      action,
+      adminId,
+    });
+    res.json(result);
+  } catch (error) {
+    console.error('Audit logs error:', error);
+    res.status(500).json({ message: 'Erreur récupération audit logs' });
   }
 };
 
@@ -475,4 +513,5 @@ module.exports = {
   getSubscriptions,
   createAdminUser,
   suspendUser,
+  getAuditLogs,
 };
