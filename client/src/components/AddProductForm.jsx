@@ -7,7 +7,7 @@ import { buildApiUrl } from "../config/api";
 
 const AddProductForm = () => {
   const navigate = useNavigate();
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, token: contextToken } = useUser();
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -132,11 +132,11 @@ const AddProductForm = () => {
     setGalleryPreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ---------- UTILITAIRE ----------
-  const getAuthToken = () =>
-    localStorage.getItem("token") || sessionStorage.getItem("token");
+   // ---------- UTILITAIRE ----------
+   // Token provenant du contexte UserContext (stocké lors de la connexion) ou fallback localStorage
+   const token = contextToken || localStorage.getItem("token") || sessionStorage.getItem("token");
 
-  const buildFormData = (data, file) => {
+   const buildFormData = (data, file) => {
     const fd = new FormData();
     Object.keys(data).forEach((k) => {
       if (k === "imageFile") return;
@@ -166,18 +166,17 @@ const AddProductForm = () => {
       setLoading(false);
       return;
     }
-    if (parseInt(formData.stock) < 0) {
-      setError("Le stock ne peut pas être négatif.");
-      setLoading(false);
-      return;
-    }
+     if (parseInt(formData.stock) < 0) {
+       setError("Le stock ne peut pas être négatif.");
+       setLoading(false);
+       return;
+     }
 
-    const token = getAuthToken();
-    if (!token) {
-      setError("Vous devez être connecté pour ajouter un produit.");
-      setLoading(false);
-      return;
-    }
+     if (!token) {
+       setError("Vous devez être connecté pour ajouter un produit.");
+       setLoading(false);
+       return;
+     }
 
     try {
       // Préparation des données

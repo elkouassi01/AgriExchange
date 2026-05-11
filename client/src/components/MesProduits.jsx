@@ -176,6 +176,35 @@ const MesProduits = () => {
     return '📦';
   };
 
+  // Icônes SVG pour les statistiques
+  const IconPackage = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path>
+      <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"></path>
+    </svg>
+  );
+
+  const IconCheck = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  );
+
+  const IconAlert = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+  );
+
+  const IconX = () => (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  );
+
   const ProductImage = ({ src, alt, nom }) => {
     const [imageSrc, setImageSrc] = useState(getDefaultEmoji(nom));
 
@@ -203,7 +232,7 @@ const MesProduits = () => {
       );
     }
 
-    return <div className="produit-emoji">{imageSrc}</div>;
+    return <div className="produit-emoji" aria-hidden="true">{imageSrc}</div>;
   };
 
   if (loading) {
@@ -236,15 +265,23 @@ const MesProduits = () => {
     );
   }
 
-  return (
-    <div className="produits-container">
-      <div className="produits-header">
-        <h1>Mes Produits</h1>
-        <Link to="/ajouter-produit" className="btn-ajouter">
-          <span className="btn-icon">+</span>
-          Ajouter un produit
-        </Link>
-      </div>
+   return (
+     <div className="produits-container">
+       <div className="produits-header">
+         <h1>Mes Produits</h1>
+         {/* Masquer le bouton header si empty state (évite doublon) */}
+         {produits.length > 0 && (
+           <Link to="/ajouter-produit" className="btn-ajouter">
+             <span className="btn-icon">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                 <line x1="12" y1="5" x2="12" y2="19"></line>
+                 <line x1="5" y1="12" x2="19" y2="12"></line>
+               </svg>
+             </span>
+             Ajouter un produit
+           </Link>
+         )}
+       </div>
 
       {sponsorCheckMsg && (
         <div className={`sponsor-check-banner ${sponsorCheckMsg.startsWith('✅') ? 'sponsor-check-banner--ok' : 'sponsor-check-banner--warn'}`}>
@@ -262,31 +299,31 @@ const MesProduits = () => {
 
       <div className="produits-stats">
         <div className="stat-card">
-          <div className="stat-icon">📦</div>
+          <div className="stat-icon" aria-hidden="true"><IconPackage /></div>
           <div className="stat-info">
             <h3>{produits.length}</h3>
             <p>Produits total</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">✅</div>
+          <div className="stat-icon stat-icon--success" aria-hidden="true"><IconCheck /></div>
           <div className="stat-info">
             <h3>{produits.filter((produit) => produit.statut === 'Disponible').length}</h3>
             <p>Disponibles</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">⚠️</div>
+          <div className="stat-icon stat-icon--warning" aria-hidden="true"><IconAlert /></div>
           <div className="stat-info">
             <h3>{produits.filter((produit) => produit.statut === 'Bientot epuise').length}</h3>
-            <p>Bientot epuises</p>
+            <p>Bientôt épuisés</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">❌</div>
+          <div className="stat-icon stat-icon--danger" aria-hidden="true"><IconX /></div>
           <div className="stat-info">
             <h3>{produits.filter((produit) => produit.statut === 'Epuise').length}</h3>
-            <p>Epuises</p>
+            <p>Épuisés</p>
           </div>
         </div>
       </div>

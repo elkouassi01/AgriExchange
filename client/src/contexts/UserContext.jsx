@@ -9,6 +9,10 @@ export const UserProvider = ({ children }) => {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [token, setToken] = useState(() => {
+    return localStorage.getItem('token');
+  });
+
   const [loading, setLoading] = useState(true);
 
   // Intercepteur global : session expirée -> nettoyage local
@@ -120,10 +124,14 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // Connexion — le token est dans le cookie httpOnly, on stocke seulement le profil
-  const login = (userData) => {
+  // Connexion — stocke le token JWT en plus du profil
+  const login = (userData, jwtToken) => {
     setUser(userData);
+    setToken(jwtToken);
     localStorage.setItem('userData', JSON.stringify(userData));
+    if (jwtToken) {
+      localStorage.setItem('token', jwtToken);
+    }
   };
 
   // Deconnexion — efface le cookie cote serveur puis nettoie localement
@@ -139,7 +147,9 @@ export const UserProvider = ({ children }) => {
   // Nettoyage local (appele sur 401 ou logout)
   const clearSession = () => {
     setUser(null);
+    setToken(null);
     localStorage.removeItem('userData');
+    localStorage.removeItem('token');
   };
 
   // Au chargement : tente de restaurer la session via le cookie httpOnly
@@ -151,6 +161,7 @@ export const UserProvider = ({ children }) => {
     <UserContext.Provider
       value={{
         user,
+        token,
         login,
         logout,
         loading,

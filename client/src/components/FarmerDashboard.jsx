@@ -11,7 +11,7 @@ import { useUser } from '../contexts/UserContext';
 import api from '../services/axiosConfig';
 
 const DASHBOARD_ACTIONS = [
-  { path: '/ajouter-produit', Icon: PlusCircle,  text: 'Ajouter un produit', desc: 'Publier une nouvelle offre'    },
+  { path: '/ajouter-produit', Icon: PlusCircle,  text: 'Ajouter un produit', desc: 'Publier une nouvelle offre', primary: true },
   { path: '/mes-produits',    Icon: Package,      text: 'Mes produits',       desc: 'Gérer vos publications'       },
   { path: '/abonne',          Icon: Users,        text: 'Mes acheteurs',      desc: 'Voir vos contacts'            },
   { path: '/profil',          Icon: UserCircle,   text: 'Mon profil',         desc: 'Modifier vos informations'    },
@@ -378,6 +378,31 @@ const FarmerDashboard = () => {
             activez votre abonnement pour publier vos produits !
           </p>
           <Link to="/offres" className="fd-cta__btn">Voir les offres</Link>
+        </div>
+      )}
+
+      {/* ── Section produits sponsorisés ── */}
+      {isActive && (
+        <div className="fd-sponsored-section">
+          <p className="fd-section-label">
+            <Star size={14} strokeWidth={2} /> Produits sponsorisés
+          </p>
+          <div className="fd-sponsored-grid">
+            <Link to="/mes-produits" className="fd-sponsored-card">
+              <Star size={28} strokeWidth={1.5} className="fd-sponsored-card__icon" />
+              <span className="fd-sponsored-card__text">Gérer le sponsoring</span>
+              <span className="fd-sponsored-card__desc">Mettez en avant vos produits</span>
+              <span className="fd-sponsored-card__link">Voir mes produits →</span>
+            </Link>
+            <div className="fd-sponsored-info">
+              <p className="fd-sponsored-info__title">Pourquoi sponsoriser ?</p>
+              <ul className="fd-sponsored-info__list">
+                <li>Plus de visibilité sur le marché</li>
+                <li>Atteindre plus d'acheteurs potentiels</li>
+                <li>Augmenter vos ventes rapidement</li>
+              </ul>
+            </div>
+          </div>
         </div>
       )}
 
