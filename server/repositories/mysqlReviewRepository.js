@@ -4,7 +4,7 @@ const { getMysqlPool } = require('../config/mysql');
 const mapRow = (row) => ({
   id: row.id,
   sellerId: row.seller_id,
-  reviewerId: row.reviewer_id,
+  reviewerId: row.buyer_id,
   reviewerNom: row.reviewer_nom,
   reviewerPhoto: row.reviewer_photo || null,
   rating: row.rating,
@@ -19,7 +19,7 @@ const getReviewsForSeller = async (sellerId) => {
   const [rows] = await pool.query(
     `SELECT r.*, u.nom AS reviewer_nom, u.photo AS reviewer_photo
      FROM seller_reviews r
-     JOIN users u ON u.id = r.reviewer_id
+     JOIN users u ON u.id = r.buyer_id
      WHERE r.seller_id = ?
      ORDER BY r.created_at DESC`,
     [sellerId]
@@ -37,8 +37,8 @@ const getReviewByReviewer = async (sellerId, reviewerId) => {
   const [rows] = await pool.query(
     `SELECT r.*, u.nom AS reviewer_nom, u.photo AS reviewer_photo
      FROM seller_reviews r
-     JOIN users u ON u.id = r.reviewer_id
-     WHERE r.seller_id = ? AND r.reviewer_id = ? LIMIT 1`,
+     JOIN users u ON u.id = r.buyer_id
+     WHERE r.seller_id = ? AND r.buyer_id = ? LIMIT 1`,
     [sellerId, reviewerId]
   );
   return rows[0] ? mapRow(rows[0]) : null;
@@ -57,7 +57,7 @@ const upsertReview = async (sellerId, reviewerId, rating, comment) => {
   }
   const id = randomUUID();
   await pool.query(
-    'INSERT INTO seller_reviews (id, seller_id, reviewer_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
+    'INSERT INTO seller_reviews (id, seller_id, buyer_id, rating, comment) VALUES (?, ?, ?, ?, ?)',
     [id, sellerId, reviewerId, rating, comment || '']
   );
   return getReviewByReviewer(sellerId, reviewerId);
@@ -68,7 +68,7 @@ const deleteReview = async (reviewId, reviewerId, isAdmin = false) => {
   const pool = getMysqlPool();
   const query = isAdmin
     ? 'DELETE FROM seller_reviews WHERE id = ?'
-    : 'DELETE FROM seller_reviews WHERE id = ? AND reviewer_id = ?';
+    : 'DELETE FROM seller_reviews WHERE id = ? AND buyer_id = ?';
   const params = isAdmin ? [reviewId] : [reviewId, reviewerId];
   const [result] = await pool.query(query, params);
   return result.affectedRows > 0;

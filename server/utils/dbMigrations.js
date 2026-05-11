@@ -97,6 +97,22 @@ const ensureIndexes = async () => {
   }
 };
 
+const ensureMessagesSenderNullable = async () => {
+  const pool = getMysqlPool();
+  const [rows] = await pool.query(
+    `SELECT IS_NULLABLE FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = 'messages' AND column_name = 'sender_id'`
+  );
+  if (rows.length && rows[0].IS_NULLABLE === 'NO') {
+    try {
+      await pool.query('ALTER TABLE messages MODIFY sender_id CHAR(36) NULL');
+      console.log('[DB] messages.sender_id rendu nullable');
+    } catch (e) {
+      console.warn('[DB] Erreur modification messages.sender_id:', e.message.split('\n')[0]);
+    }
+  }
+};
+
 const ensureAuditLogsTable = async () => {
   const pool = getMysqlPool();
   if (await tableExists(pool, 'admin_audit_logs')) return;
@@ -123,4 +139,4 @@ const ensureAuditLogsTable = async () => {
   }
 };
 
-module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable };
+module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable };
