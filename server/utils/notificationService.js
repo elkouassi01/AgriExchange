@@ -258,7 +258,3 @@ module.exports = {
     console.log('[NotificationService] Service initialisé');
   },
 };
-  initialize: () => {
-    emailService.initializeEmail();
-  },
-};
