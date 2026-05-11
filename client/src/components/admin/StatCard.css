@@ -1,23 +1,16 @@
-/* src/components/admin/StatCard.css */
+/* StatCard.css - Carte statistique moderne */
 
 .stat-card {
-  background: linear-gradient(145deg, #ffffff, #f8fafc);
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 
-    0 10px 15px -3px rgba(0, 0, 0, 0.05),
-    0 4px 6px -2px rgba(0, 0, 0, 0.02);
-  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
-  border: 1px solid rgba(241, 245, 249, 0.8);
-  overflow: hidden;
+  background: var(--admin-card);
+  border-radius: var(--admin-radius-lg);
+  padding: 1.5rem;
+  box-shadow: var(--admin-shadow-sm);
+  border: 1px solid var(--admin-border);
+  transition: var(--admin-transition);
+  display: flex;
+  flex-direction: column;
   position: relative;
-}
-
-.stat-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 
-    0 20px 25px -5px rgba(0, 0, 0, 0.08),
-    0 10px 10px -5px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
 }
 
 .stat-card::before {
@@ -27,108 +20,141 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-  background-size: 300% 300%;
-  animation: gradientBorder 3s ease infinite;
+  background: linear-gradient(90deg, var(--admin-primary), var(--admin-info));
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-@keyframes gradientBorder {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--admin-shadow-md);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.stat-card:hover::before {
+  opacity: 1;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 20px;
+  margin-bottom: 1rem;
 }
 
 .card-icon {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
   width: 48px;
   height: 48px;
-  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  box-shadow: 
-    0 4px 6px -1px rgba(59, 130, 246, 0.3),
-    0 2px 4px -1px rgba(59, 130, 246, 0.1);
+  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-dark));
+  border-radius: 12px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  font-size: 1.5rem;
 }
 
 .card-title {
-  color: #64748b;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--admin-text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
+  letter-spacing: 0.05em;
+  margin: 0 0 0.25rem 0;
+}
+
+.card-description {
+  font-size: 0.8rem;
+  color: var(--admin-text-secondary);
+  margin: 0;
+  opacity: 0.8;
 }
 
 .card-value {
-  color: #1e293b;
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--admin-text);
   margin: 0;
-  background: linear-gradient(to right, #1e293b, #334155);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  line-height: 1.2;
+  word-break: break-word;
 }
 
 .card-footer {
   display: flex;
   align-items: center;
-  padding-top: 12px;
-  border-top: 1px dashed rgba(203, 213, 225, 0.4);
-}
-
-.positive .change-indicator {
-  color: #10b981;
-}
-
-.negative .change-indicator {
-  color: #ef4444;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--admin-border);
 }
 
 .change-indicator {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
   font-weight: 600;
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 20px;
-  background: rgba(16, 185, 129, 0.1);
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+}
+
+.positive .change-indicator {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--admin-success);
 }
 
 .negative .change-indicator {
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--admin-danger);
 }
 
 .change-icon {
   width: 16px;
   height: 16px;
-  margin-right: 4px;
-  stroke-width: 2.5;
 }
 
-.card-description {
-  color: #94a3b8;
-  font-size: 13px;
-  margin-left: 8px;
+/* Variantes de couleur pour l'icône */
+.stat-card--success .card-icon {
+  background: linear-gradient(135deg, var(--admin-success), #16a34a);
 }
 
-/* Animation pour le changement de valeur */
-@keyframes pulse {
+.stat-card--warning .card-icon {
+  background: linear-gradient(135deg, var(--admin-warning), #d97706);
+}
+
+.stat-card--danger .card-icon {
+  background: linear-gradient(135deg, var(--admin-danger), #dc2626);
+}
+
+.stat-card--info .card-icon {
+  background: linear-gradient(135deg, var(--admin-info), #0891b2);
+}
+
+/* Animation value change */
+@keyframes statPulse {
   0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.02); }
   100% { transform: scale(1); }
 }
 
-.card-value {
-  animation: pulse 1s ease;
+.stat-value-update {
+  animation: statPulse 0.4s ease;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .stat-card {
+    padding: 1.25rem;
+  }
+  
+  .card-value {
+    font-size: 1.75rem;
+  }
+  
+  .card-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.25rem;
+  }
 }
