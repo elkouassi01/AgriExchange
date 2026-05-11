@@ -4,6 +4,8 @@ const mysqlTransactionRepository = require('../repositories/mysqlTransactionRepo
 const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
 const { getMysqlPool } = require('../config/mysql');
 const auditLog = require('../repositories/mysqlAuditLogRepository');
+const { isWhatsAppReady } = require('../utils/whatsappClient');
+const { sendGeneric } = require('../utils/emailService');
 
 const sanitizeUser = (user) => {
   if (!user) return null;
@@ -16,32 +18,47 @@ const dashCache = { data: null, expiresAt: 0 };
 const DASH_CACHE_TTL = 5 * 60 * 1000;
 
 const getDashboardStats = async (req, res) => {
-  if (dashCache.data && Date.now() < dashCache.expiresAt) {
+  const forceRefresh = req.query.refresh === '1';
+  if (!forceRefresh && dashCache.data && Date.now() < dashCache.expiresAt) {
     return res.json(dashCache.data);
   }
 
   try {
     const pool = getMysqlPool();
 
+    // ── Utilisateurs : totaux + nouveaux ce mois ─────────────────────────
     const [[stats]] = await pool.query(`
       SELECT
-        (SELECT COUNT(*) FROM users) AS total_users,
-        (SELECT COUNT(*) FROM users WHERE role = 'agriculteur') AS total_farmers,
-        (SELECT COUNT(*) FROM users WHERE role = 'consommateur') AS total_consumers,
-        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status = 'completed') AS total_revenue,
-        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW()) AS active_subscriptions_bleu,
-        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'GOLD') AS active_subscriptions_gold,
+        (SELECT COUNT(*) FROM users)                                                            AS total_users,
+        (SELECT COUNT(*) FROM users WHERE role = 'agriculteur')                                AS total_farmers,
+        (SELECT COUNT(*) FROM users WHERE role = 'consommateur')                               AS total_consumers,
+        (SELECT COUNT(*) FROM users WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW()))  AS new_users_month,
+        (SELECT COUNT(*) FROM users WHERE role = 'agriculteur' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS new_farmers_month,
+        (SELECT COUNT(*) FROM users WHERE role = 'consommateur' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS new_consumers_month,
+        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status IN ('completed','success'))            AS total_revenue,
+        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status IN ('completed','success') AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS revenue_month,
+        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status IN ('completed','success') AND MONTH(created_at) = MONTH(DATE_SUB(NOW(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(NOW(), INTERVAL 1 MONTH))) AS revenue_last_month,
+        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'BLEU')     AS active_subscriptions_bleu,
+        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'GOLD')     AS active_subscriptions_gold,
         (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'PLATINUM') AS active_subscriptions_platinum
     `);
 
+    // ── Transactions par statut + ce mois ────────────────────────────────
     const [statusRows] = await pool.query(
       'SELECT status, COUNT(*) AS count FROM transactions GROUP BY status'
     );
-    const transactionStatus = { success: 0, pending: 0, failed: 0 };
+    const transactionStatus = { success: 0, completed: 0, pending: 0, failed: 0 };
     statusRows.forEach((row) => {
       if (row.status in transactionStatus) transactionStatus[row.status] = parseInt(row.count, 10);
     });
+    const txCompleted = transactionStatus.success + transactionStatus.completed;
 
+    const [[txMonth]] = await pool.query(`
+      SELECT COUNT(*) AS count FROM transactions
+      WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())
+    `);
+
+    // ── Activité 6 derniers mois ─────────────────────────────────────────
     const [activityRows] = await pool.query(`
       SELECT
         MONTH(created_at) AS month,
@@ -60,6 +77,26 @@ const getDashboardStats = async (req, res) => {
       revenue: parseFloat(row.amount),
     }));
 
+    // ── Produits ─────────────────────────────────────────────────────────
+    let products = { total: 0, pending: 0, approved: 0, rejected: 0 };
+    try {
+      const [[pr]] = await pool.query(`
+        SELECT
+          COUNT(*)                                 AS total,
+          SUM(moderation_status = 'pending')       AS pending,
+          SUM(moderation_status = 'approved')      AS approved,
+          SUM(moderation_status = 'rejected')      AS rejected
+        FROM products WHERE etat = 'disponible'
+      `);
+      products = {
+        total:    parseInt(pr.total    || 0),
+        pending:  parseInt(pr.pending  || 0),
+        approved: parseInt(pr.approved || 0),
+        rejected: parseInt(pr.rejected || 0),
+      };
+    } catch {}
+
+    // ── Demandes de contact ───────────────────────────────────────────────
     let contactStats = { pending: 0, responded: 0, expired: 0, refunded: 0 };
     try {
       const [[cr]] = await pool.query(`
@@ -77,6 +114,7 @@ const getDashboardStats = async (req, res) => {
       };
     } catch {}
 
+    // ── Paiements produits ────────────────────────────────────────────────
     let productPayments = { count: 0, revenue: 0 };
     try {
       const [[pp]] = await pool.query(
@@ -85,33 +123,48 @@ const getDashboardStats = async (req, res) => {
       productPayments = { count: parseInt(pp.count || 0), revenue: parseFloat(pp.revenue || 0) };
     } catch {}
 
+    // ── Agriculteurs suspendus ────────────────────────────────────────────
     let suspendedFarmers = 0;
     try {
       const [[sus]] = await pool.query(`SELECT COUNT(*) AS count FROM users WHERE suspended = 1`);
       suspendedFarmers = parseInt(sus.count || 0);
     } catch {}
 
+    // ── Calcul growth revenus (mois en cours vs mois précédent) ──────────
+    const revMonth     = parseFloat(stats.revenue_month      || 0);
+    const revLastMonth = parseFloat(stats.revenue_last_month || 0);
+    const revenueGrowth = revLastMonth > 0
+      ? Math.round(((revMonth - revLastMonth) / revLastMonth) * 100)
+      : (revMonth > 0 ? 100 : 0);
+
     const result = {
       users: {
-        total: parseInt(stats.total_users, 10),
-        farmers: parseInt(stats.total_farmers, 10),
-        consumers: parseInt(stats.total_consumers, 10),
+        total:            parseInt(stats.total_users,       10),
+        farmers:          parseInt(stats.total_farmers,     10),
+        consumers:        parseInt(stats.total_consumers,   10),
+        newThisMonth:     parseInt(stats.new_users_month,   10),
+        newFarmersMonth:  parseInt(stats.new_farmers_month, 10),
+        newConsumersMonth:parseInt(stats.new_consumers_month, 10),
       },
       revenue: {
-        total: parseFloat(stats.total_revenue),
-        growth: 6,
+        total:       parseFloat(stats.total_revenue),
+        thisMonth:   revMonth,
+        lastMonth:   revLastMonth,
+        growth:      revenueGrowth,
       },
       subscriptions: [
-        { formule: 'BLEU',     count: parseInt(stats.active_subscriptions_bleu, 10) },
-        { formule: 'GOLD',     count: parseInt(stats.active_subscriptions_gold, 10) },
+        { formule: 'BLEU',     count: parseInt(stats.active_subscriptions_bleu,     10) },
+        { formule: 'GOLD',     count: parseInt(stats.active_subscriptions_gold,     10) },
         { formule: 'PLATINUM', count: parseInt(stats.active_subscriptions_platinum, 10) },
       ],
       transactions: {
-        total: transactionStatus.success + transactionStatus.pending + transactionStatus.failed,
-        completed: transactionStatus.success,
-        pending: transactionStatus.pending,
-        failed: transactionStatus.failed,
+        total:      transactionStatus.success + transactionStatus.completed + transactionStatus.pending + transactionStatus.failed,
+        completed:  txCompleted,
+        pending:    transactionStatus.pending,
+        failed:     transactionStatus.failed,
+        thisMonth:  parseInt(txMonth.count || 0),
       },
+      products,
       activityData,
       contactRequests: contactStats,
       productPayments,
@@ -287,10 +340,38 @@ const getUserActivity = async (req, res) => {
   }
 };
 
+const getTransactionStats = async (req, res) => {
+  try {
+    const pool = getMysqlPool();
+    const [[stats]] = await pool.query(`
+      SELECT
+        COUNT(*)                                              AS total,
+        COALESCE(SUM(CASE WHEN status='completed' THEN montant ELSE 0 END), 0) AS revenue,
+        COALESCE(SUM(CASE WHEN status='success'   THEN montant ELSE 0 END), 0) AS revenue_success,
+        COUNT(CASE WHEN status IN ('pending')      THEN 1 END)  AS pending_count,
+        COALESCE(SUM(CASE WHEN status='pending'    THEN montant ELSE 0 END), 0) AS pending_amount,
+        COUNT(CASE WHEN status='failed'            THEN 1 END)  AS failed_count,
+        COUNT(CASE WHEN status IN ('success','completed') THEN 1 END) AS success_count
+      FROM transactions
+    `);
+    res.json({
+      total:          Number(stats.total),
+      revenue:        Number(stats.revenue) + Number(stats.revenue_success),
+      pendingCount:   Number(stats.pending_count),
+      pendingAmount:  Number(stats.pending_amount),
+      failedCount:    Number(stats.failed_count),
+      successCount:   Number(stats.success_count),
+    });
+  } catch (error) {
+    console.error('Transaction stats error:', error);
+    res.status(500).json({ message: 'Erreur stats transactions' });
+  }
+};
+
 const getTransactions = async (req, res) => {
   try {
     const pool = getMysqlPool();
-    const { page = 1, limit = 20, status } = req.query;
+    const { page = 1, limit = 20, status, search } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
@@ -298,6 +379,11 @@ const getTransactions = async (req, res) => {
     const conditions = [];
     const values = [];
     if (status) { conditions.push('t.status = ?'); values.push(status); }
+    if (search?.trim()) {
+      conditions.push('(t.reference LIKE ? OR u.nom LIKE ? OR u.email LIKE ?)');
+      const like = `%${search.trim()}%`;
+      values.push(like, like, like);
+    }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -343,33 +429,43 @@ const getTransactions = async (req, res) => {
 const getSubscriptions = async (req, res) => {
   try {
     const pool = getMysqlPool();
-    const { status, formule, page = 1, limit = 20 } = req.query;
+    const { status, formule, page = 1, limit = 20, search } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
 
     const conditions = [];
     const values = [];
-    if (status === 'active')    { conditions.push('a.date_expiration >= NOW() AND a.status = ?'); values.push('active'); }
+    if (status === 'active')         { conditions.push('a.date_expiration >= NOW() AND a.status = ?'); values.push('active'); }
     else if (status === 'expired')   { conditions.push('a.date_expiration < NOW()'); }
     else if (status === 'cancelled') { conditions.push('a.status = ?'); values.push('cancelled'); }
     else if (status === 'pending')   { conditions.push('a.status = ?'); values.push('pending'); }
+    else if (status === 'expiring_soon') {
+      conditions.push('a.date_expiration >= NOW() AND a.date_expiration <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND a.status = ?');
+      values.push('active');
+    }
     if (formule) { conditions.push('a.formule = ?'); values.push(formule); }
+    if (search?.trim()) {
+      conditions.push('(u.nom LIKE ? OR u.email LIKE ?)');
+      const like = `%${search.trim()}%`;
+      values.push(like, like);
+    }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
     const [[statsRow], [countRow], [rows]] = await Promise.all([
       pool.query(`
         SELECT
-          COUNT(*)                                                    AS total,
-          SUM(date_expiration >= NOW() AND status = 'active')        AS active,
-          SUM(date_expiration < NOW())                                AS expired,
-          SUM(status = 'cancelled')                                   AS cancelled,
-          SUM(status = 'pending')                                     AS pending,
-          COALESCE(SUM(montant), 0)                                   AS total_revenue,
-          SUM(formule = 'BLEU')                                       AS bleu,
-          SUM(formule = 'GOLD')                                       AS gold,
-          SUM(formule = 'PLATINUM')                                   AS platinum
+          COUNT(*)                                                                          AS total,
+          SUM(date_expiration >= NOW() AND status = 'active')                              AS active,
+          SUM(date_expiration < NOW())                                                      AS expired,
+          SUM(status = 'cancelled')                                                         AS cancelled,
+          SUM(status = 'pending')                                                           AS pending,
+          SUM(date_expiration >= NOW() AND date_expiration <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND status = 'active') AS expiring_soon,
+          COALESCE(SUM(montant), 0)                                                         AS total_revenue,
+          SUM(formule = 'BLEU')                                                             AS bleu,
+          SUM(formule = 'GOLD')                                                             AS gold,
+          SUM(formule = 'PLATINUM')                                                         AS platinum
         FROM abonnements`),
       pool.query(`SELECT COUNT(*) AS total FROM abonnements a ${where}`, values),
       pool.query(
@@ -399,11 +495,12 @@ const getSubscriptions = async (req, res) => {
     res.json({
       data: subscriptions,
       stats: {
-        total:        parseInt(statsRow[0].total        || 0),
-        active:       parseInt(statsRow[0].active       || 0),
-        expired:      parseInt(statsRow[0].expired      || 0),
-        cancelled:    parseInt(statsRow[0].cancelled    || 0),
-        pending:      parseInt(statsRow[0].pending      || 0),
+        total:        parseInt(statsRow[0].total         || 0),
+        active:       parseInt(statsRow[0].active        || 0),
+        expired:      parseInt(statsRow[0].expired       || 0),
+        cancelled:    parseInt(statsRow[0].cancelled     || 0),
+        pending:      parseInt(statsRow[0].pending       || 0),
+        expiringSoon: parseInt(statsRow[0].expiring_soon || 0),
         totalRevenue: parseFloat(statsRow[0].total_revenue || 0),
         byFormule: {
           BLEU:     parseInt(statsRow[0].bleu     || 0),
@@ -485,6 +582,91 @@ const suspendUser = async (req, res) => {
   }
 };
 
+const getSystemStatus = async (req, res) => {
+  const pool = getMysqlPool();
+
+  // MySQL ping
+  let mysqlStatus = 'ok';
+  let dbCounts = {};
+  try {
+    const [[counts]] = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users)        AS users,
+        (SELECT COUNT(*) FROM transactions) AS transactions,
+        (SELECT COUNT(*) FROM abonnements)  AS abonnements,
+        (SELECT COUNT(*) FROM products)     AS products
+    `);
+    dbCounts = counts;
+  } catch {
+    mysqlStatus = 'error';
+  }
+
+  // Email ping (verify transport)
+  let emailStatus = 'unknown';
+  let emailConfig = {};
+  try {
+    const nodemailer = require('nodemailer');
+    const transport = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: process.env.SMTP_SECURE === 'true',
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    await transport.verify();
+    emailStatus = 'ok';
+    emailConfig = {
+      host: process.env.SMTP_HOST || '—',
+      from: process.env.EMAIL_FROM || '—',
+      user: process.env.SMTP_USER ? process.env.SMTP_USER.slice(0, 4) + '****' : '—',
+    };
+  } catch {
+    emailStatus = 'error';
+    emailConfig = {
+      host: process.env.SMTP_HOST || '—',
+      from: process.env.EMAIL_FROM || '—',
+      user: process.env.SMTP_USER ? process.env.SMTP_USER.slice(0, 4) + '****' : '—',
+    };
+  }
+
+  const memMB = (bytes) => Math.round(bytes / 1024 / 1024);
+  const mem = process.memoryUsage();
+
+  res.json({
+    mysql: { status: mysqlStatus, counts: dbCounts },
+    whatsapp: {
+      status: isWhatsAppReady() ? 'ok' : 'disconnected',
+      enabled: process.env.WHATSAPP_ENABLED !== 'false',
+    },
+    email: { status: emailStatus, config: emailConfig },
+    server: {
+      nodeVersion: process.version,
+      uptimeSeconds: Math.round(process.uptime()),
+      env: process.env.NODE_ENV || 'development',
+      memory: { rss: memMB(mem.rss), heapUsed: memMB(mem.heapUsed), heapTotal: memMB(mem.heapTotal) },
+    },
+  });
+};
+
+const sendTestNotification = async (req, res) => {
+  const admin = req.user;
+  const to = admin.email;
+  if (!to) return res.status(400).json({ message: 'Email admin introuvable' });
+
+  try {
+    await sendGeneric(
+      to,
+      '✅ Test de notification — VivriMarket Admin',
+      `<p>Bonjour <strong>${admin.nom || 'Admin'}</strong>,</p>
+       <p>Ceci est un email de test envoyé depuis le panneau d'administration de VivriMarket.</p>
+       <p>Si vous recevez cet email, la configuration SMTP est correcte.</p>
+       <p style="color:#64748b;font-size:0.85em">Envoyé le ${new Date().toLocaleString('fr-FR')}</p>`
+    );
+    res.json({ success: true, message: `Email de test envoyé à ${to}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: `Échec envoi : ${err.message}` });
+  }
+};
+
 const getAuditLogs = async (req, res) => {
   try {
     const { page = 1, limit = 20, action, adminId } = req.query;
@@ -509,9 +691,12 @@ module.exports = {
   updateUserRole,
   deleteUser,
   getUserActivity,
+  getTransactionStats,
   getTransactions,
   getSubscriptions,
   createAdminUser,
   suspendUser,
   getAuditLogs,
+  getSystemStatus,
+  sendTestNotification,
 };

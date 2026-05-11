@@ -1,187 +1,139 @@
 import React, { useRef } from 'react';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
 
-// Enregistrer les composants nécessaires de Chart.js
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
+  CategoryScale, LinearScale,
+  BarElement, LineElement, PointElement,
+  Title, Tooltip, Legend
 );
 
-const ActivityChart = ({ data, title = 'Activité des utilisateurs', subtitle }) => {
+const fmtMoney = (n) => Number(n || 0).toLocaleString('fr-FR');
+
+const ActivityChart = ({ data }) => {
   const chartRef = useRef(null);
-  
-  // Options de configuration du graphique
+
+  if (!data || data.length === 0) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 220, color: '#94a3b8', gap: 8 }}>
+        <div style={{ fontSize: '2rem' }}>📊</div>
+        <p style={{ margin: 0, fontSize: '0.875rem' }}>Aucune donnée sur les 6 derniers mois</p>
+      </div>
+    );
+  }
+
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: {
         position: 'top',
         labels: {
-          font: {
-            size: 14,
-            family: "'Inter', sans-serif"
-          },
+          font: { size: 12, family: "'Inter', sans-serif" },
           usePointStyle: true,
-          padding: 20
-        }
-      },
-      title: {
-        display: true,
-        text: title,
-        font: {
-          size: 18,
-          weight: 'bold',
-          family: "'Inter', sans-serif"
+          padding: 16,
         },
-        padding: {
-          top: 10,
-          bottom: 20
-        }
-      },
-      subtitle: {
-        display: !!subtitle,
-        text: subtitle,
-        font: {
-          size: 14,
-          family: "'Inter', sans-serif"
-        },
-        padding: {
-          bottom: 30
-        }
       },
       tooltip: {
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+        backgroundColor: 'rgba(15, 23, 42, 0.92)',
         padding: 12,
-        titleFont: {
-          size: 14,
-          family: "'Inter', sans-serif"
-        },
-        bodyFont: {
-          size: 14,
-          family: "'Inter', sans-serif"
-        },
+        titleFont: { size: 13, family: "'Inter', sans-serif" },
+        bodyFont:  { size: 13, family: "'Inter', sans-serif" },
         callbacks: {
-          label: function(context) {
-            return `Transactions: ${context.parsed.y}`;
+          label: (ctx) => {
+            if (ctx.datasetIndex === 0) return `  Transactions : ${ctx.parsed.y}`;
+            return `  Revenus : ${fmtMoney(ctx.parsed.y)} XOF`;
           },
-          title: function(context) {
-            return `Jour: ${context[0].label}`;
-          }
-        }
-      }
+        },
+      },
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        grid: {
-          color: 'rgba(241, 245, 249, 0.5)'
-        },
-        ticks: {
-          font: {
-            size: 12,
-            family: "'Inter', sans-serif"
-          }
-        },
-        title: {
-          display: true,
-          text: 'Nombre de transactions',
-          font: {
-            size: 14,
-            weight: '500',
-            family: "'Inter', sans-serif"
-          },
-          padding: {
-            top: 10,
-            bottom: 10
-          }
-        }
-      },
       x: {
-        grid: {
-          display: false
-        },
+        grid: { display: false },
+        ticks: { font: { size: 12, family: "'Inter', sans-serif" } },
+      },
+      y: {
+        type: 'linear',
+        position: 'left',
+        beginAtZero: true,
+        grid: { color: 'rgba(241, 245, 249, 0.8)' },
         ticks: {
-          font: {
-            size: 12,
-            family: "'Inter', sans-serif"
-          }
+          font: { size: 11, family: "'Inter', sans-serif" },
+          stepSize: 1,
         },
         title: {
           display: true,
-          text: 'Jours',
-          font: {
-            size: 14,
-            weight: '500',
-            family: "'Inter', sans-serif"
-          },
-          padding: {
-            top: 10
-          }
-        }
-      }
+          text: 'Transactions',
+          font: { size: 11, family: "'Inter', sans-serif" },
+          color: '#64748b',
+        },
+      },
+      y1: {
+        type: 'linear',
+        position: 'right',
+        beginAtZero: true,
+        grid: { drawOnChartArea: false },
+        ticks: {
+          font: { size: 11, family: "'Inter', sans-serif" },
+          callback: (v) => `${fmtMoney(v)} `,
+        },
+        title: {
+          display: true,
+          text: 'Revenus (XOF)',
+          font: { size: 11, family: "'Inter', sans-serif" },
+          color: '#64748b',
+        },
+      },
     },
-    animation: {
-      duration: 1000,
-      easing: 'easeOutQuart'
-    }
+    animation: { duration: 800, easing: 'easeOutQuart' },
   };
 
-  // Créer un gradient pour les barres
-  const getGradient = (ctx) => {
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(56, 189, 248, 0.8)');
-    gradient.addColorStop(1, 'rgba(14, 165, 233, 0.2)');
-    return gradient;
-  };
-
-  // Formatage des données pour le graphique
   const chartData = {
-    labels: data.map(item => item.mois),
+    labels: data.map((d) => d.mois),
     datasets: [
       {
+        type: 'bar',
         label: 'Transactions',
-        data: data.map(item => item.transactions),
-        backgroundColor: function(context) {
-          const chart = context.chart;
-          const {ctx, chartArea} = chart;
-          if (!chartArea) return;
-          return getGradient(ctx);
-        },
-        borderColor: 'rgba(14, 165, 233, 1)',
+        data: data.map((d) => d.transactions),
+        backgroundColor: 'rgba(99, 102, 241, 0.2)',
+        borderColor: 'rgba(99, 102, 241, 0.8)',
         borderWidth: 1,
-        borderRadius: 6,
-        barThickness: 30,
+        borderRadius: 5,
+        yAxisID: 'y',
+        order: 2,
+      },
+      {
+        type: 'line',
+        label: 'Revenus',
+        data: data.map((d) => d.revenue),
+        borderColor: '#16a34a',
+        backgroundColor: 'rgba(22, 163, 74, 0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#16a34a',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        tension: 0.35,
+        fill: true,
+        yAxisID: 'y1',
+        order: 1,
       },
     ],
   };
 
   return (
-    <div className="activity-chart-container">
-      <div className="chart-wrapper">
-        <Bar ref={chartRef} options={options} data={chartData} />
-      </div>
-      
-      {data.length === 0 && (
-        <div className="no-data-message">
-          <div className="no-data-icon">📊</div>
-          <h3>Aucune donnée disponible</h3>
-          <p>Les données d'activité seront affichées ici lorsqu'elles seront disponibles</p>
-        </div>
-      )}
+    <div style={{ height: 260 }}>
+      <Bar ref={chartRef} options={options} data={chartData} />
     </div>
   );
 };

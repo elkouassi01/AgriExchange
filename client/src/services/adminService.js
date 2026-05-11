@@ -38,10 +38,14 @@ export const deleteUser = async (userId) => {
   }
 };
 
-// 🔹 Récupère la liste des transactions
-export const fetchTransactions = async () => {
+// 🔹 Récupère la liste des transactions (pagination serveur)
+export const fetchTransactions = async (params = {}) => {
   try {
-    const response = await api.get('/admin/transactions');
+    const { page = 1, limit = 20, status, search } = params;
+    const query = new URLSearchParams({ page, limit });
+    if (status && status !== 'all') query.set('status', status);
+    if (search?.trim()) query.set('search', search.trim());
+    const response = await api.get(`/admin/transactions?${query}`);
     return response.data;
   } catch (error) {
     const message = error.response?.data?.message || "Erreur lors de la récupération des transactions";
@@ -49,10 +53,26 @@ export const fetchTransactions = async () => {
   }
 };
 
-// 🔹 Récupère la liste des abonnements
-export const fetchSubscriptions = async () => {
+// 🔹 Statistiques globales des transactions
+export const fetchTransactionStats = async () => {
   try {
-    const response = await api.get('/admin/abonnements');
+    const response = await api.get('/admin/transactions/stats');
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Erreur stats transactions";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Récupère la liste des abonnements (pagination serveur)
+export const fetchSubscriptions = async (params = {}) => {
+  try {
+    const { page = 1, limit = 20, status, formule, search } = params;
+    const query = new URLSearchParams({ page, limit });
+    if (status && status !== 'all') query.set('status', status);
+    if (formule && formule !== 'all') query.set('formule', formule);
+    if (search?.trim()) query.set('search', search.trim());
+    const response = await api.get(`/admin/abonnements?${query}`);
     return response.data;
   } catch (error) {
     const message = error.response?.data?.message || "Erreur lors de la récupération des abonnements";
@@ -109,12 +129,35 @@ export const fetchAuditLogs = async (params = {}) => {
 };
 
 // 🔹 Statistiques pour le tableau de bord admin
-export const fetchDashboardStats = async () => {
+export const fetchDashboardStats = async (forceRefresh = false) => {
   try {
-    const response = await api.get('/admin/dashboard');
+    const url = forceRefresh ? '/admin/dashboard?refresh=1' : '/admin/dashboard';
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     const message = error.response?.data?.message || "Erreur lors de la récupération des statistiques du tableau de bord";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Statut système (MySQL, WhatsApp, Email, serveur)
+export const fetchSystemStatus = async () => {
+  try {
+    const response = await api.get('/admin/system-status');
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Erreur récupération statut système";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Envoyer un email de test à l'admin connecté
+export const sendTestNotification = async () => {
+  try {
+    const response = await api.post('/admin/test-notification');
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Échec de l'envoi de test";
     throw new Error(message);
   }
 };

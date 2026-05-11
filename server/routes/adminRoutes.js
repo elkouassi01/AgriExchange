@@ -81,6 +81,12 @@ const validateUserUpdate = [
 // 📊 Dashboard Admin
 router.get('/dashboard', adminController.getDashboardStats);
 
+// 🖥️ Statut système
+router.get('/system-status', adminController.getSystemStatus);
+
+// 📧 Test notification
+router.post('/test-notification', adminController.sendTestNotification);
+
 // 👥 Gestion des utilisateurs
 router.get('/users',
   validatePagination,
@@ -140,26 +146,40 @@ router.get('/users/:id/activity',
 // );
 
 // 💰 Gestion des transactions
-router.get('/transactions', 
+router.get('/transactions/stats', adminController.getTransactionStats);
+
+router.get('/transactions',
   validatePagination,
   [
     query('status')
       .optional()
-      .isIn(['success', 'pending', 'failed'])
-      .withMessage('Statut invalide. Valeurs acceptées: success, pending, failed'),
+      .isIn(['success', 'completed', 'pending', 'failed', 'refunded'])
+      .withMessage('Statut invalide. Valeurs acceptées: success, pending, failed, refunded'),
+    query('search')
+      .optional()
+      .trim()
+      .isLength({ max: 100 }).withMessage('La recherche ne peut dépasser 100 caractères'),
     handleValidationErrors
   ],
   adminController.getTransactions
 );
 
 // 📦 Gestion des abonnements
-router.get('/abonnements', 
+router.get('/abonnements',
   validatePagination,
   [
     query('status')
       .optional()
-      .isIn(['active', 'expired', 'pending'])
-      .withMessage('Statut invalide. Valeurs acceptées: active, expired, pending'),
+      .isIn(['active', 'expired', 'pending', 'cancelled', 'expiring_soon'])
+      .withMessage('Statut invalide. Valeurs acceptées: active, expired, pending, cancelled, expiring_soon'),
+    query('formule')
+      .optional()
+      .isIn(['BLEU', 'GOLD', 'PLATINUM'])
+      .withMessage('Formule invalide. Valeurs acceptées: BLEU, GOLD, PLATINUM'),
+    query('search')
+      .optional()
+      .trim()
+      .isLength({ max: 100 }).withMessage('La recherche ne peut dépasser 100 caractères'),
     handleValidationErrors
   ],
   adminController.getSubscriptions

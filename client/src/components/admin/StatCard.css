@@ -71,6 +71,17 @@
   opacity: 0.8;
 }
 
+.card-sub {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #16a34a;
+  background: #dcfce7;
+  border-radius: 20px;
+}
+
 .card-value {
   font-size: 2rem;
   font-weight: 800;
