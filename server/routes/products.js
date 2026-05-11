@@ -364,7 +364,6 @@ router.get('/sponsored', async (req, res) => {
 
 // PUT /products/:id/sponsor — activer / désactiver la sponsorisation
 const SPONSOR_LIMITS = { BLEU: 1, GOLD: 3, PLATINUM: 5 };
-const abonnementRepo = require('../repositories/mysqlAbonnementRepository');
 
 router.put('/:id/sponsor', protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
   try {
@@ -374,9 +373,10 @@ router.put('/:id/sponsor', protect, authorize(['agriculteur', 'farmer']), async 
     const { activate } = req.body; // boolean
 
     if (activate) {
-      // Vérifier l'abonnement actif et la limite
-      const abonnement = await abonnementRepo.getActiveUserAbonnement(sellerId);
-      if (!abonnement) {
+      // Vérifier l'abonnement actif via user_subscriptions (source de vérité pour agriculteurs)
+      const abonnement = await mysqlUserRepository.getActiveSubscriptionForUser(sellerId);
+      // Vérifier que l'abonnement existe, est actif, et n'est pas expiré
+      if (!abonnement || abonnement.statut !== 'actif' || new Date(abonnement.dateFin) < new Date()) {
         return res.status(403).json({ success: false, message: 'Abonnement actif requis pour sponsoriser un produit.' });
       }
       const limit = SPONSOR_LIMITS[abonnement.formule] ?? 1;
