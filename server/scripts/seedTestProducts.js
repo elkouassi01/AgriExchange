@@ -124,20 +124,24 @@ async function seed() {
     console.log(`${delResult.affectedRows} produit(s) existant(s) supprimé(s)`);
   }
 
-  // 3. Insérer les produits test
-  for (const p of PRODUCTS) {
-    const productId = randomUUID();
-    await pool.query(
-      `INSERT INTO products (id, seller_id, nom, prix, description, image_url, categorie, stock, unite, date_recolte, etat, tags, certifications)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        productId, sellerId, p.nom, p.prix, p.description, p.imageUrl,
-        p.categorie, p.stock, p.unite, p.dateRecolte, p.etat,
-        JSON.stringify(p.tags || []), JSON.stringify([]),
-      ]
-    );
-    console.log(`  + ${p.nom} (${productId})`);
-  }
+// 3. Insérer les produits test
+   // 3 produits sponsorisés (is_featured=1), 3 produits normaux
+   const SPONSORED_COUNT = 3;
+   for (let i = 0; i < PRODUCTS.length; i++) {
+     const p = PRODUCTS[i];
+     const productId = randomUUID();
+     const isFeatured = i < SPONSORED_COUNT ? 1 : 0;
+     await pool.query(
+       `INSERT INTO products (id, seller_id, nom, prix, description, image_url, categorie, stock, unite, date_recolte, etat, tags, certifications, is_featured, moderation_status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved')`,
+       [
+         productId, sellerId, p.nom, p.prix, p.description, p.imageUrl,
+         p.categorie, p.stock, p.unite, p.dateRecolte, p.etat,
+         JSON.stringify(p.tags || []), JSON.stringify([]), isFeatured,
+       ]
+     );
+     console.log(`  + ${p.nom}${isFeatured ? ' [SPONSORED]' : ''} (${productId})`);
+   }
 
   console.log('\nTerminé ! 6 produits insérés.');
   console.log(`\nCompte vendeur test :`);

@@ -351,24 +351,40 @@ const deleteProductImage = async (productId, imageId, sellerId) => {
 const getSponsoredProducts = async (limit = 8) => {
   const pool = getMysqlPool();
   // Inclure : sponsorisation gratuite (is_featured=1) OU payante non expirée
-  const [rows] = await pool.query(
-    `${baseSelect}
-     WHERE (
-       p.is_featured = 1
-       OR (p.paid_sponsor_until IS NOT NULL AND p.paid_sponsor_until > NOW())
-     )
-     AND p.stock > 0
-     AND p.moderation_status = 'approved'
-     AND (u.suspended IS NULL OR u.suspended = 0)
-     ORDER BY p.paid_sponsor_until DESC, p.updated_at DESC
-     LIMIT ?`,
-    [limit],
-  );
-  return rows.map((row) => ({
-    ...normalizeProductRow(row),
-    isPaidSponsor: row.paid_sponsor_until && new Date(row.paid_sponsor_until) > new Date(),
-    paidSponsorUntil: row.paid_sponsor_until || null,
-  }));
+  // Note: paid_sponsor_until may not exist yet on older DBs - handled gracefully
+  try {
+    const [rows] = await pool.query(
+      `${baseSelect}
+       WHERE (
+         p.is_featured = 1
+         OR (p.paid_sponsor_until IS NOT NULL AND p.paid_sponsor_until > NOW())
+       )
+       AND p.stock > 0
+       AND COALESCE(p.moderation_status, 'approved') = 'approved'
+       AND (u.suspended IS NULL OR u.suspended = 0)
+       ORDER BY p.is_featured DESC, p.updated_at DESC
+       LIMIT ?`,
+      [limit],
+    );
+    return rows.map((row) => ({
+      ...normalizeProductRow(row),
+      isPaidSponsor: row.paid_sponsor_until && new Date(row.paid_sponsor_until) > new Date(),
+      paidSponsorUntil: row.paid_sponsor_until || null,
+    }));
+  } catch (err) {
+    // Fallback si paid_sponsor_until n'existe pas
+    const [rows] = await pool.query(
+      `${baseSelect}
+       WHERE p.is_featured = 1
+       AND p.stock > 0
+       AND COALESCE(p.moderation_status, 'approved') = 'approved'
+       AND (u.suspended IS NULL OR u.suspended = 0)
+       ORDER BY p.updated_at DESC
+       LIMIT ?`,
+      [limit],
+    );
+    return rows.map(normalizeProductRow);
+  }
 };
 
 const toggleSponsor = async (productId, sellerId, activate) => {

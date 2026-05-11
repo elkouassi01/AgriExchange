@@ -83,31 +83,46 @@
 .product-card {
   background-color: #ffffffde;
   border: 1px solid #dcefd8;
-  border-radius: 10px;
-  padding: 15px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
   transition: transform 0.2s ease-in-out;
-  width: 180px;
+  width: 240px;
   flex-shrink: 0;
   text-align: center;
 }
 
 .product-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-6px);
 }
 
 .product-card img {
   width: 100%;
-  height: 150px;
+  height: 180px;
   object-fit: cover;
-  border-radius: 6px;
-  margin-bottom: 10px;
+  border-radius: 8px;
+  margin-bottom: 12px;
   cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.product-card img:hover {
+  transform: scale(1.03);
+}
+
+.clickable-image {
+  transition: transform 0.2s ease;
+}
+
+.clickable-image:hover {
+  transform: scale(1.03);
 }
 
 .product-card p {
   font-weight: bold;
+  font-size: 1.1rem;
   color: #2e7d32;
+  margin: 0;
 }
 
 /* Animation simple */
@@ -179,7 +194,7 @@
   justify-content: center;
 }
 
-/* ✅ Texte sous l’icône WhatsApp */
+/* ✅ Texte sous l'icône WhatsApp */
 .whatsapp-label {
   margin-top: 3px;
   font-size: 12px;
@@ -187,57 +202,6 @@
   font-weight: bold;
 }
 
-/* ✅ Carte produit élargie */
-.product-card {
-  background-color: #ffffffde;
-  border: 1px solid #dcefd8;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease-in-out;
-  width: 240px; /* 🔥 Plus grand qu’avant */
-  flex-shrink: 0;
-  text-align: center;
-}
-
-.product-card:hover {
-  transform: translateY(-6px);
-}
-
-/* ✅ Image plus grande et plus immersive */
-.product-card img {
-  width: 100%;
-  height: 180px; /* 🔥 Hauteur augmentée */
-  object-fit: cover;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  cursor: pointer;
-}
-
-/* ✅ Texte du produit mieux espacé et lisible */
-.product-card p {
-  font-weight: bold;
-  font-size: 1.1rem;
-  color: #2e7d32;
-  margin: 0;
-}
-
-@media screen and (max-width: 768px) {
-  .carousel-group {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  .product-card {
-    width: 90%;
-    margin-bottom: 20px;
-  }
-
-  .carousel-button {
-    font-size: 1.2rem;
-    padding: 6px 10px;
-  }
-}
 /* Styles pour la section promotion spéciale */
 .special-promo {
   background: linear-gradient(135deg, #ff8a00, #da1b60);
@@ -348,5 +312,22 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .carousel-group {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .product-card {
+    width: 90%;
+    margin-bottom: 20px;
+  }
+
+  .carousel-button {
+    font-size: 1.2rem;
+    padding: 6px 10px;
   }
 }

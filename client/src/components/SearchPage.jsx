@@ -28,7 +28,7 @@ const SORT_OPTIONS = [
   { value: 'nom-desc', label: 'Nom Z-A' },
 ];
 
-const ProductImage = ({ src, alt }) => {
+const ProductImage = ({ src, alt, onClick }) => {
   const [imgSrc, setImgSrc] = useState(DEFAULT_IMAGE);
   useEffect(() => { setImgSrc(src ? buildUploadUrl(src) : DEFAULT_IMAGE); }, [src]);
   return (
@@ -37,6 +37,8 @@ const ProductImage = ({ src, alt }) => {
       alt={alt}
       className="product-image"
       onError={() => setImgSrc(DEFAULT_IMAGE)}
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
     />
   );
 };
@@ -313,9 +315,9 @@ const SearchPage = () => {
         <div className="products-grid">
           {produits.map((produit) => (
             <div key={produit._id || produit.id} className="product-card">
-              <div className="image-container">
-                <ProductImage src={produit.imageUrl} alt={produit.nom} />
-              </div>
+<div className="image-container">
+                 <ProductImage src={produit.imageUrl} alt={produit.nom} onClick={() => navigate(`/produits/${produit._id || produit.id}`)} />
+               </div>
               <div className="product-info">
                 <h3>{produit.nom}</h3>
                 <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'center' }}>

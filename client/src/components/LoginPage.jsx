@@ -150,13 +150,13 @@ const LoginPage = () => {
           {loading ? "Connexion en cours..." : "Se connecter"}
         </button>
 
-        <div className="login-footer">
-          <p>Pas encore de compte ?</p>
-          <div className="register-links">
-            <Link to="/offres">Créer un compte Consommateur</Link>
-            <Link to="/offres">Créer un compte Agriculteur</Link>
-          </div>
-        </div>
+<div className="login-footer">
+           <p>Pas encore de compte ?</p>
+           <div className="register-links">
+             <Link to="/inscription?type=consommateur">Créer un compte Consommateur</Link>
+             <Link to="/inscription?type=agriculteur">Créer un compte Agriculteur</Link>
+           </div>
+         </div>
       </form>
     </div>
   );

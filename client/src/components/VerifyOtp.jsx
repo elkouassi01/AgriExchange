@@ -2,12 +2,13 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import { buildApiUrl } from "../config/api";
+import { useUser } from "../contexts/UserContext";
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useUser();
 
-  // Numéro de téléphone récupéré depuis la redirection ou le localStorage
   const telephone =
     location.state?.telephone || localStorage.getItem("pendingPhone") || "";
 
@@ -16,7 +17,15 @@ const VerifyOtp = () => {
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
 
-  // ✅ Vérifier le code OTP
+  const getRoleRedirect = (role) => {
+    switch (role) {
+      case "admin": return "/admin/dashboard";
+      case "agriculteur": return "/profil-agriculteur";
+      case "consommateur": return "/profil-consommateur";
+      default: return "/";
+    }
+  };
+
   const handleVerify = async (e) => {
     e.preventDefault();
     if (!otp) return setMessage("Veuillez entrer le code OTP reçu par WhatsApp.");
@@ -31,7 +40,12 @@ const VerifyOtp = () => {
       setMessage(res.data.message || "Compte vérifié avec succès !");
       localStorage.removeItem("pendingPhone");
 
-      setTimeout(() => navigate("/login"), 1500);
+      if (res.data?.token && res.data?.utilisateur) {
+        login(res.data.utilisateur, res.data.token);
+        setTimeout(() => navigate(getRoleRedirect(res.data.utilisateur.role), { replace: true }), 1500);
+      } else {
+        setTimeout(() => navigate("/login"), 1500);
+      }
     } catch (error) {
       setMessage(
         error.response?.data?.message || "Code OTP incorrect ou expiré."

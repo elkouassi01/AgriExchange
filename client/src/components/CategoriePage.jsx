@@ -16,7 +16,7 @@ const SORT_OPTIONS = [
   { value: 'nom-desc', label: 'Nom Z-A' },
 ];
 
-const ProductImage = ({ src, alt }) => {
+const ProductImage = ({ src, alt, onClick }) => {
   const [imageSrc, setImageSrc] = useState(DEFAULT_IMAGE);
 
   useEffect(() => {
@@ -29,6 +29,8 @@ const ProductImage = ({ src, alt }) => {
       alt={alt}
       className="product-image"
       onError={() => setImageSrc(DEFAULT_IMAGE)}
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
     />
   );
 };
@@ -277,12 +279,12 @@ const CategoriePage = () => {
         <div className="products-grid">
           {produits.map((produit) => (
             <div key={produit._id || produit.id} className={`product-card${produit.isFeatured || produit.is_featured ? ' product-card--sponsored' : ''}`}>
-              <div className="image-container">
-                <ProductImage src={produit.imageUrl} alt={produit.nom} />
-                {(produit.isFeatured || produit.is_featured) && (
-                  <span className="sponsored-badge">⭐ Sponsorisé</span>
-                )}
-              </div>
+<div className="image-container">
+                 <ProductImage src={produit.imageUrl} alt={produit.nom} onClick={() => navigate(`/produits/${produit._id || produit.id}`)} />
+                 {(produit.isFeatured || produit.is_featured) && (
+                   <span className="sponsored-badge">⭐ Sponsorisé</span>
+                 )}
+               </div>
               <div className="product-info">
                 <h3>{produit.nom}</h3>
                 {produit.etat && <span className="etat-badge">{produit.etat}</span>}

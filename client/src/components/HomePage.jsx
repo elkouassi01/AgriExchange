@@ -4,34 +4,33 @@ import './HomePage.css';
 import Footer from './Footer';
 import PromoBanner from './PromoBanner';
 import Fireworks from '../components/Fireworks';
-import SponsoredProducts from './SponsoredProducts';
-
-import tomate from '../assets/tomate.jpg';
-import salade from '../assets/salade.jpg';
-import concombre from '../assets/concombre.jpg';
-import pommeTerre from '../assets/pomme_terre.jpg';
-
-const PRODUITS_PHARES = [
-  { nom: 'Tomates Bio', image: tomate, emoji: '🍅' },
-  { nom: 'Salades Fraiches', image: salade, emoji: '🥬' },
-  { nom: 'Pommes de Terre', image: pommeTerre, emoji: '🥔' },
-  { nom: 'Concombres Frais', image: concombre, emoji: '🥒' },
-  { nom: 'Tomates Cerises', image: tomate, emoji: '🍅' },
-  { nom: 'Laitues Croquantes', image: salade, emoji: '🥬' },
-  { nom: 'Patates Douces', image: pommeTerre, emoji: '🥔' },
-  { nom: 'Cornichons Frais', image: concombre, emoji: '🥒' },
-];
+import api from '../services/axiosConfig';
 
 function HomePage() {
+  const [sponsoredProducts, setSponsoredProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [indexGroupe, setIndexGroupe] = useState(0);
 
+  // Récupérer les produits sponsorisés pour le carousel
+  useEffect(() => {
+    api.get('/products/sponsored?limit=8')
+      .then(res => {
+        const products = res.data.products || [];
+        setSponsoredProducts(products);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Groupes de 3 produits pour le carousel
   const groupes = useMemo(() => {
+    if (!sponsoredProducts.length) return [];
     const nextGroups = [];
-    for (let i = 0; i < PRODUITS_PHARES.length; i += 3) {
-      nextGroups.push(PRODUITS_PHARES.slice(i, i + 3));
+    for (let i = 0; i < sponsoredProducts.length; i += 3) {
+      nextGroups.push(sponsoredProducts.slice(i, i + 3));
     }
     return nextGroups;
-  }, []);
+  }, [sponsoredProducts]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -59,24 +58,31 @@ function HomePage() {
         <p>Votre marche ivoirien de vivriers et d'elevage, ou le client rencontre les agriculteurs.</p>
       </section>
 
-      <SponsoredProducts />
-
       <section className="sample-products">
-        <h2>Achetez vos aliments favoris en gros a des tarifs bord champ</h2>
-        <div className="carousel-wrapper">
-          <button className="carousel-button left" onClick={allerAuPrecedent}>⏮</button>
-          <div className="carousel-group">
-            {groupes[indexGroupe].map((produit, index) => (
-              <div key={index} className="product-card animated-slide">
-                <img src={produit.image} alt={produit.nom} />
-                <p>{produit.emoji} {produit.nom}</p>
-              </div>
-            ))}
+        <h2>🌟 Produits à la une - Sélection premium</h2>
+        {loading ? (
+          <div className="carousel-loading">Chargement des produits...</div>
+        ) : groupes.length ? (
+          <div className="carousel-wrapper">
+            <button className="carousel-button left" onClick={allerAuPrecedent}>⏮</button>
+            <div className="carousel-group">
+{groupes[indexGroupe]?.map((produit, index) => (
+                 <div key={produit.id || index} className="product-card animated-slide">
+                   <Link to={`/produits/${produit.id}`}>
+                     <img src={produit.imageUrl || produit.image} alt={produit.nom} />
+                   </Link>
+                   <p>{produit.nom}</p>
+                   <span className="price-badge">{produit.prix?.toLocaleString('fr-FR')} FCFA / {produit.unite || 'kg'}</span>
+                 </div>
+               ))}
+             </div>
+            <button className="carousel-button right" onClick={allerAuSuivant}>⏭</button>
           </div>
-          <button className="carousel-button right" onClick={allerAuSuivant}>⏭</button>
-        </div>
+        ) : (
+          <p className="no-products">Aucun produit à la une pour le moment.</p>
+        )}
         <Link to="/produits" className="cta-button">Voir tous les produits</Link>
-        <p className="cta-subtext">Decouvrez notre large catalogue et trouvez vos aliments preferes.</p>
+        <p className="cta-subtext">Découvrez notre large catalogue et trouvez vos aliments préférés.</p>
       </section>
 
       <section className="special-promo">
