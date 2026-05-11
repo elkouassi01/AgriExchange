@@ -286,7 +286,7 @@ router.post('/forgot-password', otpRateLimit, async (req, res) => {
       : await User.findOne({ contact: telephone });
 
     // On ne révèle pas si le numéro existe — réponse identique dans tous les cas
-    if (user) {
+    if (user && user.estActif !== false && user.est_actif !== 0) {
       const otp = generateOtp();
       const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -322,7 +322,7 @@ router.post('/forgot-password', otpRateLimit, async (req, res) => {
 });
 
 // Réinitialisation du mot de passe avec OTP
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', verifyOtpRateLimit, async (req, res) => {
   const { telephone, otp, nouveauMotDePasse } = req.body;
   if (!telephone || !otp || !nouveauMotDePasse) {
     return res.status(400).json({ success: false, message: 'Tous les champs sont requis' });
