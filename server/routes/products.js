@@ -7,8 +7,8 @@ const { upload, cloudinary } = require('../config/upload');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
 const sponsoredRepo = require('../repositories/mysqlSponsoredRepository');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const notificationService = require('../utils/notificationService');
 const { isMysql } = require('../utils/authHelpers');
-const { sendWhatsApp } = require('../utils/whatsappClient');
 
 const CINETPAY_APIKEY  = process.env.CINETPAY_APIKEY  || '8937149296838988c80faf0.18612017';
 const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
@@ -117,18 +117,23 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
     if (isMysql()) {
       const createdProduct = await mysqlProductRepository.createProduct(payload);
 
-      // Notifier tous les admins via WhatsApp
+      // Notifier tous les admins via WhatsApp + Email + message in-app
       const admins = await mysqlUserRepository.getAdmins().catch(() => []);
       const sellerNom = req.user.nom || req.user.name || 'un agriculteur';
-      const msgAdmin =
-        `🌿 *VivriMarket — Nouveau produit en attente de validation*\n\n` +
-        `📦 Produit : *${payload.nom}*\n` +
-        `👨‍🌾 Agriculteur : ${sellerNom}\n` +
-        `💰 Prix : ${Number(payload.prix).toLocaleString('fr-FR')} FCFA\n\n` +
-        `👉 Panel admin :\n` +
-        `https://vivrimarket.com/admin/moderation\n`;
+      const adminMessage =
+        `📦 Nouveau produit soumis\n\n` +
+        `Produit : ${payload.nom}\n` +
+        `Agriculteur : ${sellerNom}\n` +
+        `Prix : ${Number(payload.prix).toLocaleString('fr-FR')} FCFA\n\n` +
+        `📋 Panel admin : https://vivrimarket.com/admin/moderation`;
+
       for (const admin of admins) {
-        sendWhatsApp(admin.contact, msgAdmin).catch(() => {});
+        await notificationService.sendByPhone(
+          admin.contact,
+          '🌿 Nouveau produit en attente',
+          adminMessage,
+          { channels: ['whatsapp', 'email', 'inapp'] }
+        ).catch(err => console.error('[NotifyAdmin]', err.message));
       }
 
       return res.status(201).json({

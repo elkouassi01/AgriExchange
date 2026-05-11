@@ -6,7 +6,8 @@ const { isMysql } = require('../utils/authHelpers');
 const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
 const mysqlProductRepository = require('../repositories/mysqlProductRepository');
 const mysqlContactRequestRepository = require('../repositories/mysqlContactRequestRepository');
-const { sendWhatsApp } = require('../utils/whatsappClient');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
+const notificationService = require('../utils/notificationService');
 
 const CINETPAY_APIKEY = process.env.CINETPAY_APIKEY || '8937149296838988c80faf0.18612017';
 const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
@@ -172,30 +173,41 @@ router.get('/:productId/check', async (req, res) => {
           buyerEmail: buyer_email || null,
         });
 
-        // Confirmation WhatsApp au visiteur/acheteur
-        if (buyer_phone) {
-          const confirmMsg =
-            `✅ *VivriMarket* — Paiement reçu !\n\n` +
-            `Merci pour votre paiement pour le produit :\n` +
-            `📦 *${product.nom}*\n\n` +
-            `Le vendeur a *24 heures* pour confirmer sa disponibilité.\n` +
-            `Vous serez notifié ici dès sa réponse.\n\n` +
-            `— VivriMarket 🌾`;
-          sendWhatsApp(buyer_phone, confirmMsg).catch(() => {});
-        }
+         // Confirmation WhatsApp + Email à l'acheteur
+         if (buyer_phone) {
+           const confirmMsg =
+             `✅ *VivriMarket* — Paiement reçu !\n\n` +
+             `Merci pour votre paiement pour le produit :\n` +
+             `📦 *${product.nom}*\n\n` +
+             `Le vendeur a *24 heures* pour confirmer sa disponibilité.\n` +
+             `Vous serez notifié ici dès sa réponse.\n\n` +
+             `— VivriMarket 🌾`;
 
-        const ferme = seller.fermeNom || seller.nom || 'vendeur';
-        const msg =
-          `🛒 *VivriMarket* — Nouveau contact !\n\n` +
-          `Bonjour *${ferme}* 👋\n\n` +
-          `Un acheteur est intéressé par votre produit :\n` +
-          `📦 *${product.nom}*\n\n` +
-          `Répondez *OUI* pour confirmer votre disponibilité.\n` +
-          `⏰ Vous avez *24 heures* pour répondre.\n\n` +
-          `_Sans réponse, votre étale sera suspendu et l'acheteur remboursé._\n` +
-          `— VivriMarket 🌾`;
+           await notificationService.sendByPhone(
+             buyer_phone,
+             '✅ Paiement confirmé',
+             confirmMsg,
+             { channels: ['whatsapp', 'email', 'inapp'] }
+           ).catch(() => {});
+         }
 
-        sendWhatsApp(seller.contact, msg).catch(console.error);
+         const ferme = seller.fermeNom || seller.nom || 'vendeur';
+         const msg =
+           `🛒 *VivriMarket* — Nouveau contact !\n\n` +
+           `Bonjour *${ferme}* 👋\n\n` +
+           `Un acheteur est intéressé par votre produit :\n` +
+           `📦 *${product.nom}*\n\n` +
+           `Répondez *OUI* pour confirmer votre disponibilité.\n` +
+           `⏰ Vous avez *24 heures* pour répondre.\n\n` +
+           `_Sans réponse, votre étale sera suspendu et l'acheteur remboursé._\n` +
+           `— VivriMarket 🌾`;
+
+         await notificationService.sendByPhone(
+           seller.contact,
+           '🛒 Nouvel acheteur intéressé',
+           msg,
+           { channels: ['whatsapp', 'email', 'inapp'] }
+         ).catch(console.error);
       }
     }
 

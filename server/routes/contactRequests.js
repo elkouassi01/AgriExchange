@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const cron = require('node-cron');
 const repo = require('../repositories/mysqlContactRequestRepository');
-const { sendWhatsApp } = require('../utils/whatsappClient');
+const notificationService = require('../utils/notificationService');
 const { protect, authorize } = require('../middlewares/auth');
 
 // ─── Traitement des réponses WhatsApp vendeur ─────────────────────────────────
@@ -20,12 +20,17 @@ const handleVendorReply = async (msg) => {
 
     await repo.markResponded(request.id);
 
-    // Confirmer au vendeur
+    // Confirmer au vendeur (WhatsApp + Email + in-app)
     const msgVendeur =
       `✅ *VivriMarket* — Merci pour votre réponse !\n\n` +
       `Vous êtes maintenant en contact avec l'acheteur.\n` +
       `Bonne transaction ! 🌾`;
-    await sendWhatsApp(phone, msgVendeur);
+    await notificationService.sendByPhone(
+      phone,
+      '✅ Réponse enregistrée',
+      msgVendeur,
+      { channels: ['whatsapp', 'email', 'inapp'] }
+    );
 
     // Notifier l'acheteur si on a son numéro
     if (request.buyer_phone) {
@@ -36,7 +41,12 @@ const handleVendorReply = async (msg) => {
         `📦 *${request.product_nom}*\n\n` +
         `Vous pouvez le contacter directement.\n` +
         `Bonne transaction ! 🛒`;
-      await sendWhatsApp(request.buyer_phone, msgAcheteur).catch(() => {});
+      await notificationService.sendByPhone(
+        request.buyer_phone,
+        '✅ Vendeur disponible',
+        msgAcheteur,
+        { channels: ['whatsapp', 'email', 'inapp'] }
+      ).catch(() => {});
     }
 
     console.log(`[ContactRequest] Réponse OUI de ${phone} pour produit ${request.product_id}`);
@@ -57,16 +67,22 @@ const startContactRequestCron = () => {
         await repo.markExpired(req.id);
         await repo.suspendSeller(req.seller_id);
 
-        // Notifier le vendeur de la suspension
-        const msgSuspension =
-          `⚠️ *VivriMarket* — Étale suspendu\n\n` +
-          `Bonjour *${req.seller_nom}*,\n\n` +
-          `Vous n'avez pas répondu à une demande de contact dans les 24h.\n` +
-          `Votre étale est *suspendu*.\n\n` +
-          `💸 L'acheteur a été remboursé de *300 FCFA* par VivriMarket.\n\n` +
-          `Pour être réactivé, contactez VivriMarket et réglez les *300 FCFA* de pénalité.\n` +
-          `📞 vivrimarket.com`;
-        await sendWhatsApp(req.seller_phone, msgSuspension).catch(() => {});
+         // Notifier le vendeur de la suspension (multi-canal)
+         const msgSuspension =
+           `⚠️ *VivriMarket* — Étale suspendu\n\n` +
+           `Bonjour *${req.seller_nom}*,\n\n` +
+           `Vous n'avez pas répondu à une demande de contact dans les 24h.\n` +
+           `Votre étale est *suspendu*.\n\n` +
+           `💸 L'acheteur a été remboursé de *300 FCFA* par VivriMarket.\n\n` +
+           `Pour être réactivé, contactez VivriMarket et réglez les *300 FCFA* de pénalité.\n` +
+           `📞 vivrimarket.com`;
+
+         await notificationService.sendByPhone(
+           req.seller_phone,
+           '⚠️ Étale suspendu',
+           msgSuspension,
+           { channels: ['whatsapp', 'email', 'inapp'] }
+         ).catch(() => {});
 
         console.log(`[Cron] Vendeur ${req.seller_id} suspendu (demande ${req.id} expirée)`);
       }

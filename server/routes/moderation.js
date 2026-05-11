@@ -3,7 +3,7 @@ const router = express.Router();
 const { getMysqlPool } = require('../config/mysql');
 const { protect, authorize } = require('../middlewares/auth');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
-const { sendWhatsApp } = require('../utils/whatsappClient');
+const notificationService = require('../utils/notificationService');
 
 // GET /api/v1/moderation/pending — liste des produits en attente
 router.get('/pending', protect, authorize(['admin']), async (req, res) => {
@@ -112,13 +112,19 @@ router.put('/:id/approve', protect, authorize(['admin']), async (req, res) => {
       [adminId, id]
     );
 
-    // Notifier l'agriculteur
-    const msg =
-      `✅ *VivriMarket — Produit approuvé !*\n\n` +
-      `Bonjour ${product.seller_nom},\n\n` +
-      `Votre produit *${product.nom}* a été approuvé par notre équipe et est maintenant visible sur la plateforme.\n\n` +
-      `Merci de votre confiance ! 🌿`;
-    sendWhatsApp(product.seller_contact, msg).catch(() => {});
+     // Notifier l'agriculteur (WhatsApp + Email + message in-app)
+     const msg =
+       `✅ *VivriMarket — Produit approuvé !*\n\n` +
+       `Bonjour ${product.seller_nom},\n\n` +
+       `Votre produit *${product.nom}* a été approuvé par notre équipe et est maintenant visible sur la plateforme.\n\n` +
+       `Merci de votre confiance ! 🌿`;
+
+     await notificationService.sendByPhone(
+       product.seller_contact,
+       '✅ Produit approuvé',
+       msg,
+       { channels: ['whatsapp', 'email', 'inapp'] }
+     ).catch(() => {});
 
     return res.json({ success: true, message: `Produit "${product.nom}" approuvé.` });
   } catch (err) {
@@ -147,15 +153,21 @@ router.put('/:id/reject', protect, authorize(['admin']), async (req, res) => {
       [note || null, adminId, id]
     );
 
-    // Notifier l'agriculteur
-    const msg =
-      `❌ *VivriMarket — Produit refusé*\n\n` +
-      `Bonjour ${product.seller_nom},\n\n` +
-      `Votre produit *${product.nom}* n'a pas pu être validé.\n\n` +
-      (note ? `📝 Motif : ${note}\n\n` : '') +
-      `Vous pouvez modifier votre produit et le soumettre à nouveau.\n` +
-      `En cas de question, contactez notre support.`;
-    sendWhatsApp(product.seller_contact, msg).catch(() => {});
+     // Notifier l'agriculteur (WhatsApp + Email + message in-app)
+     const msg =
+       `❌ *VivriMarket — Produit refusé*\n\n` +
+       `Bonjour ${product.seller_nom},\n\n` +
+       `Votre produit *${product.nom}* n'a pas pu être validé.\n\n` +
+       (note ? `📝 Motif : ${note}\n\n` : '') +
+       `Vous pouvez modifier votre produit et le soumettre à nouveau.\n` +
+       `En cas de question, contactez notre support.`;
+
+     await notificationService.sendByPhone(
+       product.seller_contact,
+       '❌ Produit refusé',
+       msg,
+       { channels: ['whatsapp', 'email', 'inapp'] }
+     ).catch(() => {});
 
     return res.json({ success: true, message: `Produit "${product.nom}" rejeté.` });
   } catch (err) {

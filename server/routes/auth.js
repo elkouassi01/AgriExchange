@@ -5,20 +5,11 @@ const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const User = require('../models/User');
 const { protect } = require('../middlewares/auth');
-const { sendWhatsApp } = require('../utils/whatsappClient');
+const notificationService = require('../utils/notificationService');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { isMysql, sanitizeUser } = require('../utils/authHelpers');
 const { upload, cloudinary } = require('../config/upload');
 const sharp = require('sharp');
-
-const sendOtpWhatsApp = async (phone, otp) => {
-  const msg =
-    `🔐 *VivriMarket* — Code de vérification\n\n` +
-    `Votre code OTP est : *${otp}*\n\n` +
-    `Ce code expire dans *10 minutes*.\n` +
-    `Ne le partagez avec personne.`;
-  await sendWhatsApp(phone, msg).catch((e) => console.error('[OTP WA]', e.message));
-};
 
 const otpRateLimit = rateLimit({
   windowMs: 10 * 60 * 1000,
@@ -164,7 +155,14 @@ router.post('/resend-otp', otpRateLimit, async (req, res) => {
       await user.save();
     }
 
-    await sendOtpWhatsApp(telephone, otp);
+    // Envoyer OTP via WhatsApp + Email + sauvegarde in-app
+    await notificationService.sendOTPNotification(
+      user.id || user._id,
+      telephone,
+      user.email,
+      otp,
+      { expiryMinutes: 10 }
+    );
 
     return res.status(200).json({ message: 'Nouveau code OTP envoye !' });
   } catch (error) {
@@ -305,7 +303,15 @@ router.post('/forgot-password', otpRateLimit, async (req, res) => {
         `Votre code de réinitialisation est : *${otp}*\n\n` +
         `Ce code expire dans *10 minutes*.\n` +
         `Ne le partagez avec personne.`;
-      await sendWhatsApp(telephone, msg).catch((e) => console.error('[Reset OTP WA]', e.message));
+
+      // Envoyer via notification service (multi-canal)
+      await notificationService.sendOTPNotification(
+        user.id || user._id,
+        telephone,
+        user.email,
+        otp,
+        { expiryMinutes: 10 }
+      ).catch((e) => console.error('[Reset OTP]', e.message));
     }
 
     return res.json({ success: true, message: 'Si ce numéro est enregistré, vous recevrez un code WhatsApp.' });
@@ -446,7 +452,15 @@ router.post('/inscription-consommateur', otpRateLimit, async (req, res) => {
       const otp = generateOtp();
       const otpExpire = new Date(Date.now() + 10 * 60 * 1000);
       await mysqlUserRepository.updateUserOtp(user.id, otp, otpExpire);
-      await sendOtpWhatsApp(contact, otp);
+
+      // Envoyer OTP via WhatsApp + Email + sauvegarde in-app
+      await notificationService.sendOTPNotification(
+        user.id,
+        contact,
+        user.email,
+        otp,
+        { expiryMinutes: 10 }
+      );
 
       return res.status(201).json({
         success: true,
@@ -480,9 +494,20 @@ router.post('/welcome-visitor', async (req, res) => {
     `Cordialement,\n*L'équipe VivriMarket* 🌾`;
 
   try {
-    const result = await sendWhatsApp(phone, message);
-    console.log(`[Welcome] ${phone} (${email || 'sans email'}) — envoi: ${result.simulated ? 'simulé' : result.success ? 'OK' : 'échec'}`);
-    return res.json({ success: true, simulated: result.simulated || false });
+    // Envoyer message de bienvenue (WhatsApp + Email si fourni)
+    const result = await notificationService.sendNotification(
+      null, // Pas d'userId pour un visiteur
+      { phone, email },
+      '🌿 Bienvenue chez AgriMarket !',
+      `Bonjour à vous ! C'est un plaisir de vous compter parmi nos visiteurs.\n\nMerci de l'intérêt que vous portez à AgriMarket.\nVous faites désormais partie de notre communauté.\n\nVous recevrez bientôt des nouvelles exclusives de notre part.\nCordialement,\nL'équipe AgriMarket 🌾`,
+      {
+        channels: ['whatsapp', 'email'],
+        type: 'welcome',
+      }
+    );
+
+    console.log(`[Welcome] ${phone} — WhatsApp: ${result.whatsapp.success}, Email: ${result.email.success}`);
+    return res.json({ success: true, simulated: result.whatsapp.simulated || false });
   } catch (err) {
     console.error('[Welcome WA]', err.message);
     return res.json({ success: false, error: err.message });
