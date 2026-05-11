@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const adminController = require('../controllers/adminController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const { body, param, query } = require('express-validator');
@@ -8,6 +9,16 @@ const handleValidationErrors = require('../middlewares/validationMiddleware');
 // 🔐 Middleware global de protection et d'authorisation
 router.use(authMiddleware.protect);
 router.use(authMiddleware.authorize('admin'));
+
+// Rate limiting global sur toutes les routes admin
+router.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: process.env.NODE_ENV === 'development' ? 10000 : 120,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  handler: (req, res) => {
+    res.status(429).json({ message: 'Trop de requêtes. Réessayez dans une minute.' });
+  },
+}));
 
 // ✅ Validation commune
 const validateId = [
