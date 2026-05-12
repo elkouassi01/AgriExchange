@@ -30,6 +30,7 @@ import VerifyOtp from './components/VerifyOtp';
 
 // 👨‍🌾 Agriculteur
 import AddProductForm from './components/AddProductForm';
+import EditProductForm from './components/EditProductForm';
 import FarmerDashboard from './components/FarmerDashboard';
 import MesProduits from './components/MesProduits';
 import GestionAbonnes from './components/GestionAbonnes';
@@ -118,6 +119,14 @@ const AppContent = () => {
           element={
             <ProtectedRoute roles={['agriculteur']}>
               <AddProductForm />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/modifier-produit/:id"
+          element={
+            <ProtectedRoute roles={['agriculteur']}>
+              <EditProductForm />
             </ProtectedRoute>
           }
         />
