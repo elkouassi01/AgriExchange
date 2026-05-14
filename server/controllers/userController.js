@@ -116,7 +116,7 @@ exports.enregistrerVueProduit = async (req, res) => {
     const { productId } = req.body;
 
     if (!productId) {
-      return res.status(400).json({ message: 'ID produit manquant' });
+      return res.status(400).json({ message: 'ID denrée manquant' });
     }
 
     const user = isMysql()

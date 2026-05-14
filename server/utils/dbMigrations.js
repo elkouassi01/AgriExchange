@@ -139,4 +139,46 @@ const ensureAuditLogsTable = async () => {
   }
 };
 
-module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable };
+const ensureCategoriesTable = async () => {
+  const pool = getMysqlPool();
+  if (await tableExists(pool, 'categories')) return;
+  try {
+    await pool.query(`
+      CREATE TABLE categories (
+        id              INT AUTO_INCREMENT PRIMARY KEY,
+        nom             VARCHAR(100) NOT NULL,
+        slug            VARCHAR(100) NOT NULL,
+        categorie_value VARCHAR(100) NULL,
+        parent_id       INT NULL,
+        ordre           INT NOT NULL DEFAULT 0,
+        actif           TINYINT(1) NOT NULL DEFAULT 1,
+        created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_categories_slug (slug),
+        INDEX idx_categories_parent_id (parent_id),
+        INDEX idx_categories_actif (actif)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log('[DB] Table créée: categories');
+
+    // Données par défaut
+    await pool.query(`
+      INSERT INTO categories (id, nom, slug, categorie_value, parent_id, ordre) VALUES
+        (1,  'Vivriers',     'vivriers',     NULL,           NULL, 1),
+        (2,  'Élevage',      'elevage',      NULL,           NULL, 2),
+        (3,  'Dérivé',       'derive',       NULL,           NULL, 3),
+        (4,  'Légumes',      'legumes',      'légumes',      1,    1),
+        (5,  'Fruits',       'fruits',       'fruits',       1,    2),
+        (6,  'Tubercules',   'tubercules',   'tubercules',   1,    3),
+        (7,  'Céréales',     'cereales',     'céréales',     1,    4),
+        (8,  'Bovin',        'bovin',        'viandes',      2,    1),
+        (9,  'Volaille',     'volaille',     'volaille',     2,    2),
+        (10, 'Pisciculture', 'pisciculture', 'pisciculture', 2,    3)
+    `);
+    console.log('[DB] Catégories par défaut insérées');
+  } catch (e) {
+    console.warn('[DB] Table ignorée: categories —', e.message.split('\n')[0]);
+  }
+};
+
+module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable };

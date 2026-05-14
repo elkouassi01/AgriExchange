@@ -47,6 +47,7 @@ const { startContactRequestCron } = require('./routes/contactRequests');
 const sponsoredRepo = require('./repositories/mysqlSponsoredRepository');
 const reviewsRoutes = require('./routes/reviews');
 const moderationRoutes = require('./routes/moderation');
+const categoriesRoutes = require('./routes/categoriesRoutes');
 const { getClient: initWhatsApp } = require('./utils/whatsappClient');
 
 const app = express();
@@ -197,11 +198,12 @@ const connectToMysql = async () => {
   console.log('MySQL connected');
   const { ensureTables } = require('./repositories/mysqlContactRequestRepository');
   await ensureTables();
-  const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable } = require('./utils/dbMigrations');
+  const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable } = require('./utils/dbMigrations');
   await ensureColumns();
   await ensureIndexes();
   await ensureAuditLogsTable();
   await ensureMessagesSenderNullable();
+  await ensureCategoriesTable();
 };
 
 const connectToDatabase = async () => {
@@ -251,6 +253,7 @@ app.use('/api/v1/product-payments', productPaymentsRoutes);
 app.use('/api/v1/contact-requests', contactRequestsRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);
 app.use('/api/v1/moderation', moderationRoutes);
+app.use('/api/v1/categories', categoriesRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

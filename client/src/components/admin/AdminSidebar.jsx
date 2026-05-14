@@ -12,7 +12,8 @@ import {
   HiChevronLeft,
   HiChevronRight,
   HiShieldCheck,
-  HiClipboardList
+  HiClipboardList,
+  HiTag
 } from 'react-icons/hi';
 import './AdminSidebar.css'; 
 
@@ -28,6 +29,7 @@ const AdminSidebar = () => {
     { path: '/admin/moderation', label: 'Modération', icon: <HiShieldCheck /> },
     { path: '/admin/transactions', label: 'Transactions', icon: <HiCurrencyDollar /> },
     { path: '/admin/subscriptions', label: 'Abonnements', icon: <HiCreditCard /> },
+    { path: '/admin/categories', label: 'Catégories', icon: <HiTag /> },
     { path: '/admin/audit', label: 'Audit', icon: <HiClipboardList /> },
     { path: '/admin/settings', label: 'Paramètres', icon: <HiCog /> },
   ];

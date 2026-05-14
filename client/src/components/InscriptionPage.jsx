@@ -14,7 +14,7 @@ const FARMER_PLANS = {
     price: '500 FCFA / mois',
     duration: '1 mois',
     features: [
-      "Jusqu'à 5 produits publiés",
+      "Jusqu'à 5 denrées publiées",
       'Profil de ferme basique',
       'Visibilité standard sur le marché',
       'Contact direct par les acheteurs',
@@ -28,7 +28,7 @@ const FARMER_PLANS = {
     price: '1 500 FCFA / 3 mois',
     duration: '3 mois',
     features: [
-      "Jusqu'à 15 produits publiés",
+      "Jusqu'à 15 denrées publiées",
       'Profil enrichi avec description de ferme',
       'Visibilité améliorée dans les recherches',
       'Statistiques de consultation basiques',
@@ -43,7 +43,7 @@ const FARMER_PLANS = {
     price: '3 000 FCFA / 6 mois',
     duration: '6 mois',
     features: [
-      'Produits illimités',
+      'Denrées illimitées',
       'Profil complet et optimisé',
       'Visibilité maximale — top des résultats',
       'Statistiques avancées et rapports',
@@ -497,7 +497,7 @@ const InscriptionPage = () => {
                 <textarea
                   id="description"
                   name="description"
-                  placeholder="Décrivez votre ferme, vos méthodes de production, vos produits phares..."
+                  placeholder="Décrivez votre ferme, vos méthodes de production, vos denrées phares..."
                   value={formData.description}
                   onChange={handleChange}
                   rows={4}

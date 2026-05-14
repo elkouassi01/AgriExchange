@@ -49,12 +49,14 @@ const EditProductForm = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         const p = res.data?.data?.product || res.data?.product || res.data;
-        if (!p) throw new Error("Produit introuvable");
+        if (!p) throw new Error("Denrée introuvable");
 
-        // Format dateRecolte -> YYYY-MM-DD pour l'input[type=date]
-        const dateStr = p.dateRecolte
+        // Format dateRecolte -> jj/mm/aaaa pour l'affichage
+        const isoStr = p.dateRecolte
           ? new Date(p.dateRecolte).toISOString().split("T")[0]
           : "";
+        const [y, m, d] = isoStr ? isoStr.split("-") : ["", "", ""];
+        const dateStr = isoStr ? `${d}/${m}/${y}` : "";
 
         setFormData({
           nom:            p.nom            || "",
@@ -76,7 +78,7 @@ const EditProductForm = () => {
           setImagePreview(p.imageUrl);
         }
       } catch (err) {
-        setError(err.response?.data?.message || "Impossible de charger le produit.");
+        setError(err.response?.data?.message || "Impossible de charger la denrée.");
       } finally {
         setFetchLoading(false);
       }
@@ -101,6 +103,21 @@ const EditProductForm = () => {
   const handleCertificationsChange = (e) => {
     const arr = e.target.value.split(",").map((c) => c.trim()).filter(Boolean);
     setFormData((prev) => ({ ...prev, certifications: arr }));
+  };
+
+  const handleDateInput = (e) => {
+    const raw = e.target.value.replace(/\D/g, "").slice(0, 8);
+    let formatted = raw;
+    if (raw.length > 4) formatted = raw.slice(0, 2) + "/" + raw.slice(2, 4) + "/" + raw.slice(4);
+    else if (raw.length > 2) formatted = raw.slice(0, 2) + "/" + raw.slice(2);
+    setFormData((prev) => ({ ...prev, dateRecolte: formatted }));
+  };
+
+  const displayToIso = (display) => {
+    if (!display) return "";
+    const parts = display.split("/");
+    if (parts.length !== 3 || parts[2].length !== 4) return "";
+    return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
   };
 
   // ── Gestion image principale ─────────────────────────────────────────────
@@ -161,7 +178,7 @@ const EditProductForm = () => {
       categorie: formData.categorie,
       stock: parseInt(formData.stock, 10),
       unite: formData.unite,
-      dateRecolte: formData.dateRecolte,
+      dateRecolte: displayToIso(formData.dateRecolte),
       etat: formData.etat,
       mensurations: formData.mensurations || "",
       tags: Array.isArray(formData.tags) ? formData.tags : [],
@@ -181,7 +198,7 @@ const EditProductForm = () => {
     e.preventDefault();
     setLoading(true); setError(null); setSuccess(false); setValidationErrors({});
 
-    if (!formData.nom || !formData.prix || !formData.stock || !formData.dateRecolte) {
+    if (!formData.nom || !formData.prix || !formData.stock) {
       setError("Veuillez remplir tous les champs obligatoires.");
       setLoading(false); return;
     }
@@ -190,7 +207,7 @@ const EditProductForm = () => {
       setLoading(false); return;
     }
     if (!token) {
-      setError("Vous devez être connecté pour modifier un produit.");
+      setError("Vous devez être connecté pour modifier une denrée.");
       setLoading(false); return;
     }
 
@@ -261,14 +278,14 @@ const EditProductForm = () => {
   return (
     <div className="add-product-form">
       <div className="form-header">
-        <h2>✏️ Modifier le produit</h2>
-        <p className="form-subtitle">Mettez à jour les informations de votre produit agricole</p>
+        <h2>✏️ Modifier la denrée</h2>
+        <p className="form-subtitle">Mettez à jour les informations de votre denrée agricole</p>
       </div>
 
       {error && <div className="alert error"><strong>Erreur :</strong> {error}</div>}
       {success && (
         <div className="alert success">
-          <strong>Succès :</strong> ✅ Produit modifié avec succès ! Redirection en cours…
+          <strong>Succès :</strong> ✅ Denrée modifiée avec succès ! Redirection en cours…
         </div>
       )}
 
@@ -282,7 +299,7 @@ const EditProductForm = () => {
           </div>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="nom" className="label-required">Nom du produit</label>
+              <label htmlFor="nom" className="label-required">Nom de la denrée</label>
               <input id="nom" name="nom" type="text" className="form-control"
                 value={formData.nom} onChange={handleChange} required
                 placeholder="Ex: Tomates Bio, Pommes Golden..." />
@@ -295,14 +312,14 @@ const EditProductForm = () => {
                 <option value="fruits">Fruits</option>
                 <option value="légumes">Légumes</option>
                 <option value="viandes">Viandes</option>
-                <option value="produits laitiers">Produits laitiers</option>
+                <option value="produits laitiers">Denrées laitières</option>
                 <option value="céréales">Céréales</option>
                 <option value="épices">Épices</option>
                 <option value="autres">Autres</option>
               </select>
             </div>
             <div className="form-group">
-              <label htmlFor="etat" className="label-required">État du produit</label>
+              <label htmlFor="etat" className="label-required">État de la denrée</label>
               <select id="etat" name="etat" className="form-control"
                 value={formData.etat} onChange={handleChange} required>
                 <option value="frais">Frais</option>
@@ -316,10 +333,10 @@ const EditProductForm = () => {
             </div>
           </div>
           <div className="form-group">
-            <label htmlFor="description">Description du produit</label>
+            <label htmlFor="description">Description de la denrée</label>
             <textarea id="description" name="description" className="form-control"
               value={formData.description} onChange={handleChange} rows="4"
-              placeholder="Décrivez votre produit (qualité, variété, méthode de production...)" />
+              placeholder="Décrivez votre denrée (qualité, variété, méthode de production...)" />
           </div>
         </div>
 
@@ -367,10 +384,10 @@ const EditProductForm = () => {
           </div>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="dateRecolte" className="label-required">Date de récolte</label>
-              <input id="dateRecolte" name="dateRecolte" type="date" className="form-control"
-                value={formData.dateRecolte} onChange={handleChange} required
-                max={new Date().toISOString().split("T")[0]} />
+              <label htmlFor="dateRecolte">Date de récolte</label>
+              <input id="dateRecolte" name="dateRecolte" type="text" className="form-control"
+                value={formData.dateRecolte} onChange={handleDateInput}
+                placeholder="jj/mm/aaaa" maxLength={10} />
               {validationErrors.dateRecolte && <span className="field-error">⚠️ {validationErrors.dateRecolte}</span>}
             </div>
             <div className="form-group">
@@ -403,7 +420,7 @@ const EditProductForm = () => {
         <div className="form-section">
           <div className="section-header">
             <span className="section-icon">🖼️</span>
-            <h3 className="section-title">Image du produit</h3>
+            <h3 className="section-title">Image de la denrée</h3>
           </div>
           <div className="form-group">
             <label htmlFor="imageUrl">URL de l'image (optionnel)</label>
@@ -500,7 +517,7 @@ const EditProductForm = () => {
             ) : "✅ Enregistrer les modifications"}
           </button>
           <button type="button" onClick={() => navigate("/mes-produits")} className="btn btn-secondary">
-            ↩️ Retour à mes produits
+            ↩️ Retour à mes denrées
           </button>
         </div>
         <p className="form-help">* Les champs marqués d'une astérisque sont obligatoires</p>

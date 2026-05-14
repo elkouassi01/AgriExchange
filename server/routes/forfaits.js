@@ -40,7 +40,7 @@ router.get(
 
       if (quotaTotal !== Infinity && vuesUtilisees >= quotaTotal) {
         return res.status(403).json({
-          message: "Vous avez atteint votre limite mensuelle de consultations de produits.",
+          message: "Vous avez atteint votre limite mensuelle de consultations de denrées.",
           quotaTotal,
           vuesUtilisees,
         });

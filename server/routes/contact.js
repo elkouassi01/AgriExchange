@@ -18,7 +18,7 @@ router.get('/contact-fournisseur/:productId', authMiddleware.protect, async (req
     const produit = await Product.findById(productId).populate('sellerId', 'nom email role');
 
     if (!produit) {
-      return res.status(404).json({ message: "Produit introuvable" });
+      return res.status(404).json({ message: "Denrée introuvable" });
     }
 
     const vendeur = produit.sellerId;

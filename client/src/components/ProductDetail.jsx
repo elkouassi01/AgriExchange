@@ -36,7 +36,7 @@ function ProductGallery({ mainImage, images }) {
       <div className="pg-main" onClick={() => setLightbox(true)} title="Cliquer pour agrandir">
         <img
           src={allImages[active] || DEFAULT_IMAGE}
-          alt="Photo du produit"
+          alt="Photo de la denrée"
           className="pg-main__img"
           onError={(e) => { e.target.onerror = null; e.target.src = DEFAULT_IMAGE; }}
         />
@@ -178,7 +178,7 @@ function ProductDetail() {
         const product = res.data.data?.product || res.data.product || res.data;
 
         if (!product) {
-          setError('Produit introuvable');
+          setError('Denrée introuvable');
           return;
         }
 
@@ -190,7 +190,7 @@ function ProductDetail() {
 
         setProduit({ ...product, prixFormatte, imageUrl, images });
       } catch (err) {
-        if (err.response?.status === 404) setError('Produit introuvable');
+        if (err.response?.status === 404) setError('Denrée introuvable');
         else if (err.request) setError('Serveur injoignable. Vérifiez votre connexion.');
         else setError(err.message);
       } finally {
@@ -284,7 +284,7 @@ function ProductDetail() {
     return (
       <div className="loading-container">
         <div className="loading-spinner"></div>
-        <p>Chargement du produit...</p>
+        <p>Chargement de la denrée...</p>
       </div>
     );
   }
@@ -296,7 +296,7 @@ function ProductDetail() {
         <p className="error-message">{error}</p>
         <div className="error-actions">
           <button onClick={() => window.location.reload()}>Réessayer</button>
-          <button onClick={() => navigate('/produits')}>Voir les produits</button>
+          <button onClick={() => navigate('/produits')}>Voir les denrées</button>
         </div>
       </div>
     );
