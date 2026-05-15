@@ -127,7 +127,7 @@ const ConsumerDashboard = () => {
           <div className="cd-action-card__icon">
             <ShoppingCart size={30} strokeWidth={1.5} />
           </div>
-          <span className="cd-action-card__text">Parcourir les produits</span>
+          <span className="cd-action-card__text">Parcourir les denrées</span>
           <span className="cd-action-card__desc">Trouver de nouveaux vendeurs</span>
         </Link>
         <Link to="/profil" className="cd-action-card" style={{ animationDelay: '0.07s' }}>
@@ -164,7 +164,7 @@ const ConsumerDashboard = () => {
         <div className="cd-empty">
           <Phone size={36} strokeWidth={1.2} />
           <p>Vous n'avez pas encore débloqué de contact vendeur.</p>
-          <Link to="/produits" className="cd-cta-btn">Voir les produits →</Link>
+          <Link to="/produits" className="cd-cta-btn">Voir les denrées →</Link>
         </div>
       )}
 
@@ -179,7 +179,7 @@ const ConsumerDashboard = () => {
                   <Phone size={18} strokeWidth={1.8} />
                 </div>
                 <div className="cd-contact-row__info">
-                  <span className="cd-contact-row__product">{c.product_nom || 'Produit'}</span>
+                  <span className="cd-contact-row__product">{c.product_nom || 'Denrée'}</span>
                   <span className="cd-contact-row__seller">
                     {c.seller_nom ? `Vendeur : ${c.seller_nom}` : ''}
                     {c.seller_phone ? ` · ${c.seller_phone}` : ''}

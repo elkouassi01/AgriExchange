@@ -15,8 +15,8 @@ const OffersPage = () => {
       {/* Bande défilante */}
       <div className="promo-banner-scroll">
         <div className="scroll-text">
-          🌾 Parcourez tous les produits gratuitement — Contactez un vendeur pour seulement 300 FCFA &nbsp;|&nbsp;
-          🎉 Agriculteurs : inscrivez-vous gratuitement et publiez vos produits dès aujourd'hui !
+          🌾 Parcourez toutes les denrées gratuitement — Contactez un vendeur pour seulement 300 FCFA &nbsp;|&nbsp;
+          🎉 Agriculteurs : inscrivez-vous gratuitement et publiez vos denrées dès aujourd'hui !
         </div>
       </div>
 
@@ -33,7 +33,7 @@ const OffersPage = () => {
         <div className="hiw-step">
           <div className="hiw-icon">🔍</div>
           <h3>Parcourez gratuitement</h3>
-          <p>Accédez à tous nos produits, photos, prix et descriptions sans créer de compte.</p>
+          <p>Accédez à toutes nos denrées, photos, prix et descriptions sans créer de compte.</p>
         </div>
         <div className="hiw-arrow">→</div>
         <div className="hiw-step">
@@ -62,10 +62,10 @@ const OffersPage = () => {
             <li>Paiement sécurisé via CinetPay</li>
             <li>Mobile Money (Orange, MTN, Wave…)</li>
             <li>Accès immédiat après paiement</li>
-            <li>Valable sur le produit consulté</li>
+            <li>Valable sur la denrée consultée</li>
           </ul>
           <button className="browse-button" onClick={() => navigate("/produits")}>
-            Parcourir les produits
+            Parcourir les denrées
           </button>
         </div>
       </section>
@@ -74,7 +74,7 @@ const OffersPage = () => {
       <section className="offer-category farmer-section">
         <div className="category-header">
           <div className="icon">🌾</div>
-          <h2>Offres Agriculteurs — Publiez vos produits</h2>
+          <h2>Offres Agriculteurs — Publiez vos denrées</h2>
         </div>
 
         <div className="offer-cards">
@@ -82,7 +82,7 @@ const OffersPage = () => {
             <div className="offer-badge">BLEU</div>
             <ul className="offer-features">
               <li>1 mois d'accès</li>
-              <li>Jusqu'à 2 produits publiés</li>
+              <li>Jusqu'à 2 denrées publiées</li>
               <li>Même catégorie</li>
               <li>Statistiques de base</li>
             </ul>
@@ -99,7 +99,7 @@ const OffersPage = () => {
             <div className="offer-badge popular-tag">GOLD ⭐ Populaire</div>
             <ul className="offer-features">
               <li>3 mois d'accès</li>
-              <li>Jusqu'à 5 produits publiés</li>
+              <li>Jusqu'à 5 denrées publiées</li>
               <li>Catégories multiples</li>
               <li>Statistiques avancées</li>
             </ul>
@@ -116,7 +116,7 @@ const OffersPage = () => {
             <div className="offer-badge">PLATINUM</div>
             <ul className="offer-features">
               <li>6 mois d'accès</li>
-              <li>Produits illimités</li>
+              <li>Denrées illimitées</li>
               <li>Toutes catégories</li>
               <li>Analyses complètes</li>
             </ul>

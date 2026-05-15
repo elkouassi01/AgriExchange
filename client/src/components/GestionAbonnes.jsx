@@ -106,7 +106,7 @@ const GestionAbonnes = () => {
     <div className="abonnes-container">
       <div className="abonnes-header">
         <h1>Gestion des Abonnés</h1>
-        <p className="sous-titre">Suivez les consommateurs intéressés par vos produits</p>
+        <p className="sous-titre">Suivez les consommateurs intéressés par vos denrées</p>
       </div>
 
       {/* Statistiques */}
@@ -133,7 +133,7 @@ const GestionAbonnes = () => {
           <div className="stat-icon">📊</div>
           <div className="stat-content">
             <h3>{statistiques.totalConsultations}</h3>
-            <p>Produits consultés</p>
+            <p>Denrées consultées</p>
           </div>
           <div className="stat-gradient"></div>
         </div>
@@ -214,7 +214,7 @@ const GestionAbonnes = () => {
 
               <div className="abonne-metrics">
                 <div className="metric">
-                  <span className="metric-label">Produits consultés:</span>
+                  <span className="metric-label">Denrées consultées:</span>
                   <span className="metric-value">{abonne.produitsConsultes}</span>
                 </div>
                 <div className="metric">
@@ -252,7 +252,7 @@ const GestionAbonnes = () => {
           <h3>Aucun abonné trouvé</h3>
           <p>Vous n'avez pas encore d'abonnés correspondant à ce filtre</p>
           <Link to="/mes-produits" className="btn-primary">
-            Voir mes produits
+            Voir mes denrées
           </Link>
         </div>
       )}

@@ -31,7 +31,7 @@ function Footer() {
           <div className="footer-col">
             <h4>achat en ligne</h4>
             <ul>
-              <li><Link to="#">produits agricoles</Link></li>
+              <li><Link to="#">denrées agricoles</Link></li>
               <li><Link to="#">élévage</Link></li>
             </ul>
           </div>

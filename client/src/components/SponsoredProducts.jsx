@@ -65,7 +65,7 @@ export default function SponsoredProducts() {
         <div className="sp-header__left">
           <span className="sp-header__icon">⭐</span>
           <div>
-            <h2 className="sp-header__title">Produits à la une</h2>
+            <h2 className="sp-header__title">Denrées à la une</h2>
             <p className="sp-header__sub">Sélectionnés par nos agriculteurs partenaires</p>
           </div>
         </div>

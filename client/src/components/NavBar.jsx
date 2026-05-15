@@ -100,7 +100,7 @@ function NavBar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher un produit..."
+            placeholder="Rechercher une denrée..."
             className="navbar-search-input"
             aria-label="Rechercher"
           />

@@ -707,6 +707,25 @@ select.form-control {
   }
 }
 
+/* Champ date avec calendrier natif et affichage jj/mm/aaaa */
+.date-input-wrapper {
+  position: relative;
+}
+
+.date-display {
+  cursor: pointer;
+}
+
+.date-picker-hidden {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Galerie supplémentaire */
 .gallery-upload-area {
   border: 2px dashed rgba(12, 71, 30, 0.35);

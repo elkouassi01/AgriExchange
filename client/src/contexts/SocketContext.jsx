@@ -25,17 +25,22 @@ export const SocketProvider = ({ children }) => {
 
     if (socketRef.current?.connected) return;
 
+    let active = true;
+
     const socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
 
-    socket.on('connect', () => setConnected(true));
-    socket.on('disconnect', () => setConnected(false));
+    socket.on('connect', () => { if (active) setConnected(true); });
+    socket.on('disconnect', () => { if (active) setConnected(false); });
 
     socketRef.current = socket;
     return () => {
+      active = false;
       socket.disconnect();
       socketRef.current = null;
       setConnected(false);

@@ -9,8 +9,7 @@ const mysqlContactRequestRepository = require('../repositories/mysqlContactReque
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const notificationService = require('../utils/notificationService');
 
-const CINETPAY_APIKEY = process.env.CINETPAY_APIKEY || '8937149296838988c80faf0.18612017';
-const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
+const cinetpay = require('../utils/cinetpayService');
 const PRICE_VISITOR = 300;
 const PRICE_CONSUMER = 150;
 
@@ -35,17 +34,8 @@ router.post('/webhook', async (req, res) => {
     if (!txId) return res.status(400).send('Missing transaction_id');
 
     // Ne pas faire confiance au corps du webhook : re-vérifier auprès de CinetPay
-    const verifyRes = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        apikey: CINETPAY_APIKEY,
-        site_id: CINETPAY_SITE_ID,
-        transaction_id: txId,
-      }),
-    });
-    const verifyResult = await verifyRes.json();
-    const isAccepted = verifyResult.data?.status === 'ACCEPTED' || verifyResult.code === '00';
+    const verifyResult = await cinetpay.checkPayment(txId);
+    const isAccepted = cinetpay.isAccepted(verifyResult);
 
     if (isAccepted && isMysql()) {
       await mysqlPaymentRepository.markAsPaid(txId);
@@ -65,7 +55,7 @@ router.post('/:productId/initiate', async (req, res) => {
     if (isMysql()) {
       const product = await mysqlProductRepository.findProductById(productId);
       if (!product) {
-        return res.status(404).json({ success: false, message: 'Produit non trouvé' });
+        return res.status(404).json({ success: false, message: 'Denrée introuvable' });
       }
     }
 
@@ -78,38 +68,26 @@ router.post('/:productId/initiate', async (req, res) => {
     const origin = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 
-    const paymentData = {
-      apikey: CINETPAY_APIKEY,
-      site_id: CINETPAY_SITE_ID,
-      transaction_id: transactionId,
+    const nameParts = (req.body.customer_name || 'Visiteur').substring(0, 50).split(' ');
+    const result = await cinetpay.initPayment({
+      merchantTransactionId: transactionId,
       amount,
-      currency: 'XOF',
-      description: `Coordonnées vendeur - Produit #${productId}`,
-      customer_name: (req.body.customer_name || 'Visiteur').substring(0, 50),
-      customer_email: req.body.customer_email || 'guest@vivrimarket.com',
-      customer_phone_number: '',
-      notify_url: `${serverUrl}/api/v1/product-payments/webhook`,
-      return_url: `${origin}/produits/${productId}?tx_id=${transactionId}`,
-      cancel_url: `${origin}/produits/${productId}`,
-      channels: 'ALL',
-      lang: 'fr',
-    };
-
-    const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify(paymentData),
+      designation:    `Coordonnées vendeur - Denrée #${productId}`,
+      clientFirstName: nameParts[0] || 'Visiteur',
+      clientLastName:  nameParts.slice(1).join(' ') || '-',
+      clientEmail:    req.body.customer_email || 'guest@vivrimarket.com',
+      successUrl:     `${origin}/produits/${productId}?tx_id=${transactionId}`,
+      failedUrl:      `${origin}/produits/${productId}`,
+      notifyUrl:      `${serverUrl}/api/v1/product-payments/webhook`,
     });
 
-    const result = await response.json();
-
-    if (result.code === '201' && result.data?.payment_url) {
+    if (result.payment_url) {
       if (isMysql()) {
         await mysqlPaymentRepository.createPendingPayment(transactionId, productId);
       }
       return res.json({
         success: true,
-        payment_url: result.data.payment_url,
+        payment_url: result.payment_url,
         transaction_id: transactionId,
         amount,
       });
@@ -146,7 +124,7 @@ router.get('/:productId/check', async (req, res) => {
 
     const product = await mysqlProductRepository.findProductById(productId);
     if (!product) {
-      return res.status(404).json({ success: false, message: 'Produit non trouvé' });
+      return res.status(404).json({ success: false, message: 'Denrée introuvable' });
     }
 
     const seller = {
@@ -177,7 +155,7 @@ router.get('/:productId/check', async (req, res) => {
          if (buyer_phone) {
            const confirmMsg =
              `✅ *VivriMarket* — Paiement reçu !\n\n` +
-             `Merci pour votre paiement pour le produit :\n` +
+             `Merci pour votre paiement pour la denrée :\n` +
              `📦 *${product.nom}*\n\n` +
              `Le vendeur a *24 heures* pour confirmer sa disponibilité.\n` +
              `Vous serez notifié ici dès sa réponse.\n\n` +
@@ -195,7 +173,7 @@ router.get('/:productId/check', async (req, res) => {
          const msg =
            `🛒 *VivriMarket* — Nouveau contact !\n\n` +
            `Bonjour *${ferme}* 👋\n\n` +
-           `Un acheteur est intéressé par votre produit :\n` +
+           `Un acheteur est intéressé par votre denrée :\n` +
            `📦 *${product.nom}*\n\n` +
            `Répondez *OUI* pour confirmer votre disponibilité.\n` +
            `⏰ Vous avez *24 heures* pour répondre.\n\n` +

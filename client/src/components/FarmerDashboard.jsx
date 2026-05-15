@@ -11,21 +11,21 @@ import { useUser } from '../contexts/UserContext';
 import api from '../services/axiosConfig';
 
 const DASHBOARD_ACTIONS = [
-  { path: '/ajouter-produit', Icon: PlusCircle,  text: 'Ajouter un produit', desc: 'Publier une nouvelle offre', primary: true },
-  { path: '/mes-produits',    Icon: Package,      text: 'Mes produits',       desc: 'Gérer vos publications'       },
+  { path: '/ajouter-produit', Icon: PlusCircle,  text: 'Ajouter une denrée', desc: 'Publier une nouvelle offre', primary: true },
+  { path: '/mes-produits',    Icon: Package,      text: 'Mes denrées',        desc: 'Gérer vos publications'       },
   { path: '/abonne',          Icon: Users,        text: 'Mes acheteurs',      desc: 'Voir vos contacts'            },
   { path: '/profil',          Icon: UserCircle,   text: 'Mon profil',         desc: 'Modifier vos informations'    },
 ];
 
 const PLAN_META = {
-  BLEU:     { color: '#60a5fa', bg: 'rgba(59,130,246,0.15)',  limit: '5 produits max',  duration: '1 mois'  },
-  GOLD:     { color: '#fbbf24', bg: 'rgba(251,191,36,0.15)',  limit: '15 produits max', duration: '3 mois'  },
+  BLEU:     { color: '#60a5fa', bg: 'rgba(59,130,246,0.15)',  limit: '5 denrées max',   duration: '1 mois'  },
+  GOLD:     { color: '#fbbf24', bg: 'rgba(251,191,36,0.15)',  limit: '15 denrées max',  duration: '3 mois'  },
   PLATINUM: { color: '#c084fc', bg: 'rgba(192,132,252,0.15)', limit: 'Illimité',        duration: '6 mois'  },
 };
 
 const PLAN_CARDS = [
-  { formule: 'BLEU',     color: '#60a5fa', label: 'BLEU',     duration: '+ 1 mois',  features: ['5 produits max', '1 catégorie',  'Stats de base']    },
-  { formule: 'GOLD',     color: '#fbbf24', label: 'GOLD ⭐',  duration: '+ 3 mois',  features: ['15 produits max','Multi-catégories','Stats avancées'] },
+  { formule: 'BLEU',     color: '#60a5fa', label: 'BLEU',     duration: '+ 1 mois',  features: ['5 denrées max',  '1 catégorie',  'Stats de base']    },
+  { formule: 'GOLD',     color: '#fbbf24', label: 'GOLD ⭐',  duration: '+ 3 mois',  features: ['15 denrées max', 'Multi-catégories','Stats avancées'] },
   { formule: 'PLATINUM', color: '#c084fc', label: 'PLATINUM', duration: '+ 6 mois',  features: ['Illimité',       'Toutes catégories','Analyses complètes'] },
 ];
 
@@ -178,7 +178,7 @@ const FarmerDashboard = () => {
             <span className="fd-stat__value">
               {loadingCount ? '…' : productCount ?? '—'}
             </span>
-            <span className="fd-stat__label">Produits publiés</span>
+            <span className="fd-stat__label">Denrées publiées</span>
           </div>
         </div>
 
@@ -267,7 +267,7 @@ const FarmerDashboard = () => {
               <div className="fd-perf-card__icon"><Eye size={20} strokeWidth={1.8} /></div>
               <div className="fd-perf-card__body">
                 <span className="fd-perf-card__value">{perfStats.views.total.toLocaleString('fr-FR')}</span>
-                <span className="fd-perf-card__label">Vues produits</span>
+                <span className="fd-perf-card__label">Vues denrées</span>
                 <span className="fd-perf-card__sub">{perfStats.views.thisMonth} ce mois</span>
               </div>
             </div>
@@ -329,7 +329,7 @@ const FarmerDashboard = () => {
           {/* Répartition par catégorie */}
           {perfStats.categories.length > 0 && (
             <div className="fd-catbar">
-              <p className="fd-catbar__title">Produits par catégorie</p>
+              <p className="fd-catbar__title">Denrées par catégorie</p>
               {perfStats.categories.map((cat) => {
                 const pct = perfStats.products.total > 0
                   ? Math.round((cat.count / perfStats.products.total) * 100)
@@ -375,7 +375,7 @@ const FarmerDashboard = () => {
           <Zap size={22} strokeWidth={1.8} className="fd-cta__icon" />
           <p className="fd-cta__text">
             Inscription <strong>100% gratuite</strong> jusqu'au 31 décembre 2026 —
-            activez votre abonnement pour publier vos produits !
+            activez votre abonnement pour publier vos denrées !
           </p>
           <Link to="/offres" className="fd-cta__btn">Voir les offres</Link>
         </div>
@@ -385,14 +385,14 @@ const FarmerDashboard = () => {
       {isActive && (
         <div className="fd-sponsored-section">
           <p className="fd-section-label">
-            <Star size={14} strokeWidth={2} /> Produits sponsorisés
+            <Star size={14} strokeWidth={2} /> Denrées sponsorisées
           </p>
           <div className="fd-sponsored-grid">
             <Link to="/mes-produits" className="fd-sponsored-card">
               <Star size={28} strokeWidth={1.5} className="fd-sponsored-card__icon" />
               <span className="fd-sponsored-card__text">Gérer le sponsoring</span>
-              <span className="fd-sponsored-card__desc">Mettez en avant vos produits</span>
-              <span className="fd-sponsored-card__link">Voir mes produits →</span>
+              <span className="fd-sponsored-card__desc">Mettez en avant vos denrées</span>
+              <span className="fd-sponsored-card__link">Voir mes denrées →</span>
             </Link>
             <div className="fd-sponsored-info">
               <p className="fd-sponsored-info__title">Pourquoi sponsoriser ?</p>

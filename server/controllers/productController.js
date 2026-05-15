@@ -69,7 +69,7 @@ exports.getProductById = async (req, res) => {
         if (!product) {
           return res.status(404).json({
             success: false,
-            message: 'Produit non trouvé',
+            message: 'Denrée introuvable',
           });
         }
         return res.status(200).json({

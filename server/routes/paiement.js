@@ -2,10 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-const axios = require('axios');
-
-const CINETPAY_API_KEY = process.env.CINETPAY_API_KEY;
-const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID;
+const cinetpay = require('../utils/cinetpayService');
 
 // Valider le paiement après redirection ou via webhook
 router.post('/valider', async (req, res) => {
@@ -13,15 +10,9 @@ router.post('/valider', async (req, res) => {
 
   try {
     // Vérifier auprès de CinetPay si le paiement est réussi
-    const response = await axios.post('https://api-checkout.cinetpay.com/v2/payment/check', {
-      transaction_id,
-      apikey: CINETPAY_API_KEY,
-      site_id: CINETPAY_SITE_ID
-    });
+    const result = await cinetpay.checkPayment(transaction_id);
 
-    const status = response.data.data.status;
-
-    if (status === 'ACCEPTED') {
+    if (cinetpay.isAccepted(result)) {
       // Créer et enregistrer l'utilisateur
       const nouvelUser = new User({
         nom,

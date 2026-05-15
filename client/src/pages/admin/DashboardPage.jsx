@@ -75,7 +75,7 @@ const DashboardPage = () => {
         <div className="dash-alerts">
           {pendingModeration > 0 && (
             <button className="dash-alert dash-alert--warn" onClick={() => navigate('/admin/moderation')}>
-              🔍 <strong>{pendingModeration}</strong> produit{pendingModeration > 1 ? 's' : ''} en attente de modération → Voir
+              🔍 <strong>{pendingModeration}</strong> denrée{pendingModeration > 1 ? 's' : ''} en attente de modération → Voir
             </button>
           )}
           {suspendedFarmers > 0 && (
@@ -127,7 +127,7 @@ const DashboardPage = () => {
           variant="warning"
         />
         <StatCard
-          title="Produits actifs"
+          title="Denrées actives"
           icon="📦"
           value={stats?.products?.total || 0}
           sub={pendingModeration > 0 ? `${pendingModeration} en attente` : 'Tout approuvé ✓'}

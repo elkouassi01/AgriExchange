@@ -8,8 +8,8 @@ const ACTION_LABELS = {
   'user.role_change': { label: 'Changement rôle',    color: '#7c3aed', bg: '#ede9fe' },
   'user.suspend':     { label: 'Suspension',          color: '#ea580c', bg: '#ffedd5' },
   'user.unsuspend':   { label: 'Déblocage',           color: '#0369a1', bg: '#e0f2fe' },
-  'product.approve':  { label: 'Produit approuvé',   color: '#15803d', bg: '#dcfce7' },
-  'product.reject':   { label: 'Produit rejeté',     color: '#b91c1c', bg: '#fee2e2' },
+  'product.approve':  { label: 'Denrée approuvée',   color: '#15803d', bg: '#dcfce7' },
+  'product.reject':   { label: 'Denrée rejetée',     color: '#b91c1c', bg: '#fee2e2' },
 };
 
 const PAGE_SIZE = 20;

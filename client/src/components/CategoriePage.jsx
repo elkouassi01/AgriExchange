@@ -91,7 +91,7 @@ const CategoriePage = () => {
 
       const formattes = docs.map((p) => ({
         ...p,
-        nom: p.nom || p.name || 'Produit sans nom',
+        nom: p.nom || p.name || 'Denrée sans nom',
         description: p.description || '',
         imageUrl: p.imageUrl || p.image || '',
         prixFormate: `${Number(p.prix || 0).toLocaleString('fr-FR')} FCFA / ${p.unite || 'kg'}`,
@@ -101,7 +101,7 @@ const CategoriePage = () => {
       setPagination(pag);
     } catch (err) {
       console.error('Erreur chargement produits :', err);
-      setErreur('Erreur lors du chargement des produits.');
+      setErreur('Erreur lors du chargement des denrées.');
     } finally {
       setLoading(false);
     }
@@ -153,14 +153,14 @@ const CategoriePage = () => {
     <div className="category-container">
       <div className="category-header">
         <h1>{nomCategorie}</h1>
-        <span className="product-count">{pagination.totalProducts} produit(s)</span>
+        <span className="product-count">{pagination.totalProducts} denrée(s)</span>
       </div>
 
       {/* Barre de recherche */}
       <form className="search-bar" onSubmit={handleSearch}>
         <input
           type="text"
-          placeholder="Rechercher un produit..."
+          placeholder="Rechercher une denrée..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="search-input"
@@ -180,7 +180,7 @@ const CategoriePage = () => {
         <div className="filters-panel">
           <div className="filters-grid">
             <div className="filter-group">
-              <label>État du produit</label>
+              <label>État de la denrée</label>
               <select value={filters.etat} onChange={(e) => updateFilter('etat', e.target.value)}>
                 <option value="">Tous les états</option>
                 {ETATS.filter(Boolean).map((e) => (
@@ -270,7 +270,7 @@ const CategoriePage = () => {
         </div>
       ) : produits.length === 0 ? (
         <div className="empty-container">
-          <p>Aucun produit trouvé pour ces critères.</p>
+          <p>Aucune denrée trouvée pour ces critères.</p>
           {activeFiltersCount > 0 && (
             <button onClick={handleReset}>Effacer les filtres</button>
           )}
@@ -319,7 +319,7 @@ const CategoriePage = () => {
       )}
 
       <div className="category-footer">
-        <button onClick={() => navigate('/categories')}>Catégories</button>
+        <button onClick={() => navigate('/produits')}>Catégories</button>
         <button onClick={() => navigate('/')}>Accueil</button>
       </div>
     </div>

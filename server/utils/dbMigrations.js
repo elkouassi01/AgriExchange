@@ -181,4 +181,91 @@ const ensureCategoriesTable = async () => {
   }
 };
 
-module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable };
+const ensureAppSettingsTable = async () => {
+  const pool = getMysqlPool();
+  if (await tableExists(pool, 'app_settings')) return;
+  try {
+    await pool.query(`
+      CREATE TABLE app_settings (
+        \`key\`      VARCHAR(100) NOT NULL PRIMARY KEY,
+        value       TEXT         NULL,
+        updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log('[DB] Table créée: app_settings');
+  } catch (e) {
+    console.warn('[DB] Table ignorée: app_settings —', e.message.split('\n')[0]);
+  }
+};
+
+const ensurePaymentProvidersTable = async () => {
+  const pool = getMysqlPool();
+  if (await tableExists(pool, 'payment_providers')) return;
+  try {
+    await pool.query(`
+      CREATE TABLE payment_providers (
+        id          VARCHAR(50)  NOT NULL PRIMARY KEY,
+        label       VARCHAR(100) NOT NULL,
+        icon        VARCHAR(20)  DEFAULT '💳',
+        description VARCHAR(255) DEFAULT '',
+        enabled     TINYINT(1)   NOT NULL DEFAULT 0,
+        config      TEXT         NULL,
+        position    INT          NOT NULL DEFAULT 99,
+        updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log('[DB] Table créée: payment_providers');
+
+    await pool.query(`
+      INSERT INTO payment_providers (id, label, icon, description, enabled, position) VALUES
+        ('cinetpay',        'CinetPay',          '💳', 'Paiement mobile money & cartes — Côte d\'Ivoire et Afrique de l\'Ouest', 1, 1),
+        ('cinetpay_legacy', 'CinetPay (Legacy)',  '🏦', 'Ancienne API CinetPay — apikey + site_id',                               0, 2),
+        ('paydunya',        'PayDunya',           '🔵', 'Passerelle de paiement Afrique de l\'Ouest',                             0, 3),
+        ('stripe',          'Stripe',             '⚡', 'Paiement international par carte bancaire',                               0, 4)
+    `);
+    console.log('[DB] Providers de paiement initialisés');
+  } catch (e) {
+    console.warn('[DB] Table ignorée: payment_providers —', e.message.split('\n')[0]);
+  }
+};
+
+const ensureSellerReviewsTable = async () => {
+  const pool = getMysqlPool();
+  if (await tableExists(pool, 'seller_reviews')) {
+    // Renommer reviewer_id → buyer_id si l'ancienne colonne existe encore
+    const [cols] = await pool.query(
+      `SELECT COLUMN_NAME FROM information_schema.columns
+       WHERE table_schema = DATABASE() AND table_name = 'seller_reviews' AND column_name = 'reviewer_id'`
+    );
+    if (cols.length > 0) {
+      try {
+        await pool.query('ALTER TABLE seller_reviews CHANGE reviewer_id buyer_id CHAR(36) NOT NULL');
+        console.log('[DB] seller_reviews.reviewer_id renommé en buyer_id');
+      } catch (e) {
+        console.warn('[DB] Renommage seller_reviews.reviewer_id ignoré —', e.message.split('\n')[0]);
+      }
+    }
+    return;
+  }
+  try {
+    await pool.query(`
+      CREATE TABLE seller_reviews (
+        id          CHAR(36)     NOT NULL PRIMARY KEY,
+        seller_id   CHAR(36)     NOT NULL,
+        buyer_id    CHAR(36)     NOT NULL,
+        rating      TINYINT      NOT NULL CHECK (rating BETWEEN 1 AND 5),
+        comment     TEXT         NULL,
+        created_at  DATETIME     DEFAULT CURRENT_TIMESTAMP,
+        updated_at  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uq_review_seller_buyer (seller_id, buyer_id),
+        INDEX idx_reviews_seller_id (seller_id),
+        INDEX idx_reviews_buyer_id  (buyer_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    console.log('[DB] Table créée: seller_reviews');
+  } catch (e) {
+    console.warn('[DB] Table ignorée: seller_reviews —', e.message.split('\n')[0]);
+  }
+};
+
+module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable };

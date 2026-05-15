@@ -649,7 +649,13 @@ const getSystemStatus = async (req, res) => {
 
 const sendTestNotification = async (req, res) => {
   const admin = req.user;
-  const to = admin.email;
+  // Priorité : email configuré en base, sinon email du compte connecté
+  let to = admin.email;
+  try {
+    const { get } = require('../repositories/mysqlAppSettingsRepository');
+    const configured = await get('admin_email');
+    if (configured) to = configured;
+  } catch { /* ignore si DB pas prête */ }
   if (!to) return res.status(400).json({ message: 'Email admin introuvable' });
 
   try {

@@ -7,8 +7,8 @@ function Apropo() {
       <section className="apropos">
         <h1>A propos de Agrimarket CI 🌾</h1>
         <p>nous sommes une platform web qui offre la possibilité au client d'interagir de maniere libre avec les agriculteurs</p>
-        <p> Nous mettons en relation acheteurs et vendeurs de produits frais. Vous souhaitez interagir avec le monde agricole 
-          et une plateforme simple et fiable pour informer vos clients sur vous, votre plantation et vos produits ?</p>
+        <p> Nous mettons en relation acheteurs et vendeurs de denrées fraîches. Vous souhaitez interagir avec le monde agricole
+          et une plateforme simple et fiable pour informer vos clients sur vous, votre plantation et vos denrées ?</p>
           <p>Agrimarket.com vous offre les solutions dont vous avez besoin pour acheter, vendre et vous faire connaitre,
              au quotidien ! </p><p>Nous sommes présents dans le secteur agricole depuis 15 ans et, comme vous le savez,
               le marché est difficile. Acheteurs et vendeurs veulent toujours la même chose :

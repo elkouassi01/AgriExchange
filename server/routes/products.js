@@ -10,8 +10,7 @@ const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const notificationService = require('../utils/notificationService');
 const { isMysql } = require('../utils/authHelpers');
 
-const CINETPAY_APIKEY  = process.env.CINETPAY_APIKEY  || '8937149296838988c80faf0.18612017';
-const CINETPAY_SITE_ID = process.env.CINETPAY_SITE_ID || '105896693';
+const cinetpay = require('../utils/cinetpayService');
 
 const parseJsonArray = (value) => {
   if (!value) return [];
@@ -121,8 +120,8 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
       const admins = await mysqlUserRepository.getAdmins().catch(() => []);
       const sellerNom = req.user.nom || req.user.name || 'un agriculteur';
       const adminMessage =
-        `📦 Nouveau produit soumis\n\n` +
-        `Produit : ${payload.nom}\n` +
+        `📦 Nouvelle denrée soumise\n\n` +
+        `Denrée : ${payload.nom}\n` +
         `Agriculteur : ${sellerNom}\n` +
         `Prix : ${Number(payload.prix).toLocaleString('fr-FR')} FCFA\n\n` +
         `📋 Panel admin : https://vivrimarket.com/admin/moderation`;
@@ -130,7 +129,7 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
       for (const admin of admins) {
         await notificationService.sendByPhone(
           admin.contact,
-          '🌿 Nouveau produit en attente',
+          '🌿 Nouvelle denrée en attente',
           adminMessage,
           { channels: ['whatsapp', 'email', 'inapp'] }
         ).catch(err => console.error('[NotifyAdmin]', err.message));
@@ -139,7 +138,7 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
       return res.status(201).json({
         success: true,
         code: 'PRODUCT_CREATED',
-        message: 'Produit soumis avec succes ! Il sera visible apres validation par un administrateur.',
+        message: 'Denrée soumise avec succès ! Elle sera visible après validation par un administrateur.',
         product: createdProduct
       });
     }
@@ -158,7 +157,7 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
     return res.status(201).json({
       success: true,
       code: 'PRODUCT_CREATED',
-      message: 'Produit ajoute avec succes !',
+      message: 'Denrée ajoutée avec succès !',
       product: produitSauvegarde
     });
   } catch (error) {
@@ -180,7 +179,7 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
       return res.status(400).json({
         success: false,
         code: 'VALIDATION_ERROR',
-        message: 'Donnees du produit invalides',
+        message: 'Données de la denrée invalides',
         errors
       });
     }
@@ -197,7 +196,7 @@ router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: "Erreur serveur lors de l'ajout du produit",
+      message: "Erreur serveur lors de l'ajout de la denrée",
       ...(process.env.NODE_ENV === 'development' && {
         details: error.message,
         stack: error.stack
@@ -229,7 +228,7 @@ router.get('/', async (req, res) => {
       return res.json({
         success: true,
         code: 'PRODUCTS_FETCHED',
-        message: 'Produits recuperes avec succes',
+        message: 'Denrées récupérées avec succès',
         data: {
           products: result.docs,
           pagination: {
@@ -265,7 +264,7 @@ router.get('/', async (req, res) => {
     return res.json({
       success: true,
       code: 'PRODUCTS_FETCHED',
-      message: 'Produits recuperes avec succes',
+      message: 'Denrées récupérées avec succès',
       data: {
         products: result.docs,
         pagination: {
@@ -279,11 +278,11 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erreur recuperation produits:', error);
+    console.error('Erreur récupération denrées:', error);
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la recuperation des produits',
+      message: 'Erreur serveur lors de la récupération des denrées',
       ...(process.env.NODE_ENV === 'development' && { error: error.message })
     });
   }
@@ -303,7 +302,7 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
       return res.json({
         success: true,
         code: 'USER_PRODUCTS_FETCHED',
-        message: 'Vos produits ont ete recuperes avec succes',
+        message: 'Vos denrées ont été récupérées avec succès',
         data: {
           products: result.docs,
           pagination: {
@@ -332,7 +331,7 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
     return res.json({
       success: true,
       code: 'USER_PRODUCTS_FETCHED',
-      message: 'Vos produits ont ete recuperes avec succes',
+      message: 'Vos denrées ont été récupérées avec succès',
       data: {
         products: result.docs,
         pagination: {
@@ -346,11 +345,11 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
       }
     });
   } catch (error) {
-    console.error('Erreur recuperation produits utilisateur:', error);
+    console.error('Erreur récupération denrées utilisateur:', error);
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la recuperation de vos produits'
+      message: 'Erreur serveur lors de la récupération de vos denrées'
     });
   }
 });
@@ -382,7 +381,7 @@ router.put('/:id/sponsor', protect, authorize(['agriculteur', 'farmer']), async 
       const abonnement = await mysqlUserRepository.getActiveSubscriptionForUser(sellerId);
       // Vérifier que l'abonnement existe, est actif, et n'est pas expiré
       if (!abonnement || abonnement.statut !== 'actif' || new Date(abonnement.dateFin) < new Date()) {
-        return res.status(403).json({ success: false, message: 'Abonnement actif requis pour sponsoriser un produit.' });
+        return res.status(403).json({ success: false, message: 'Abonnement actif requis pour sponsoriser une denrée.' });
       }
       const limit = SPONSOR_LIMITS[abonnement.formule] ?? 1;
       const current = await mysqlProductRepository.countSponsoredBySeller(sellerId);
@@ -391,7 +390,7 @@ router.put('/:id/sponsor', protect, authorize(['agriculteur', 'farmer']), async 
           success: false,
           limitReached: true,
           paymentAvailable: true,
-          message: `Limite atteinte (${limit} produit${limit > 1 ? 's' : ''} sponsorisé${limit > 1 ? 's' : ''} max avec le plan ${abonnement.formule}).`,
+          message: `Limite atteinte (${limit} denrée${limit > 1 ? 's' : ''} sponsorisée${limit > 1 ? 's' : ''} max avec le plan ${abonnement.formule}).`,
           limit,
           current,
           sponsorAmount: sponsoredRepo.SPONSOR_AMOUNT,
@@ -402,7 +401,7 @@ router.put('/:id/sponsor', protect, authorize(['agriculteur', 'farmer']), async 
 
     const updated = await mysqlProductRepository.toggleSponsor(req.params.id, sellerId, activate);
     if (!updated) {
-      return res.status(404).json({ success: false, message: 'Produit introuvable ou non autorisé.' });
+      return res.status(404).json({ success: false, message: 'Denrée introuvable ou non autorisée.' });
     }
     return res.json({ success: true, isFeatured: Boolean(activate) });
   } catch (err) {
@@ -422,7 +421,7 @@ router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer'
     // Vérifier que le produit appartient à ce vendeur
     const product = await mysqlProductRepository.findProductById(productId);
     if (!product || String(product.sellerId) !== String(sellerId)) {
-      return res.status(404).json({ success: false, message: 'Produit introuvable' });
+      return res.status(404).json({ success: false, message: 'Denrée introuvable' });
     }
 
     const { randomUUID } = require('crypto');
@@ -430,36 +429,25 @@ router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer'
     const origin    = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 
-    const paymentData = {
-      apikey:                CINETPAY_APIKEY,
-      site_id:               CINETPAY_SITE_ID,
-      transaction_id:        transactionId,
-      amount:                sponsoredRepo.SPONSOR_AMOUNT,
-      currency:              'XOF',
-      description:           `Sponsoring produit "${product.nom}" — ${sponsoredRepo.SPONSOR_DURATION_DAYS} jours`,
-      customer_name:         (req.user.nom || 'Agriculteur').substring(0, 50),
-      customer_email:        req.user.email || 'agriculteur@vivrimarket.com',
-      customer_phone_number: req.user.contact || '',
-      notify_url:            `${serverUrl}/api/v1/products/sponsor/webhook`,
-      return_url:            `${origin}/mes-produits?sponsor_tx=${transactionId}&sponsor_pid=${productId}`,
-      cancel_url:            `${origin}/mes-produits`,
-      channels:              'ALL',
-      lang:                  'fr',
-    };
-
-    const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body:    JSON.stringify(paymentData),
+    const nameParts = (req.user.nom || 'Agriculteur').substring(0, 50).split(' ');
+    const result = await cinetpay.initPayment({
+      merchantTransactionId: transactionId,
+      amount:         sponsoredRepo.SPONSOR_AMOUNT,
+      designation:    `Sponsoring denrée "${product.nom}" — ${sponsoredRepo.SPONSOR_DURATION_DAYS} jours`,
+      clientFirstName: nameParts[0] || 'Agriculteur',
+      clientLastName:  nameParts.slice(1).join(' ') || '-',
+      clientEmail:    req.user.email || 'agriculteur@vivrimarket.com',
+      clientPhone:    req.user.contact || '',
+      successUrl:     `${origin}/mes-produits?sponsor_tx=${transactionId}&sponsor_pid=${productId}`,
+      failedUrl:      `${origin}/mes-produits`,
+      notifyUrl:      `${serverUrl}/api/v1/products/sponsor/webhook`,
     });
 
-    const result = await response.json();
-
-    if (result.code === '201' && result.data?.payment_url) {
+    if (result.payment_url) {
       await sponsoredRepo.createPending(productId, sellerId, transactionId);
       return res.json({
         success:        true,
-        payment_url:    result.data.payment_url,
+        payment_url:    result.payment_url,
         transaction_id: transactionId,
         amount:         sponsoredRepo.SPONSOR_AMOUNT,
         days:           sponsoredRepo.SPONSOR_DURATION_DAYS,
@@ -482,13 +470,8 @@ router.get('/:id/sponsor/check', protect, authorize(['agriculteur', 'farmer']), 
     if (!tx_id) return res.status(400).json({ success: false, message: 'tx_id requis' });
 
     // Vérifier auprès de CinetPay
-    const verifyRes = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body:    JSON.stringify({ apikey: CINETPAY_APIKEY, site_id: CINETPAY_SITE_ID, transaction_id: tx_id }),
-    });
-    const verifyResult = await verifyRes.json();
-    const paid = verifyResult.data?.status === 'ACCEPTED' || verifyResult.code === '00';
+    const verifyResult = await cinetpay.checkPayment(tx_id);
+    const paid = cinetpay.isAccepted(verifyResult);
 
     if (!paid) return res.json({ success: false, paid: false });
 
@@ -512,13 +495,8 @@ router.post('/sponsor/webhook', async (req, res) => {
     const txId = req.body.transaction_id || req.body.cpm_trans_id;
     if (!txId) return res.status(400).send('Missing transaction_id');
 
-    const verifyRes = await fetch('https://api-checkout.cinetpay.com/v2/payment/check', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-      body:    JSON.stringify({ apikey: CINETPAY_APIKEY, site_id: CINETPAY_SITE_ID, transaction_id: txId }),
-    });
-    const verifyResult = await verifyRes.json();
-    const accepted = verifyResult.data?.status === 'ACCEPTED' || verifyResult.code === '00';
+    const verifyResult = await cinetpay.checkPayment(txId);
+    const accepted = cinetpay.isAccepted(verifyResult);
 
     if (accepted && isMysql()) {
       await sponsoredRepo.activateSponsor(txId);
@@ -551,7 +529,7 @@ router.get('/:id', async (req, res) => {
         return res.status(404).json({
           success: false,
           code: 'PRODUCT_NOT_FOUND',
-          message: 'Produit non trouve'
+          message: 'Denrée introuvable'
         });
       }
 
@@ -566,7 +544,7 @@ router.get('/:id', async (req, res) => {
       return res.json({
         success: true,
         code: 'PRODUCT_FETCHED',
-        message: 'Produit recupere avec succes',
+        message: 'Denrée récupérée avec succès',
         data: { product: publicProduct }
       });
     }
@@ -578,22 +556,22 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({
         success: false,
         code: 'PRODUCT_NOT_FOUND',
-        message: 'Produit non trouve'
+        message: 'Denrée introuvable'
       });
     }
 
     return res.json({
       success: true,
       code: 'PRODUCT_FETCHED',
-      message: 'Produit recupere avec succes',
+      message: 'Denrée récupérée avec succès',
       data: { product }
     });
   } catch (error) {
-    console.error('Erreur recuperation produit:', error);
+    console.error('Erreur récupération denrée:', error);
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la recuperation du produit'
+      message: 'Erreur serveur lors de la récupération de la denrée'
     });
   }
 });
@@ -630,14 +608,14 @@ router.put('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, re
         return res.status(404).json({
           success: false,
           code: 'PRODUCT_NOT_FOUND',
-          message: "Produit non trouve ou vous n'etes pas autorise a le modifier"
+          message: "Denrée introuvable ou vous n'êtes pas autorisé à la modifier"
         });
       }
 
       return res.json({
         success: true,
         code: 'PRODUCT_UPDATED',
-        message: 'Produit modifie avec succes',
+        message: 'Denrée modifiée avec succès',
         data: { product: updatedProduct }
       });
     }
@@ -647,7 +625,7 @@ router.put('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, re
       return res.status(404).json({
         success: false,
         code: 'PRODUCT_NOT_FOUND',
-        message: "Produit non trouve ou vous n'etes pas autorise a le modifier"
+        message: "Denrée introuvable ou vous n'êtes pas autorisé à la modifier"
       });
     }
 
@@ -672,15 +650,15 @@ router.put('/:id', protect, authorize(['agriculteur', 'farmer']), async (req, re
     return res.json({
       success: true,
       code: 'PRODUCT_UPDATED',
-      message: 'Produit modifie avec succes',
+      message: 'Denrée modifiée avec succès',
       data: { product: updatedProduct }
     });
   } catch (error) {
-    console.error('Erreur modification produit:', error);
+    console.error('Erreur modification denrée:', error);
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la modification du produit'
+      message: 'Erreur serveur lors de la modification de la denrée'
     });
   }
 });
@@ -695,14 +673,14 @@ router.delete('/:id', protect, authorize(['agriculteur', 'farmer']), async (req,
         return res.status(404).json({
           success: false,
           code: 'PRODUCT_NOT_FOUND',
-          message: "Produit non trouve ou vous n'etes pas autorise a le supprimer"
+          message: "Denrée introuvable ou vous n'êtes pas autorisé à la supprimer"
         });
       }
 
       return res.json({
         success: true,
         code: 'PRODUCT_DELETED',
-        message: 'Produit supprime avec succes'
+        message: 'Denrée supprimée avec succès'
       });
     }
 
@@ -711,21 +689,21 @@ router.delete('/:id', protect, authorize(['agriculteur', 'farmer']), async (req,
       return res.status(404).json({
         success: false,
         code: 'PRODUCT_NOT_FOUND',
-        message: "Produit non trouve ou vous n'etes pas autorise a le supprimer"
+        message: "Denrée introuvable ou vous n'êtes pas autorisé à la supprimer"
       });
     }
 
     return res.json({
       success: true,
       code: 'PRODUCT_DELETED',
-      message: 'Produit supprime avec succes'
+      message: 'Denrée supprimée avec succès'
     });
   } catch (error) {
-    console.error('Erreur suppression produit:', error);
+    console.error('Erreur suppression denrée:', error);
     return res.status(500).json({
       success: false,
       code: 'SERVER_ERROR',
-      message: 'Erreur serveur lors de la suppression du produit'
+      message: 'Erreur serveur lors de la suppression de la denrée'
     });
   }
 });

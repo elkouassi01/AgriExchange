@@ -198,12 +198,15 @@ const connectToMysql = async () => {
   console.log('MySQL connected');
   const { ensureTables } = require('./repositories/mysqlContactRequestRepository');
   await ensureTables();
-  const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable } = require('./utils/dbMigrations');
+  const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable } = require('./utils/dbMigrations');
   await ensureColumns();
   await ensureIndexes();
   await ensureAuditLogsTable();
   await ensureMessagesSenderNullable();
   await ensureCategoriesTable();
+  await ensureSellerReviewsTable();
+  await ensureAppSettingsTable();
+  await ensurePaymentProvidersTable();
 };
 
 const connectToDatabase = async () => {

@@ -59,9 +59,9 @@ function HomePage() {
       </section>
 
       <section className="sample-products">
-        <h2>🌟 Produits à la une - Sélection premium</h2>
+        <h2>🌟 Denrées à la une - Sélection premium</h2>
         {loading ? (
-          <div className="carousel-loading">Chargement des produits...</div>
+          <div className="carousel-loading">Chargement des denrées...</div>
         ) : groupes.length ? (
           <div className="carousel-wrapper">
             <button className="carousel-button left" onClick={allerAuPrecedent}>⏮</button>
@@ -79,9 +79,9 @@ function HomePage() {
             <button className="carousel-button right" onClick={allerAuSuivant}>⏭</button>
           </div>
         ) : (
-          <p className="no-products">Aucun produit à la une pour le moment.</p>
+          <p className="no-products">Aucune denrée à la une pour le moment.</p>
         )}
-        <Link to="/produits" className="cta-button">Voir tous les produits</Link>
+        <Link to="/produits" className="cta-button">Voir toutes les denrées</Link>
         <p className="cta-subtext">Découvrez notre large catalogue et trouvez vos aliments préférés.</p>
       </section>
 
@@ -105,7 +105,7 @@ function HomePage() {
         <div className="about-content">
           <h2>Pourquoi choisir VivriMarket ?</h2>
           <ul className="benefits-list">
-            <li>✅ Produits frais directement des agriculteurs locaux</li>
+            <li>✅ Denrées fraîches directement des agriculteurs locaux</li>
             <li>✅ Prix de gros sans intermediaire</li>
             <li>✅ Livraison rapide dans toute la Cote d'Ivoire</li>
             <li>✅ Paiements securises et multiples options</li>

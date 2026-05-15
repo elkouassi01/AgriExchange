@@ -342,3 +342,233 @@
   font-size: 0.82rem;
   color: #475569;
 }
+
+/* ── Onglet Paiement ────────────────────────────────────── */
+.pay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 540px;
+}
+
+.pay-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pay-field--row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pay-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.pay-optional {
+  font-weight: 400;
+  color: #94a3b8;
+  font-size: 0.8rem;
+}
+
+.pay-input {
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.pay-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+
+.pay-input--mono {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.03em;
+}
+
+.pay-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.pay-input-wrap .pay-input {
+  padding-right: 42px;
+}
+
+.pay-eye {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 0;
+  line-height: 1;
+}
+
+.pay-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.pay-btn-save {
+  padding: 9px 22px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pay-btn-save:hover { background: #15803d; }
+.pay-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.pay-key-masked {
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  background: #f1f5f9;
+  padding: 2px 7px;
+  border-radius: 4px;
+  color: #334155;
+}
+
+.pay-source-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: #e0f2fe;
+  color: #0369a1;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+/* ── Provider cards ─────────────────────────────────────── */
+.pp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pp-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.pp-card--active {
+  border-color: #86efac;
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.08);
+}
+
+.pp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pp-card-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pp-card-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.pp-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.pp-card-desc {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.pp-card-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pp-status {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.pp-status--on  { background: #dcfce7; color: #15803d; }
+.pp-status--off { background: #f1f5f9; color: #64748b; }
+
+.pp-config-btn {
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  background: #f8fafc;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.pp-config-btn:hover { background: #e2e8f0; }
+
+.pp-config-body {
+  border-top: 1px solid #f1f5f9;
+  padding: 18px 18px 16px;
+  background: #fafafa;
+}
+
+.pp-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 600px) {
+  .pp-fields { grid-template-columns: 1fr; }
+  .pp-card-header { flex-direction: column; align-items: flex-start; }
+}
+
+.pp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.pp-no-config {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+

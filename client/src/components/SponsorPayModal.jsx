@@ -31,7 +31,7 @@ export default function SponsorPayModal({ product, onClose, onSuccess }) {
         <div className="spm-header">
           <div className="spm-header__icon">⭐</div>
           <div>
-            <h2 className="spm-title">Sponsoriser ce produit</h2>
+            <h2 className="spm-title">Sponsoriser cette denrée</h2>
             <p className="spm-sub">Limite gratuite atteinte — passez au sponsoring payant</p>
           </div>
           <button className="spm-close" onClick={onClose} aria-label="Fermer">✕</button>
@@ -39,7 +39,7 @@ export default function SponsorPayModal({ product, onClose, onSuccess }) {
 
         {/* Produit */}
         <div className="spm-product">
-          <span className="spm-product__label">Produit</span>
+          <span className="spm-product__label">Denrée</span>
           <span className="spm-product__name">{product.nom}</span>
         </div>
 
@@ -51,14 +51,14 @@ export default function SponsorPayModal({ product, onClose, onSuccess }) {
           </div>
           <div className="spm-offer__details">
             <p className="spm-offer__duration">⏱ 14 jours de visibilité</p>
-            <p className="spm-offer__desc">Votre produit sera mis en avant sur la page d'accueil et en tête de liste dans sa catégorie.</p>
+            <p className="spm-offer__desc">Votre denrée sera mise en avant sur la page d'accueil et en tête de liste dans sa catégorie.</p>
           </div>
         </div>
 
         {/* Avantages */}
         <ul className="spm-benefits">
           <li>✅ Affichage prioritaire sur la page d'accueil</li>
-          <li>✅ Badge doré "Sponsorisé" sur la fiche produit</li>
+          <li>✅ Badge doré "Sponsorisé" sur la fiche denrée</li>
           <li>✅ Activation immédiate après paiement</li>
           <li>✅ Expiration automatique après 14 jours</li>
         </ul>

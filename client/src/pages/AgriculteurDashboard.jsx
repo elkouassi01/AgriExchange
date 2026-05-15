@@ -35,16 +35,16 @@ const FarmerDashboard = () => {
       <h1 className="dashboard-title">Bienvenue sur votre espace agriculteur</h1>
 
       <section className="add-product-section">
-        <h2>Ajouter un nouveau produit</h2>
+        <h2>Ajouter une nouvelle denrée</h2>
         <AddProductForm />
       </section>
 
       <section className="products-section">
-        <h2>Mes produits postes</h2>
+        <h2>Mes denrées postées</h2>
         {loading ? (
           <p>Chargement...</p>
         ) : mesProduits.length === 0 ? (
-          <p>Vous n'avez encore poste aucun produit.</p>
+          <p>Vous n'avez encore postée aucune denrée.</p>
         ) : (
           <div className="products-grid">
             {mesProduits.map((produit) => (

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef, useCallback } from 'react';
 import api from '../services/axiosConfig';
 
 const UserContext = createContext(null);
@@ -15,12 +15,26 @@ export const UserProvider = ({ children }) => {
 
   const [loading, setLoading] = useState(true);
 
-  // Intercepteur global : session expirée -> nettoyage local
+  // Ref pour que l'intercepteur accède toujours à l'état user courant
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
+
+  // Nettoyage local (défini tôt pour l'intercepteur)
+  const clearSession = useCallback(() => {
+    setUser(null);
+    setToken(null);
+    localStorage.removeItem('userData');
+    localStorage.removeItem('token');
+  }, []);
+
+  // Intercepteur global : réagit aux 401 uniquement si une session était active
+  // (évite de polluer la console lors du check initial /auth/me sans session)
   useEffect(() => {
     const responseInterceptor = api.interceptors.response.use(
       res => res,
       err => {
-        if (err.response?.status === 401) {
+        const isAuthMe = err.config?.url?.includes('/auth/me');
+        if (err.response?.status === 401 && !isAuthMe && userRef.current) {
           clearSession();
         }
         return Promise.reject(err);
@@ -29,7 +43,7 @@ export const UserProvider = ({ children }) => {
     return () => {
       api.interceptors.response.eject(responseInterceptor);
     };
-  }, []);
+  }, [clearSession]);
 
   // Recupere l'utilisateur connecte via le cookie httpOnly
   const fetchUser = async () => {
@@ -54,7 +68,10 @@ export const UserProvider = ({ children }) => {
         clearSession();
       }
     } catch (err) {
-      console.warn('Erreur fetchUser :', err.message);
+      // 401 = pas de session active, comportement normal au démarrage
+      if (err.response?.status !== 401) {
+        console.warn('Erreur fetchUser :', err.message);
+      }
       clearSession();
     } finally {
       setLoading(false);
@@ -144,17 +161,20 @@ export const UserProvider = ({ children }) => {
     clearSession();
   };
 
-  // Nettoyage local (appele sur 401 ou logout)
-  const clearSession = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('userData');
-    localStorage.removeItem('token');
-  };
 
-  // Au chargement : tente de restaurer la session via le cookie httpOnly
+  // Au chargement : restaure la session seulement si un token existe localement
+  // Le ref évite la double-invocation de React StrictMode en développement
+  const fetchCalledRef = useRef(false);
   useEffect(() => {
-    fetchUser();
+    if (fetchCalledRef.current) return;
+    fetchCalledRef.current = true;
+
+    const hasSession = localStorage.getItem('token') || localStorage.getItem('userData');
+    if (hasSession) {
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   return (

@@ -188,4 +188,121 @@ router.get('/abonnements',
 // 📋 Audit logs
 router.get('/audit-logs', validatePagination, adminController.getAuditLogs);
 
+// ── Paramètres paiement multi-providers ──────────────────────────────────────
+const appSettings     = require('../repositories/mysqlAppSettingsRepository');
+const providerRepo    = require('../repositories/mysqlPaymentProviderRepository');
+const paymentService  = require('../utils/paymentService');
+
+// GET /api/v1/admin/payment-providers
+router.get('/payment-providers', async (req, res) => {
+  try {
+    const providers = await providerRepo.findAll();
+    // Mask config — never expose credentials
+    return res.json({ success: true, providers });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/v1/admin/payment-providers/:id/config — config fields masqués
+router.get('/payment-providers/:id/config', async (req, res) => {
+  try {
+    const provider = await providerRepo.findById(req.params.id);
+    if (!provider) return res.status(404).json({ success: false, message: 'Provider introuvable' });
+    // Return masked config (keys present but values hidden)
+    const masked = {};
+    for (const [k, v] of Object.entries(provider.config || {})) {
+      masked[k] = v ? (k.includes('key') || k.includes('secret') || k.includes('password') || k.includes('token')
+        ? '••••••••'
+        : v) : '';
+    }
+    return res.json({ success: true, config: masked, enabled: !!provider.enabled });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/v1/admin/payment-providers/:id
+router.put('/payment-providers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { enabled, config } = req.body;
+
+    const existing = await providerRepo.findById(id);
+    if (!existing) return res.status(404).json({ success: false, message: 'Provider introuvable' });
+
+    // Merge config: only update fields that are not empty/masked
+    const currentConfig = existing.config || {};
+    const newConfig = { ...currentConfig };
+    if (config && typeof config === 'object') {
+      for (const [k, v] of Object.entries(config)) {
+        if (v && v !== '••••••••') newConfig[k] = v; // skip masked values
+      }
+    }
+
+    await providerRepo.updateConfig(id, { enabled, config: newConfig });
+    paymentService.invalidateCaches(id);
+
+    return res.json({ success: true, message: `Provider "${id}" mis à jour.` });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/v1/admin/payment-providers/:id/test
+router.post('/payment-providers/:id/test', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { config: overrideConfig } = req.body;
+
+    // If override config provided, merge with stored (for testing before saving)
+    let testConfig = overrideConfig;
+    if (!testConfig) {
+      const provider = await providerRepo.findById(id);
+      testConfig = provider?.config;
+    } else {
+      // Merge with stored to fill in masked fields
+      const provider = await providerRepo.findById(id);
+      const stored = provider?.config || {};
+      testConfig = { ...stored };
+      for (const [k, v] of Object.entries(overrideConfig)) {
+        if (v && v !== '••••••••') testConfig[k] = v;
+      }
+    }
+
+    const result = await paymentService.testProvider(id, testConfig);
+    return res.json({ success: result.ok, connected: result.ok, message: result.message });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/v1/admin/general-settings (keep existing)
+router.get('/general-settings', async (req, res) => {
+  try {
+    const db = await appSettings.getMany(['admin_email', 'platform_name']);
+    return res.json({
+      success: true,
+      data: {
+        adminEmail:    db.admin_email    || '',
+        platformName:  db.platform_name  || 'VivriMarket',
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/v1/admin/general-settings (keep existing)
+router.put('/general-settings', async (req, res) => {
+  try {
+    const { adminEmail, platformName } = req.body;
+    if (adminEmail !== undefined)    await appSettings.set('admin_email',    adminEmail.trim());
+    if (platformName !== undefined)  await appSettings.set('platform_name',  platformName.trim());
+    return res.json({ success: true, message: 'Paramètres généraux mis à jour.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

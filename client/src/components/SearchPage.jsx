@@ -11,7 +11,7 @@ const CATEGORIES = [
   { value: 'fruits', label: 'Fruits' },
   { value: 'légumes', label: 'Légumes' },
   { value: 'viandes', label: 'Viandes' },
-  { value: 'produits laitiers', label: 'Produits laitiers' },
+  { value: 'produits laitiers', label: 'Denrées laitières' },
   { value: 'céréales', label: 'Céréales' },
   { value: 'épices', label: 'Épices' },
   { value: 'autres', label: 'Autres' },
@@ -104,7 +104,7 @@ const SearchPage = () => {
 
       setProduits(docs.map((p) => ({
         ...p,
-        nom: p.nom || p.name || 'Produit sans nom',
+        nom: p.nom || p.name || 'Denrée sans nom',
         description: p.description || '',
         imageUrl: p.imageUrl || p.image || '',
         prixFormate: `${Number(p.prix || 0).toLocaleString('fr-FR')} FCFA / ${p.unite || 'kg'}`,
@@ -171,7 +171,7 @@ const SearchPage = () => {
   return (
     <div className="category-container">
       <div className="category-header">
-        <h1>Recherche de produits</h1>
+        <h1>Recherche de denrées</h1>
         {pagination.totalProducts > 0 && (
           <span className="product-count">{pagination.totalProducts} résultat(s)</span>
         )}
@@ -181,7 +181,7 @@ const SearchPage = () => {
       <form className="search-bar" onSubmit={handleSearch}>
         <input
           type="text"
-          placeholder="Nom du produit, description, tags..."
+          placeholder="Nom de la denrée, description, tags..."
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           className="search-input"
@@ -210,7 +210,7 @@ const SearchPage = () => {
               </select>
             </div>
             <div className="filter-group">
-              <label>État du produit</label>
+              <label>État de la denrée</label>
               <select value={filters.etat} onChange={(e) => updateFilter('etat', e.target.value)}>
                 <option value="">Tous les états</option>
                 {ETATS.map((e) => (
@@ -303,12 +303,12 @@ const SearchPage = () => {
       ) : !hasActiveSearch(filters) ? (
         <div className="empty-container">
           <p style={{ fontSize: '1.1rem' }}>
-            Entrez un terme ou sélectionnez un filtre pour trouver des produits agricoles.
+            Entrez un terme ou sélectionnez un filtre pour trouver des denrées agricoles.
           </p>
         </div>
       ) : produits.length === 0 ? (
         <div className="empty-container">
-          <p>Aucun produit trouvé pour ces critères.</p>
+          <p>Aucune denrée trouvée pour ces critères.</p>
           <button className="back-button" onClick={handleReset}>Effacer les filtres</button>
         </div>
       ) : (

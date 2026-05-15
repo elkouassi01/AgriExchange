@@ -44,7 +44,7 @@ const MesProduits = () => {
       setProduits(
         produitsData.map((produit) => ({
           id: produit._id || produit.id,
-          nom: produit.nom || produit.name || 'Produit sans nom',
+          nom: produit.nom || produit.name || 'Denrée sans nom',
           categorie: produit.categorie || produit.category || 'Non classe',
           prix: produit.prix || produit.price || 0,
           quantite: produit.quantite || produit.quantity || produit.stock || 0,
@@ -64,7 +64,7 @@ const MesProduits = () => {
         setError('Session expirée. Veuillez vous reconnecter.');
         setTimeout(() => navigate('/login'), 2000);
       } else {
-        setError(err.response?.data?.message || err.message || 'Erreur lors du chargement des produits');
+        setError(err.response?.data?.message || err.message || 'Erreur lors du chargement des denrées');
       }
     } finally {
       setLoading(false);
@@ -97,14 +97,14 @@ const MesProduits = () => {
   };
 
   const handleSupprimerProduit = async (produitId) => {
-    if (!window.confirm('Etes-vous sur de vouloir supprimer ce produit ?')) {
+    if (!window.confirm('Etes-vous sur de vouloir supprimer cette denrée ?')) {
       return;
     }
 
     try {
       await api.delete(`/products/${produitId}`);
       setProduits((prev) => prev.filter((produit) => produit.id !== produitId));
-      alert('Produit supprime avec succes.');
+      alert('Denrée supprimée avec succès.');
     } catch (err) {
       alert(`Erreur lors de la suppression: ${err.response?.data?.message || err.message}`);
     }
@@ -240,7 +240,7 @@ const MesProduits = () => {
       <div className="produits-container">
         <div className="loading-container">
           <div className="loading-spinner"></div>
-          <p>Chargement de vos produits...</p>
+          <p>Chargement de vos denrées...</p>
         </div>
       </div>
     );
@@ -268,7 +268,7 @@ const MesProduits = () => {
    return (
      <div className="produits-container">
        <div className="produits-header">
-         <h1>Mes Produits</h1>
+         <h1>Mes Denrées</h1>
          {/* Masquer le bouton header si empty state (évite doublon) */}
          {produits.length > 0 && (
            <Link to="/ajouter-produit" className="btn-ajouter">
@@ -278,7 +278,7 @@ const MesProduits = () => {
                  <line x1="5" y1="12" x2="19" y2="12"></line>
                </svg>
              </span>
-             Ajouter un produit
+             Ajouter une denrée
            </Link>
          )}
        </div>
@@ -302,7 +302,7 @@ const MesProduits = () => {
           <div className="stat-icon" aria-hidden="true"><IconPackage /></div>
           <div className="stat-info">
             <h3>{produits.length}</h3>
-            <p>Produits total</p>
+            <p>Denrées total</p>
           </div>
         </div>
         <div className="stat-card">
@@ -386,7 +386,7 @@ const MesProduits = () => {
                 className={`btn-sponsor ${produit.isFeatured ? 'btn-sponsor--active' : ''}`}
                 onClick={() => handleToggleSponsor(produit)}
                 disabled={sponsorLoading === produit.id}
-                title={produit.isFeatured ? 'Retirer de la sponsorisation' : 'Sponsoriser ce produit'}
+                title={produit.isFeatured ? 'Retirer de la sponsorisation' : 'Sponsoriser cette denrée'}
               >
                 {sponsorLoading === produit.id
                   ? '…'
@@ -410,10 +410,10 @@ const MesProduits = () => {
       {produits.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">📦</div>
-          <h3>Aucun produit trouve</h3>
-          <p>Commencez par ajouter votre premier produit</p>
+          <h3>Aucune denrée trouvée</h3>
+          <p>Commencez par ajouter votre première denrée</p>
           <Link to="/ajouter-produit" className="btn-primary">
-            Ajouter un produit
+            Ajouter une denrée
           </Link>
         </div>
       )}

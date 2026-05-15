@@ -3,6 +3,8 @@ import './SettingsPage.css';
 import { CircularProgress, IconButton, Tooltip } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import { fetchSystemStatus, sendTestNotification } from '../../services/adminService';
+import api from '../../services/axiosConfig';
+import PaymentProvidersTab from './PaymentProvidersTab';
 
 // ── Helpers ─────────────────────────────────────────────
 const fmtUptime = (s) => {
@@ -45,12 +47,122 @@ const DbCountCard = ({ label, value, color }) => (
   </div>
 );
 
+// ── Composant onglet Général ─────────────────────────────
+const GeneralTab = ({ status }) => {
+  const [adminEmail, setAdminEmail]   = useState('');
+  const [saving, setSaving]           = useState(false);
+  const [msg, setMsg]                 = useState('');
+  const [loaded, setLoaded]           = useState(false);
+
+  useEffect(() => {
+    api.get('/admin/general-settings')
+      .then(r => { setAdminEmail(r.data.data.adminEmail || ''); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true); setMsg('');
+    try {
+      await api.put('/admin/general-settings', { adminEmail });
+      setMsg('Email administrateur mis à jour.');
+      setTimeout(() => setMsg(''), 4000);
+    } catch (e) {
+      setMsg(e.response?.data?.message || 'Erreur.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="set-panel">
+      <div className="set-panel-header">
+        <h2 className="set-panel-title">Informations générales</h2>
+      </div>
+
+      {/* Email admin */}
+      <h3 className="set-section-title">Compte administrateur</h3>
+      <p className="set-section-desc">
+        Cet email est utilisé pour les notifications système et les emails de test.
+      </p>
+      <div className="pay-form" style={{ maxWidth: 420 }}>
+        <div className="pay-field">
+          <label className="pay-label">Email administrateur</label>
+          <input
+            className="pay-input"
+            type="email"
+            value={adminEmail}
+            onChange={e => setAdminEmail(e.target.value)}
+            placeholder="admin@vivrimarket.com"
+            disabled={!loaded}
+          />
+        </div>
+        <div className="pay-actions">
+          <button className="pay-btn-save" onClick={handleSave} disabled={saving || !loaded}>
+            {saving ? 'Enregistrement…' : '💾 Enregistrer'}
+          </button>
+        </div>
+        {msg && (
+          <div className={`set-test-result ${msg.includes('Erreur') ? 'set-test--error' : 'set-test--ok'}`}>
+            {msg}
+          </div>
+        )}
+      </div>
+
+      {/* Infos plateforme */}
+      <h3 className="set-section-title" style={{ marginTop: '28px' }}>Plateforme</h3>
+      <div className="set-config-grid">
+        <div className="set-config-row">
+          <span className="set-config-key">Nom de la plateforme</span>
+          <span className="set-config-val">VivriMarket</span>
+        </div>
+        <div className="set-config-row">
+          <span className="set-config-key">Devise</span>
+          <span className="set-config-val">XOF (Franc CFA)</span>
+        </div>
+        <div className="set-config-row">
+          <span className="set-config-key">Langue par défaut</span>
+          <span className="set-config-val">Français (fr-FR)</span>
+        </div>
+        <div className="set-config-row">
+          <span className="set-config-key">Fuseau horaire</span>
+          <span className="set-config-val">Africa/Abidjan (UTC+0)</span>
+        </div>
+        <div className="set-config-row">
+          <span className="set-config-key">Prestataire de paiement</span>
+          <span className="set-config-val">CinetPay</span>
+        </div>
+        <div className="set-config-row">
+          <span className="set-config-key">Fournisseur base de données</span>
+          <span className="set-config-val">{status?.server ? 'MySQL (mysql2)' : '—'}</span>
+        </div>
+      </div>
+
+      <h3 className="set-section-title" style={{ marginTop: '24px' }}>Formules d'abonnement</h3>
+      <div className="set-plans-grid">
+        {[
+          { name: 'BLEU',     duration: '1 mois',  quota: '1 vue/mois',      color: '#0369a1', bg: '#e0f2fe' },
+          { name: 'GOLD',     duration: '3 mois',  quota: '5 vues/mois',     color: '#b45309', bg: '#fef3c7' },
+          { name: 'PLATINUM', duration: '6 mois',  quota: 'Vues illimitées', color: '#7c3aed', bg: '#ede9fe' },
+        ].map(plan => (
+          <div key={plan.name} className="set-plan-card" style={{ borderTop: `3px solid ${plan.color}` }}>
+            <span className="set-plan-badge" style={{ color: plan.color, background: plan.bg }}>{plan.name}</span>
+            <div className="set-plan-info">
+              <span>⏱ {plan.duration}</span>
+              <span>👁 {plan.quota}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Page ────────────────────────────────────────────────
 const TABS = [
   { id: 'system',        label: 'Système',       emoji: '🖥️' },
   { id: 'notifications', label: 'Notifications',  emoji: '📧' },
+  { id: 'payment',       label: 'Paiement',       emoji: '💳' },
   { id: 'general',       label: 'Général',        emoji: '⚙️' },
 ];
+
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab]     = useState('system');
@@ -179,7 +291,7 @@ const SettingsPage = () => {
                 <DbCountCard label="Utilisateurs"   value={status.mysql?.counts?.users}        color="#6366f1" />
                 <DbCountCard label="Transactions"   value={status.mysql?.counts?.transactions}  color="#16a34a" />
                 <DbCountCard label="Abonnements"    value={status.mysql?.counts?.abonnements}   color="#d97706" />
-                <DbCountCard label="Produits"       value={status.mysql?.counts?.products}      color="#0369a1" />
+                <DbCountCard label="Denrées"        value={status.mysql?.counts?.products}      color="#0369a1" />
               </div>
             </>
           ) : null}
@@ -263,64 +375,11 @@ const SettingsPage = () => {
         </div>
       )}
 
+      {/* ── Tab: Paiement ────────────────────────────── */}
+      {activeTab === 'payment' && <PaymentProvidersTab />}
+
       {/* ── Tab: Général ─────────────────────────────── */}
-      {activeTab === 'general' && (
-        <div className="set-panel">
-          <div className="set-panel-header">
-            <h2 className="set-panel-title">Informations générales</h2>
-          </div>
-
-          <p className="set-section-desc">
-            Ces informations reflètent la configuration actuelle du serveur.
-            Pour les modifier, mettez à jour les variables d'environnement dans <code>.env</code>.
-          </p>
-
-          <h3 className="set-section-title">Plateforme</h3>
-          <div className="set-config-grid">
-            <div className="set-config-row">
-              <span className="set-config-key">Nom de la plateforme</span>
-              <span className="set-config-val">VivriMarket</span>
-            </div>
-            <div className="set-config-row">
-              <span className="set-config-key">Devise</span>
-              <span className="set-config-val">XOF (Franc CFA)</span>
-            </div>
-            <div className="set-config-row">
-              <span className="set-config-key">Langue par défaut</span>
-              <span className="set-config-val">Français (fr-FR)</span>
-            </div>
-            <div className="set-config-row">
-              <span className="set-config-key">Fuseau horaire</span>
-              <span className="set-config-val">Africa/Abidjan (UTC+0)</span>
-            </div>
-            <div className="set-config-row">
-              <span className="set-config-key">Prestataire de paiement</span>
-              <span className="set-config-val">CinetPay</span>
-            </div>
-            <div className="set-config-row">
-              <span className="set-config-key">Fournisseur base de données</span>
-              <span className="set-config-val">{status?.server ? 'MySQL (mysql2)' : '—'}</span>
-            </div>
-          </div>
-
-          <h3 className="set-section-title" style={{ marginTop: '24px' }}>Formules d'abonnement</h3>
-          <div className="set-plans-grid">
-            {[
-              { name: 'BLEU',     duration: '1 mois',  quota: '1 vue/mois',      color: '#0369a1', bg: '#e0f2fe' },
-              { name: 'GOLD',     duration: '3 mois',  quota: '5 vues/mois',     color: '#b45309', bg: '#fef3c7' },
-              { name: 'PLATINUM', duration: '6 mois',  quota: 'Vues illimitées', color: '#7c3aed', bg: '#ede9fe' },
-            ].map(plan => (
-              <div key={plan.name} className="set-plan-card" style={{ borderTop: `3px solid ${plan.color}` }}>
-                <span className="set-plan-badge" style={{ color: plan.color, background: plan.bg }}>{plan.name}</span>
-                <div className="set-plan-info">
-                  <span>⏱ {plan.duration}</span>
-                  <span>👁 {plan.quota}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {activeTab === 'general' && <GeneralTab status={status} />}
     </div>
   );
 };

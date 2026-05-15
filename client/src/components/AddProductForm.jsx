@@ -9,6 +9,7 @@ const AddProductForm = () => {
   const navigate = useNavigate();
   const { user, loading: userLoading, token: contextToken } = useUser();
   const fileInputRef = useRef(null);
+  const datePickerRef = useRef(null);
 
   const [formData, setFormData] = useState({
     nom: "",
@@ -62,6 +63,19 @@ const AddProductForm = () => {
   const handleCertificationsChange = (e) => {
     const arr = e.target.value.split(",").map((c) => c.trim()).filter(Boolean);
     setFormData((prev) => ({ ...prev, certifications: arr }));
+  };
+
+  const isoToDisplay = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return d && m && y ? `${d}/${m}/${y}` : "";
+  };
+
+  const openDatePicker = () => {
+    if (datePickerRef.current) {
+      datePickerRef.current.showPicker?.();
+      datePickerRef.current.focus();
+    }
   };
 
   // ---------- GESTION IMAGE ----------
@@ -156,7 +170,7 @@ const AddProductForm = () => {
     setValidationErrors({});
 
     // validations rapides
-    if (!formData.nom || !formData.prix || !formData.stock || !formData.dateRecolte) {
+    if (!formData.nom || !formData.prix || !formData.stock) {
       setError("Veuillez remplir tous les champs obligatoires.");
       setLoading(false);
       return;
@@ -173,7 +187,7 @@ const AddProductForm = () => {
      }
 
      if (!token) {
-       setError("Vous devez être connecté pour ajouter un produit.");
+       setError("Vous devez être connecté pour ajouter une denrée.");
        setLoading(false);
        return;
      }
@@ -260,7 +274,7 @@ const AddProductForm = () => {
         setError(
           err.response?.data?.message ||
             err.response?.data?.error ||
-            "Erreur lors de l'ajout du produit. Veuillez réessayer."
+            "Erreur lors de l'ajout de la denrée. Veuillez réessayer."
         );
       }
     } finally {
@@ -293,9 +307,9 @@ const AddProductForm = () => {
   return (
     <div className="add-product-form">
       <div className="form-header">
-        <h2>🌱 Ajouter un nouveau produit</h2>
+        <h2>🌱 Ajouter une nouvelle denrée</h2>
         <p className="form-subtitle">
-          Remplissez les informations de votre produit agricole
+          Remplissez les informations de votre denrée agricole
         </p>
       </div>
 
@@ -307,7 +321,7 @@ const AddProductForm = () => {
 
       {success && (
         <div className="alert success">
-          <strong>Succès :</strong> ✅ Produit ajouté avec succès ! Redirection
+          <strong>Succès :</strong> ✅ Denrée ajoutée avec succès ! Redirection
           en cours...
         </div>
       )}
@@ -322,7 +336,7 @@ const AddProductForm = () => {
           <div className="form-grid">
             <div className="form-group">
               <label htmlFor="nom" className="label-required">
-                Nom du produit
+                Nom de la denrée
               </label>
               <input
                 id="nom"
@@ -354,7 +368,7 @@ const AddProductForm = () => {
                 <option value="fruits">Fruits</option>
                 <option value="légumes">Légumes</option>
                 <option value="viandes">Viandes</option>
-                <option value="produits laitiers">Produits laitiers</option>
+                <option value="produits laitiers">Denrées laitières</option>
                 <option value="céréales">Céréales</option>
                 <option value="épices">Épices</option>
                 <option value="autres">Autres</option>
@@ -363,7 +377,7 @@ const AddProductForm = () => {
 
             <div className="form-group">
               <label htmlFor="etat" className="label-required">
-                État du produit
+                État de la denrée
               </label>
               <select
                 id="etat"
@@ -385,14 +399,14 @@ const AddProductForm = () => {
           </div>
 
           <div className="form-group">
-            <label htmlFor="description">Description du produit</label>
+            <label htmlFor="description">Description de la denrée</label>
             <textarea
               id="description"
               name="description"
               className="form-control"
               value={formData.description}
               onChange={handleChange}
-              placeholder="Décrivez votre produit (qualité, variété, méthode de production, particularités...)"
+              placeholder="Décrivez votre denrée (qualité, variété, méthode de production, particularités...)"
               rows="4"
             />
           </div>
@@ -478,19 +492,29 @@ const AddProductForm = () => {
           </div>
           <div className="form-grid">
             <div className="form-group">
-              <label htmlFor="dateRecolte" className="label-required">
+              <label htmlFor="dateRecolte">
                 Date de récolte
               </label>
-              <input
-                id="dateRecolte"
-                name="dateRecolte"
-                type="date"
-                className="form-control"
-                value={formData.dateRecolte}
-                onChange={handleChange}
-                required
-                max={new Date().toISOString().split("T")[0]}
-              />
+              <div className="date-input-wrapper">
+                <input
+                  type="text"
+                  className="form-control date-display"
+                  value={isoToDisplay(formData.dateRecolte)}
+                  placeholder="jj/mm/aaaa"
+                  readOnly
+                  onClick={openDatePicker}
+                />
+                <input
+                  ref={datePickerRef}
+                  id="dateRecolte"
+                  name="dateRecolte"
+                  type="date"
+                  className="date-picker-hidden"
+                  value={formData.dateRecolte}
+                  onChange={handleChange}
+                  max={new Date().toISOString().split("T")[0]}
+                />
+              </div>
               {validationErrors.dateRecolte && (
                 <span className="field-error">⚠️ {validationErrors.dateRecolte}</span>
               )}
@@ -547,22 +571,9 @@ const AddProductForm = () => {
         <div className="form-section">
           <div className="section-header">
             <span className="section-icon">🖼️</span>
-            <h3 className="section-title">Image du produit</h3>
+            <h3 className="section-title">Image de la denrée</h3>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="imageUrl">URL de l'image (optionnel)</label>
-            <input
-              id="imageUrl"
-              name="imageUrl"
-              type="url"
-              className="form-control"
-              value={formData.imageUrl}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-            />
-            <small>Ou téléchargez une image ci-dessous</small>
-          </div>
 
           <div
             className={`image-upload-area ${isDragging ? "dragging" : ""}`}
@@ -698,7 +709,7 @@ const AddProductForm = () => {
                 Ajout en cours...
               </>
             ) : (
-              '✅ Ajouter le produit'
+              '✅ Ajouter la denrée'
             )}
           </button>
 
@@ -707,7 +718,7 @@ const AddProductForm = () => {
             onClick={() => navigate("/mes-produits")}
             className="btn btn-secondary"
           >
-            ↩️ Retour à mes produits
+            ↩️ Retour à mes denrées
           </button>
         </div>
 
