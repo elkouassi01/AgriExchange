@@ -121,9 +121,11 @@ function NavBar() {
           Forfaits
         </NavLink>
 
-        <NavLink to="/carte" icon={<Map size={22} color='#16a34a' />} onClick={closeMenu}>
-          Carte
-        </NavLink>
+        {user?.role === 'consommateur' && (
+          <NavLink to="/carte" icon={<Map size={22} color='#16a34a' />} onClick={closeMenu}>
+            Carte
+          </NavLink>
+        )}
 
         {/* Messages — visible uniquement si connecté */}
         {user && (
