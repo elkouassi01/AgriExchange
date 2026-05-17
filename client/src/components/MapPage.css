@@ -320,6 +320,45 @@
 }
 .mp-card__count svg { color: #16a34a; }
 
+/* ── Paywall ── */
+.mp-paywall {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  max-width: 480px;
+  margin: 2rem auto;
+}
+.mp-paywall__icon { color: #94a3b8; }
+.mp-paywall__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+.mp-paywall__desc {
+  font-size: 0.95rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.6;
+}
+.mp-paywall__hint {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+.mp-paywall__cta {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  padding: 0.65rem 1.5rem;
+}
+
 /* ── Empty state ── */
 .mp-empty {
   text-align: center;

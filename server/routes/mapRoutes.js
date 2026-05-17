@@ -17,9 +17,47 @@ const haversine = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+// GET /api/v1/map/access — vérifie si le consommateur connecté a déjà payé
+router.get('/access', protect, async (req, res) => {
+  if (req.user.role !== 'consommateur') {
+    return res.status(403).json({ hasAccess: false, reason: 'role' });
+  }
+  try {
+    const pool = getMysqlPool();
+    const [rows] = await pool.query(
+      `SELECT COUNT(*) AS cnt FROM contact_requests
+       WHERE (buyer_email = ? OR buyer_phone = ?)
+         AND status IN ('pending','responded')`,
+      [req.user.email || '', req.user.contact || '']
+    );
+    const hasAccess = parseInt(rows[0]?.cnt, 10) > 0;
+    return res.json({ hasAccess });
+  } catch (err) {
+    console.error('[map/access]', err);
+    return res.status(500).json({ hasAccess: false, reason: 'error' });
+  }
+});
+
 // GET /api/v1/map/farmers
-// Retourne tous les agriculteurs géolocalisés avec leurs produits (sans contact)
-router.get('/farmers', async (req, res) => {
+// Retourne tous les agriculteurs géolocalisés (consommateur ayant payé uniquement)
+router.get('/farmers', protect, async (req, res) => {
+  if (req.user.role !== 'consommateur') {
+    return res.status(403).json({ success: false, message: 'Accès réservé aux consommateurs.' });
+  }
+  // Vérification paiement
+  try {
+    const pool2 = getMysqlPool();
+    const [cr] = await pool2.query(
+      `SELECT COUNT(*) AS cnt FROM contact_requests
+       WHERE (buyer_email = ? OR buyer_phone = ?)
+         AND status IN ('pending','responded')`,
+      [req.user.email || '', req.user.contact || '']
+    );
+    if (parseInt(cr[0]?.cnt, 10) === 0) {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux consommateurs ayant effectué un paiement.', paymentRequired: true });
+    }
+  } catch (_) { /* en cas d'erreur DB, on laisse passer pour éviter de bloquer */ }
+
   try {
     const pool = getMysqlPool();
     const userLat = req.query.lat ? parseFloat(req.query.lat) : null;

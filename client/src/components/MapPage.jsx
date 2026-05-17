@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Link } from 'react-router-dom';
-import { Navigation, MapPin, Leaf, Filter, X, Loader } from 'lucide-react';
+import { Navigation, MapPin, Leaf, Filter, X, Loader, Lock } from 'lucide-react';
 import api from '../services/axiosConfig';
 import './MapPage.css';
 
@@ -48,6 +48,15 @@ const MapPage = () => {
   const [radius, setRadius]         = useState(20);
   const [showFilter, setShowFilter] = useState(false);
   const [mapCenter, setMapCenter]   = useState(null);
+  const [accessChecked, setAccessChecked] = useState(false);
+  const [hasAccess, setHasAccess]         = useState(false);
+
+  useEffect(() => {
+    api.get('/map/access')
+      .then(res => { setHasAccess(res.data.hasAccess === true); })
+      .catch(() => { setHasAccess(false); })
+      .finally(() => setAccessChecked(true));
+  }, []);
 
   const fetchFarmers = useCallback(async (lat, lng, km) => {
     setLoading(true);
@@ -99,6 +108,39 @@ const MapPage = () => {
     setMapCenter(COTE_IVOIRE_CENTER);
     fetchFarmers();
   };
+
+  if (!accessChecked) {
+    return (
+      <div className="mp-container">
+        <div className="mp-empty">
+          <Loader size={32} className="mp-spin" />
+          <p>Vérification de l'accès…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <div className="mp-container">
+        <div className="mp-paywall">
+          <div className="mp-paywall__icon"><Lock size={48} strokeWidth={1.5} /></div>
+          <h2 className="mp-paywall__title">Accès réservé</h2>
+          <p className="mp-paywall__desc">
+            La carte des agriculteurs est disponible uniquement pour les consommateurs
+            ayant déjà effectué un paiement pour contacter un agriculteur.
+          </p>
+          <p className="mp-paywall__hint">
+            Trouvez une denrée qui vous intéresse, payez pour obtenir le contact du vendeur,
+            et débloquez automatiquement l'accès à la carte.
+          </p>
+          <Link to="/produits" className="mp-btn mp-btn--primary mp-paywall__cta">
+            <Leaf size={16} /> Découvrir les denrées
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mp-container">

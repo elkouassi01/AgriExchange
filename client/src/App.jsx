@@ -110,7 +110,14 @@ const AppContent = () => {
         <Route path="/Noservice" element={<NoservicePage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
         <Route path="/recherche" element={<SearchPage />} />
-        <Route path="/carte" element={<MapPage />} />
+        <Route
+          path="/carte"
+          element={
+            <ProtectedRoute roles={['consommateur']}>
+              <MapPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/mes-produits" element={<MesProduits />} />
         <Route path="/abonne" element={<GestionAbonnes />} />
