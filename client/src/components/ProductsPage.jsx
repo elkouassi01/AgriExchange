@@ -137,13 +137,15 @@ export default function ProductsPage() {
   const [sidebarOpen, setSidebarOpen]   = useState(false);
 
   const fetchProduits = useCallback(async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       setLoading(true);
       setError(null);
 
       const [prodRes, catRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/products?limit=100&sortBy=createdAt&sortOrder=desc`),
-        fetch(`${API_BASE_URL}/categories`),
+        fetch(`${API_BASE_URL}/products?limit=100&sortBy=createdAt&sortOrder=desc`, { signal: controller.signal }),
+        fetch(`${API_BASE_URL}/categories`, { signal: controller.signal }),
       ]);
 
       const prodData = await prodRes.json();
@@ -170,10 +172,15 @@ export default function ProductsPage() {
         setOpenGroups(defaults);
       }
     } catch (err) {
-      setError(err.message.includes('Failed to fetch')
-        ? 'Impossible de joindre le serveur.'
-        : err.message);
+      if (err.name === 'AbortError') {
+        setError('Le serveur met trop de temps à répondre. Vérifiez votre connexion.');
+      } else {
+        setError(err.message.includes('Failed to fetch')
+          ? 'Impossible de joindre le serveur.'
+          : err.message);
+      }
     } finally {
+      clearTimeout(timeout);
       setLoading(false);
     }
   }, []);
