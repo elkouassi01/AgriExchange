@@ -4,7 +4,7 @@ import {
   PlusCircle, Package, Users, UserCircle,
   Star, Calendar, CheckCircle, AlertCircle,
   MapPin, Sprout, TrendingUp, Zap, RefreshCw, X,
-  Eye, MessageSquare, Banknote, BarChart2, ShoppingBag, MapPin,
+  Eye, MessageSquare, Banknote, BarChart2, ShoppingBag,
 } from 'lucide-react';
 import './FarmerDashboard.css';
 import { useUser } from '../contexts/UserContext';
