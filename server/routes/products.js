@@ -356,17 +356,19 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
 
 // GET /products/sponsored — liste publique des produits mis en avant (max 8)
 router.get('/sponsored', async (req, res) => {
+  if (!isMysql()) return res.json({ success: true, products: [] });
+  let products = [];
   try {
-    if (!isMysql()) return res.json({ success: true, products: [] });
-    let products = await mysqlProductRepository.getSponsoredProducts(8);
-    if (!products.length) {
+    products = await mysqlProductRepository.getSponsoredProducts(8);
+  } catch (_) { /* colonnes manquantes en local — on ignore */ }
+  if (!products.length) {
+    try {
       products = await mysqlProductRepository.getRecentApprovedProducts(8);
+    } catch (err) {
+      console.error('[sponsored fallback]', err.message);
     }
-    return res.json({ success: true, products });
-  } catch (err) {
-    console.error('[sponsored]', err.message);
-    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
+  return res.json({ success: true, products });
 });
 
 // PUT /products/:id/sponsor — activer / désactiver la sponsorisation

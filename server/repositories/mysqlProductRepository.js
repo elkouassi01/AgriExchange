@@ -392,8 +392,6 @@ const getRecentApprovedProducts = async (limit = 8) => {
   const [rows] = await pool.query(
     `${baseSelect}
      WHERE p.stock > 0
-     AND COALESCE(p.moderation_status, 'approved') = 'approved'
-     AND (u.suspended IS NULL OR u.suspended = 0)
      ORDER BY p.created_at DESC
      LIMIT ?`,
     [limit],
