@@ -96,6 +96,7 @@ body {
   border: 1.8px solid var(--border);
   border-radius: var(--radius);
   font-size: 1rem;
+  color: #111;
   transition: border-color var(--transition-speed), box-shadow var(--transition-speed), transform .08s;
   font-family: inherit;
   resize: vertical;
@@ -246,7 +247,7 @@ button:disabled {
 }
 
 .react-select__single-value {
-  color: var(--text-dark);
+  color: #111;
   font-weight: 600;
 }
 
@@ -266,6 +267,10 @@ button:disabled {
 .react-select__option {
   padding: 8px 12px;
   cursor: pointer;
+  color: #111;
+}
+.react-select__input input {
+  color: #111 !important;
 }
 .react-select__option--is-focused {
   background: rgba(46, 204, 113, 0.06);
