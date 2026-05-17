@@ -44,7 +44,7 @@ const VerifyOtp = () => {
         login(res.data.utilisateur, res.data.token);
         setTimeout(() => navigate(getRoleRedirect(res.data.utilisateur.role), { replace: true }), 1500);
       } else {
-        setTimeout(() => navigate("/login"), 1500);
+        setTimeout(() => navigate("/connexion"), 1500);
       }
     } catch (error) {
       setMessage(

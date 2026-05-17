@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './UsersPage.css';
 import { fetchUsers, updateUserStatus, deleteUser, createUser, changeUserRole, suspendUser } from '../../services/adminService';
 import {
@@ -16,6 +17,7 @@ import {
   LockOpen as UnblockIcon,
   ToggleOn as ActivateIcon,
   ToggleOff as DeactivateIcon,
+  Edit as EditIcon,
 } from '@mui/icons-material';
 
 const ROLE_CONFIG = {
@@ -55,6 +57,7 @@ const UsersPage = () => {
   const emptyForm = { nom: '', email: '', contact: '', motDePasse: '', role: 'consommateur', fermeNom: '', localisation: '' };
   const [createForm, setCreateForm]   = useState(emptyForm);
 
+  const navigate = useNavigate();
   const searchDebounce = useRef(null);
 
   const loadUsers = async (p, role, search) => {
@@ -302,6 +305,11 @@ const UsersPage = () => {
                     </td>
                     {/* Actions */}
                     <td className="up-cell up-cell--actions">
+                      <Tooltip title="Modifier les informations">
+                        <IconButton size="small" onClick={() => navigate(`/admin/users/${u.id}/edit`)} sx={{ color: '#16a34a' }}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="Détails / Changer rôle">
                         <IconButton size="small" onClick={() => setDetailUser(u)} sx={{ color: '#64748b' }}>
                           <InfoOutlined fontSize="small" />

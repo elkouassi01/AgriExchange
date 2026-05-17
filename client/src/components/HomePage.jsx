@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import './HomePage.css';
 import Footer from './Footer';
 import PromoBanner from './PromoBanner';
-import Fireworks from '../components/Fireworks';
 import api from '../services/axiosConfig';
 
 function HomePage() {
@@ -50,7 +49,6 @@ function HomePage() {
 
   return (
     <div className="home-container">
-      <Fireworks />
       <PromoBanner />
 
       <section className="hero">

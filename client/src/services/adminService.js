@@ -151,6 +151,39 @@ export const fetchSystemStatus = async () => {
   }
 };
 
+// 🔹 Récupère un utilisateur par son ID
+export const getUserById = async (userId) => {
+  try {
+    const response = await api.get(`/admin/users/${userId}`);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Utilisateur introuvable";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Met à jour les informations d'un utilisateur (admin)
+export const updateUserInfo = async (userId, data) => {
+  try {
+    const response = await api.put(`/admin/users/${userId}`, data);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Échec de la mise à jour";
+    throw new Error(message);
+  }
+};
+
+// 🔹 Réinitialise le mot de passe d'un utilisateur (admin)
+export const resetUserPassword = async (userId, nouveauMotDePasse) => {
+  try {
+    const response = await api.put(`/admin/users/${userId}/reset-password`, { nouveauMotDePasse });
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.message || "Échec de la réinitialisation";
+    throw new Error(message);
+  }
+};
+
 // 🔹 Envoyer un email de test à l'admin connecté
 export const sendTestNotification = async () => {
   try {

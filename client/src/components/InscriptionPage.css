@@ -566,3 +566,33 @@ a:hover {
   justify-content: center;
   gap: 8px;
 }
+
+/* Champs mot de passe avec bouton œil */
+.password-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input-container input {
+  padding-right: 3rem;
+  width: 100%;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.75rem;
+  background: none !important;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle:hover {
+  background: none !important;
+  color: var(--primary-dark);
+}

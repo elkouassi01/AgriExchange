@@ -238,6 +238,8 @@ const updateUser = async (req, res) => {
       fermeNom: 'ferme_nom',
       localisation: 'localisation',
       typeExploitation: 'type_exploitation',
+      surface: 'surface',
+      description: 'description',
       estActif: 'est_actif',
       isVerified: 'is_verified',
     };
@@ -271,6 +273,37 @@ const updateUser = async (req, res) => {
   } catch (error) {
     console.error('Update user error:', error);
     res.status(500).json({ code: 'USER_UPDATE_ERROR', message: "Échec de mise à jour de l'utilisateur" });
+  }
+};
+
+const resetUserPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nouveauMotDePasse } = req.body;
+
+    if (!nouveauMotDePasse || nouveauMotDePasse.length < 6) {
+      return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+    }
+
+    const user = await mysqlUserRepository.findUserById(id);
+    if (!user) {
+      return res.status(404).json({ code: 'USER_NOT_FOUND', message: 'Utilisateur non trouvé' });
+    }
+
+    const hashed = await bcrypt.hash(nouveauMotDePasse, 12);
+    await mysqlUserRepository.updateUserPassword(id, hashed);
+
+    await auditLog.log({
+      adminId: req.user.id,
+      action: 'RESET_USER_PASSWORD',
+      targetId: id,
+      details: `Mot de passe réinitialisé pour ${user.email}`,
+    }).catch(() => {});
+
+    return res.json({ success: true, message: 'Mot de passe réinitialisé avec succès.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ message: 'Erreur lors de la réinitialisation du mot de passe' });
   }
 };
 
@@ -694,6 +727,7 @@ module.exports = {
   getUsers,
   getUserById,
   updateUser,
+  resetUserPassword,
   updateUserRole,
   deleteUser,
   getUserActivity,

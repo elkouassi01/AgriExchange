@@ -96,6 +96,8 @@ const InscriptionPage = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [showMotDePasse, setShowMotDePasse] = useState(false);
+  const [showConfirmerMotDePasse, setShowConfirmerMotDePasse] = useState(false);
 
   const { callingCodes, loading: loadingCodes, error: errorCodes } = useCallingCodes();
 
@@ -394,29 +396,49 @@ const InscriptionPage = () => {
 
           <div className="form-group">
             <label htmlFor="motDePasse">Mot de passe *</label>
-            <input
-              id="motDePasse"
-              type="password"
-              name="motDePasse"
-              placeholder="Minimum 6 caractères"
-              value={formData.motDePasse}
-              onChange={handleChange}
-              className={errors.motDePasse ? 'error' : ''}
-            />
+            <div className="password-input-container">
+              <input
+                id="motDePasse"
+                type={showMotDePasse ? 'text' : 'password'}
+                name="motDePasse"
+                placeholder="Minimum 6 caractères"
+                value={formData.motDePasse}
+                onChange={handleChange}
+                className={errors.motDePasse ? 'error' : ''}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowMotDePasse((v) => !v)}
+                aria-label={showMotDePasse ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
+                {showMotDePasse ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
             {errors.motDePasse && <p className="error-message">{errors.motDePasse}</p>}
           </div>
 
           <div className="form-group">
             <label htmlFor="confirmerMotDePasse">Confirmer le mot de passe *</label>
-            <input
-              id="confirmerMotDePasse"
-              type="password"
-              name="confirmerMotDePasse"
-              placeholder="Répétez votre mot de passe"
-              value={formData.confirmerMotDePasse}
-              onChange={handleChange}
-              className={errors.confirmerMotDePasse ? 'error' : ''}
-            />
+            <div className="password-input-container">
+              <input
+                id="confirmerMotDePasse"
+                type={showConfirmerMotDePasse ? 'text' : 'password'}
+                name="confirmerMotDePasse"
+                placeholder="Répétez votre mot de passe"
+                value={formData.confirmerMotDePasse}
+                onChange={handleChange}
+                className={errors.confirmerMotDePasse ? 'error' : ''}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowConfirmerMotDePasse((v) => !v)}
+                aria-label={showConfirmerMotDePasse ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
+                {showConfirmerMotDePasse ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
             {errors.confirmerMotDePasse && <p className="error-message">{errors.confirmerMotDePasse}</p>}
           </div>
         </div>

@@ -111,8 +111,10 @@ router.post('/verify-otp', verifyOtpRateLimit, async (req, res) => {
       return res.status(400).json({ message: 'OTP expire' });
     }
 
+    const userId = user.id || user._id;
+
     if (isMysql()) {
-      await mysqlUserRepository.markUserVerified(user.id || user._id);
+      await mysqlUserRepository.markUserVerified(userId);
     } else {
       user.isVerified = true;
       user.otp = null;
@@ -120,7 +122,29 @@ router.post('/verify-otp', verifyOtpRateLimit, async (req, res) => {
       await user.save();
     }
 
-    return res.status(200).json({ message: 'Compte verifie avec succes !' });
+    // Générer un token JWT et connecter l'utilisateur automatiquement
+    const token = jwt.sign(
+      { id: userId, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '1h' }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      sameSite: 'Lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const verifiedUser = isMysql()
+      ? await mysqlUserRepository.findUserById(userId)
+      : user;
+
+    return res.status(200).json({
+      message: 'Compte verifie avec succes !',
+      token,
+      utilisateur: sanitizeUser(verifiedUser),
+    });
   } catch (error) {
     console.error('[Verify OTP] Erreur serveur :', error);
     return res.status(500).json({ message: 'Erreur serveur' });

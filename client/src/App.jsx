@@ -50,6 +50,7 @@ import SettingsPage from './pages/admin/SettingsPage';
 import AuditLogPage from './pages/admin/AuditLogPage';
 import AdminModerationPage from './components/AdminModerationPage';
 import CategoriesPage from './pages/admin/CategoriesPage';
+import EditUserPage from './pages/admin/EditUserPage';
 
 // 🧠 Contextes
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -161,6 +162,7 @@ const AppContent = () => {
             <Route path="audit" element={<AuditLogPage />} />
             <Route path="moderation" element={<AdminModerationPage />} />
             <Route path="categories" element={<CategoriesPage />} />
+            <Route path="users/:id/edit" element={<EditUserPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
         </Route>

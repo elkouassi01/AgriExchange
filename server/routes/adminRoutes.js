@@ -135,6 +135,13 @@ router.put('/users/:id/suspend',
   adminController.suspendUser
 );
 
+router.put('/users/:id/reset-password',
+  validateId,
+  body('nouveauMotDePasse').isLength({ min: 6 }).withMessage('Minimum 6 caractères'),
+  handleValidationErrors,
+  adminController.resetUserPassword
+);
+
 router.get('/users/:id/activity',
   validateId,
   adminController.getUserActivity
