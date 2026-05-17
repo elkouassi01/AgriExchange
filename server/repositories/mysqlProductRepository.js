@@ -387,6 +387,20 @@ const getSponsoredProducts = async (limit = 8) => {
   }
 };
 
+const getRecentApprovedProducts = async (limit = 8) => {
+  const pool = getMysqlPool();
+  const [rows] = await pool.query(
+    `${baseSelect}
+     WHERE p.stock > 0
+     AND COALESCE(p.moderation_status, 'approved') = 'approved'
+     AND (u.suspended IS NULL OR u.suspended = 0)
+     ORDER BY p.created_at DESC
+     LIMIT ?`,
+    [limit],
+  );
+  return rows.map(normalizeProductRow);
+};
+
 const toggleSponsor = async (productId, sellerId, activate) => {
   const pool = getMysqlPool();
   const [result] = await pool.query(
@@ -495,6 +509,7 @@ module.exports = {
   deleteProductImage,
   getSellerStats,
   getSponsoredProducts,
+  getRecentApprovedProducts,
   toggleSponsor,
   countSponsoredBySeller,
 };

@@ -358,7 +358,10 @@ router.get('/my-products', protect, authorize(['agriculteur', 'farmer']), async 
 router.get('/sponsored', async (req, res) => {
   try {
     if (!isMysql()) return res.json({ success: true, products: [] });
-    const products = await mysqlProductRepository.getSponsoredProducts(8);
+    let products = await mysqlProductRepository.getSponsoredProducts(8);
+    if (!products.length) {
+      products = await mysqlProductRepository.getRecentApprovedProducts(8);
+    }
     return res.json({ success: true, products });
   } catch (err) {
     console.error('[sponsored]', err.message);

@@ -120,6 +120,7 @@ const ProductImage = ({ src, alt }) => {
       src={imgSrc}
       alt={alt}
       className="product-image"
+      loading="lazy"
       onError={() => setImgSrc(DEFAULT_IMAGE)}
     />
   );
@@ -141,7 +142,7 @@ export default function ProductsPage() {
       setError(null);
 
       const [prodRes, catRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/products?limit=500&sortBy=createdAt&sortOrder=desc`),
+        fetch(`${API_BASE_URL}/products?limit=100&sortBy=createdAt&sortOrder=desc`),
         fetch(`${API_BASE_URL}/categories`),
       ]);
 
@@ -164,7 +165,6 @@ export default function ProductsPage() {
         const catData = await catRes.json();
         const tree = catData.success ? catData.data : [];
         setCategoryTree(tree);
-        // Ouvre tous les groupes parents par défaut
         const defaults = {};
         tree.forEach((g) => { defaults[g.id] = true; });
         setOpenGroups(defaults);
