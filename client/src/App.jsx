@@ -26,6 +26,7 @@ import ForgotPassword from './components/ForgotPassword';
 import SearchPage from './components/SearchPage';
 import ApproposPage from './components/Apropo';
 import NoservicePage from './components/Noservices';
+import MapPage from './components/MapPage';
 import VerifyOtp from './components/VerifyOtp';
 
 // 👨‍🌾 Agriculteur
@@ -109,6 +110,7 @@ const AppContent = () => {
         <Route path="/Noservice" element={<NoservicePage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPassword />} />
         <Route path="/recherche" element={<SearchPage />} />
+        <Route path="/carte" element={<MapPage />} />
         <Route path="/verify-otp" element={<VerifyOtp />} />
         <Route path="/mes-produits" element={<MesProduits />} />
         <Route path="/abonne" element={<GestionAbonnes />} />

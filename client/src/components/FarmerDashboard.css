@@ -888,3 +888,47 @@
   .fd-perf-grid   { grid-template-columns: repeat(2, 1fr); }
   .fd-catbar__label { width: 80px; }
 }
+
+/* ── Section localisation carte ── */
+.fd-location-card {
+  background: #0d2318;
+  border: 1px solid #1a3a28;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.fd-location-hint {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.fd-location-status {
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0;
+}
+.fd-location-status--ok  { color: #4ade80; }
+.fd-location-status--err { color: #f87171; }
+
+.fd-location-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.fd-location-btn:hover:not(:disabled) { background: #15803d; }
+.fd-location-btn:disabled { opacity: 0.6; cursor: not-allowed; }

@@ -4,7 +4,7 @@ import {
   PlusCircle, Package, Users, UserCircle,
   Star, Calendar, CheckCircle, AlertCircle,
   MapPin, Sprout, TrendingUp, Zap, RefreshCw, X,
-  Eye, MessageSquare, Banknote, BarChart2, ShoppingBag,
+  Eye, MessageSquare, Banknote, BarChart2, ShoppingBag, MapPin,
 } from 'lucide-react';
 import './FarmerDashboard.css';
 import { useUser } from '../contexts/UserContext';
@@ -45,6 +45,8 @@ const FarmerDashboard = () => {
   const [loadingAbonnement, setLoadingAbonnement] = useState(true);
 
   // Modal renouvellement
+  const [locStatus, setLocStatus] = useState('');
+  const [locLoading, setLocLoading] = useState(false);
   const [renewModal, setRenewModal] = useState(false);
   const [selectedFormule, setSelectedFormule] = useState(null);
   const [renewLoading, setRenewLoading] = useState(false);
@@ -368,6 +370,49 @@ const FarmerDashboard = () => {
       ) : (
         <p className="fd-perf-empty">Aucune statistique disponible pour le moment.</p>
       )}
+
+      {/* ── Section Ma position ── */}
+      <div className="fd-location-card">
+        <p className="fd-section-label">
+          <MapPin size={14} strokeWidth={2} /> Ma position sur la carte
+        </p>
+        <p className="fd-location-hint">
+          Partagez votre position pour apparaître sur la carte des agriculteurs et être trouvé par les consommateurs proches.
+        </p>
+        {locStatus && (
+          <p className={`fd-location-status ${locStatus.includes('✓') ? 'fd-location-status--ok' : 'fd-location-status--err'}`}>
+            {locStatus}
+          </p>
+        )}
+        <button
+          className="fd-location-btn"
+          disabled={locLoading}
+          onClick={() => {
+            if (!navigator.geolocation) return setLocStatus('Géolocalisation non supportée par votre navigateur.');
+            setLocLoading(true);
+            setLocStatus('');
+            navigator.geolocation.getCurrentPosition(
+              async ({ coords }) => {
+                try {
+                  await api.put('/map/location', { latitude: coords.latitude, longitude: coords.longitude });
+                  setLocStatus('✓ Position enregistrée avec succès !');
+                } catch {
+                  setLocStatus('Erreur lors de l\'enregistrement de la position.');
+                } finally {
+                  setLocLoading(false);
+                }
+              },
+              () => {
+                setLocLoading(false);
+                setLocStatus('Position refusée. Autorisez la géolocalisation dans votre navigateur.');
+              }
+            );
+          }}
+        >
+          <MapPin size={15} />
+          {locLoading ? 'Localisation…' : 'Partager ma position'}
+        </button>
+      </div>
 
       {/* ── CTA si pas d'abonnement ── */}
       {!abonnement?.formule && !loadingAbonnement && (

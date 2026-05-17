@@ -4,6 +4,8 @@ const { getMysqlPool } = require('../config/mysql');
 const REQUIRED_COLUMNS = [
   { table: 'users',    column: 'description',        definition: 'TEXT NULL' },
   { table: 'users',    column: 'surface',             definition: 'VARCHAR(100) NULL' },
+  { table: 'users',    column: 'latitude',            definition: 'DECIMAL(10,8) NULL' },
+  { table: 'users',    column: 'longitude',           definition: 'DECIMAL(11,8) NULL' },
   { table: 'products', column: 'paid_sponsor_until',  definition: 'DATETIME NULL' },
   { table: 'products', column: 'moderation_status',   definition: "ENUM('pending','approved','rejected') NOT NULL DEFAULT 'pending'" },
   { table: 'products', column: 'moderation_note',     definition: 'TEXT NULL' },

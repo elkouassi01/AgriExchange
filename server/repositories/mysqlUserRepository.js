@@ -17,6 +17,8 @@ const mapUserRow = (row) => {
     surface: row.surface,
     description: row.description,
     photo: row.photo || null,
+    latitude: row.latitude ? parseFloat(row.latitude) : null,
+    longitude: row.longitude ? parseFloat(row.longitude) : null,
     otp: row.otp,
     otpExpire: row.otp_expire,
     isVerified: Boolean(row.is_verified),
@@ -257,6 +259,14 @@ const updateUserPassword = async (id, hashedPassword) => {
   );
 };
 
+const updateUserLocation = async (id, latitude, longitude) => {
+  const pool = getMysqlPool();
+  await pool.query(
+    'UPDATE users SET latitude = ?, longitude = ?, updated_at = NOW() WHERE id = ?',
+    [latitude, longitude, id]
+  );
+};
+
 const getAdmins = async () => {
   const pool = getMysqlPool();
   const [rows] = await pool.query(
@@ -282,4 +292,5 @@ module.exports = {
   deleteUser,
   getAdmins,
   updateUserPassword,
+  updateUserLocation,
 };

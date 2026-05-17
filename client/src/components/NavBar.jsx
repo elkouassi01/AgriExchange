@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '../contexts/UserContext';
 import { useSocket } from '../contexts/SocketContext';
-import { Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Sprout, Search, MessageSquare } from 'lucide-react';
+import { Menu, X, HandCoins, Home, Leaf, User, LogIn, LogOut, Sprout, Search, MessageSquare, Map } from 'lucide-react';
 import api from '../services/axiosConfig';
 import './NavBar.css';
 
@@ -119,6 +119,10 @@ function NavBar() {
 
         <NavLink to="/offres" icon={<HandCoins size={22} fill='gold' />} onClick={closeMenu}>
           Forfaits
+        </NavLink>
+
+        <NavLink to="/carte" icon={<Map size={22} color='#16a34a' />} onClick={closeMenu}>
+          Carte
         </NavLink>
 
         {/* Messages — visible uniquement si connecté */}
