@@ -48,7 +48,7 @@ const getEnabledProviders = async () => {
 // Invalide les caches de token (après mise à jour des credentials)
 const invalidateCaches = (providerId) => {
   if (providerId === 'cinetpay' || !providerId) {
-    require('./providers/cinetpay').invalidateCache?.();
+    require('./providers/cinetpay').invalidateTokenCache?.();
   }
 };
 

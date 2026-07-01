@@ -1,120 +1,161 @@
-// Nouvelle API CinetPay — credentials configurables via admin (DB) ou .env (fallback)
-// Clé sk_live_* → https://api.cinetpay.co  |  sk_test_* → https://api.cinetpay.net
-
+// CinetPay v1 via SDK officiel cinetpay-js
+// Remplace la gestion manuelle JWT par le SDK (token auto-refresh, validation, logs)
+const { CinetPayClient, AuthenticationError, ApiError } = require('cinetpay-js');
 const settings = require('../repositories/mysqlAppSettingsRepository');
 
-// Cache JWT : { token, expiresAt }
-let _tokenCache = null;
+// Cache du client SDK (token géré en interne par le SDK)
+let _clientCache = null;
+let _clientCfgHash = '';
 
-// Charge les credentials depuis la DB, fallback sur .env
+function cfgHash(cfg) {
+  return `${cfg.apikey}|${cfg.country}|${cfg.baseUrl}`;
+}
+
+// NOTE : le préfixe sk_live_/sk_test_ de la clé ne reflète pas toujours l'environnement réel
+// du compte marchand CinetPay. On pilote donc l'URL via CINETPAY_ENV explicitement.
 async function getCfg() {
-  let apikey, password, country, enabled;
+  let apikey, password, country, enabled, env;
   try {
     const db = await settings.getMany([
-      'cinetpay_apikey', 'cinetpay_password', 'cinetpay_country', 'cinetpay_enabled',
+      'cinetpay_apikey', 'cinetpay_password', 'cinetpay_country', 'cinetpay_enabled', 'cinetpay_env',
     ]);
     apikey   = db.cinetpay_apikey    || process.env.CINETPAY_APIKEY;
     password = db.cinetpay_password  || process.env.CINETPAY_API_PASSWORD;
     country  = db.cinetpay_country   || process.env.CINETPAY_COUNTRY || 'CI';
-    enabled  = db.cinetpay_enabled !== 'false'; // true par défaut
+    enabled  = db.cinetpay_enabled !== 'false';
+    env      = db.cinetpay_env       || process.env.CINETPAY_ENV || 'production';
   } catch {
-    // DB pas encore dispo (premier démarrage) → env vars
     apikey   = process.env.CINETPAY_APIKEY;
     password = process.env.CINETPAY_API_PASSWORD;
     country  = process.env.CINETPAY_COUNTRY || 'CI';
     enabled  = true;
+    env      = process.env.CINETPAY_ENV || 'production';
   }
-  const baseUrl = apikey?.startsWith('sk_live_')
-    ? 'https://api.cinetpay.co'
-    : 'https://api.cinetpay.net';
-  return { apikey, password, country, baseUrl, enabled };
+  const baseUrl = env === 'sandbox'
+    ? 'https://api.cinetpay.net'
+    : 'https://api.cinetpay.co';
+  return { apikey, password, country, baseUrl, enabled, env };
 }
 
-async function getToken() {
-  if (_tokenCache && Date.now() < _tokenCache.expiresAt) return _tokenCache.token;
+async function getClient() {
+  const cfg = await getCfg();
+  const hash = cfgHash(cfg);
 
-  const { apikey, password, baseUrl } = await getCfg();
-  if (!apikey || !password) throw new Error('CinetPay : clé API ou mot de passe non configuré');
+  if (_clientCache && _clientCfgHash === hash) {
+    return _clientCache;
+  }
 
-  const res = await fetch(`${baseUrl}/v1/oauth/login`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ api_key: apikey, api_password: password }),
+  if (!cfg.apikey || !cfg.password) {
+    throw new Error('CinetPay : clé API ou mot de passe non configuré');
+  }
+
+  const client = new CinetPayClient({
+    credentials: {
+      [cfg.country]: {
+        apiKey: cfg.apikey,
+        apiPassword: cfg.password,
+      },
+    },
+    baseUrl: cfg.baseUrl,
   });
-  const data = await res.json();
-  const token = data.token ?? data.data?.token;
-  if (!token) throw new Error(`CinetPay auth échoué : ${JSON.stringify(data)}`);
 
-  _tokenCache = { token, expiresAt: Date.now() + 23 * 60 * 60 * 1000 };
-  return token;
+  _clientCache = client;
+  _clientCfgHash = hash;
+  return client;
 }
 
-// Invalide le cache JWT (à appeler quand les credentials changent)
-function invalidateTokenCache() {
-  _tokenCache = null;
+// L'API v1 n'accepte que ces 3 canaux (l'ancien "REDIRECT" de la v2 n'existe plus).
+// PUSH + paymentUrl/mustBeRedirected reproduit le comportement "page hébergée" de l'ancienne API.
+const VALID_CHANNELS = new Set(['PUSH', 'OTP', 'QRCODE']);
+
+// Numéro local (ex: 0700000000) -> format international +225700000000 exigé par l'API.
+// Retourne undefined si non normalisable : le champ est alors omis (optionnel côté SDK
+// tant que directPay n'est pas utilisé), plutôt que d'envoyer une valeur invalide.
+function normalizePhone(phone, defaultCallingCode = '225') {
+  if (!phone) return undefined;
+  let p = String(phone).trim().replace(/[\s().-]/g, '');
+  if (p.startsWith('+')) {
+    p = '+' + p.slice(1).replace(/\D/g, '');
+  } else {
+    p = p.replace(/\D/g, '');
+    if (p.startsWith('00')) p = p.slice(2);
+    if (p.startsWith('0')) p = defaultCallingCode + p.slice(1);
+    else if (!p.startsWith(defaultCallingCode)) p = defaultCallingCode + p;
+    p = '+' + p;
+  }
+  return /^\+\d{8,15}$/.test(p) ? p : undefined;
+}
+
+function ensureMinLength(str, min, fallback) {
+  const s = (str || '').toString().trim();
+  return s.length >= min ? s : fallback;
 }
 
 async function initPayment({ merchantTransactionId, amount, designation, clientFirstName,
-  clientLastName, clientEmail, clientPhone, successUrl, failedUrl, notifyUrl, channel = 'REDIRECT' }) {
-  const { country, baseUrl, enabled } = await getCfg();
-  if (!enabled) throw new Error('CinetPay : paiements désactivés par l\'administrateur');
-  const token = await getToken();
+  clientLastName, clientEmail, clientPhone, successUrl, failedUrl, notifyUrl, channel = 'PUSH' }) {
+  const cfg = await getCfg();
+  if (!cfg.enabled) throw new Error('CinetPay : paiements désactivés par l\'administrateur');
 
-  const res = await fetch(`${baseUrl}/v1/payment`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({
-      currency:                'XOF',
-      merchant_transaction_id: merchantTransactionId,
-      amount,
-      lang:                    'fr',
-      designation,
-      client_first_name:       clientFirstName,
-      client_last_name:        clientLastName,
-      client_email:            clientEmail,
-      client_phone_number:     clientPhone || '',
-      success_url:             successUrl,
-      failed_url:              failedUrl,
-      notify_url:              notifyUrl,
-      channel,
-      country,
-    }),
-  });
-  return res.json();
+  const client = await getClient();
+  const safeChannel = VALID_CHANNELS.has(channel) ? channel : 'PUSH';
+  const phone = normalizePhone(clientPhone, cfg.country === 'CI' ? '225' : undefined);
+
+  const payload = {
+    currency: 'XOF',
+    merchantTransactionId: String(merchantTransactionId).substring(0, 30),
+    amount,
+    lang: 'fr',
+    designation: ensureMinLength(designation, 1, 'Paiement VivriMarket').substring(0, 255),
+    clientFirstName: ensureMinLength(clientFirstName, 2, 'Client'),
+    clientLastName: ensureMinLength(clientLastName, 2, 'NA'),
+    clientEmail: clientEmail || 'guest@vivrimarket.com',
+    successUrl,
+    failedUrl,
+    notifyUrl,
+    channel: safeChannel,
+    country: cfg.country,
+  };
+  if (phone) payload.clientPhoneNumber = phone;
+
+  const result = await client.payment.initialize(payload, cfg.country);
+
+  return result;
 }
 
 async function checkPayment(merchantTransactionId) {
-  const { country, baseUrl } = await getCfg();
-  const token = await getToken();
-
-  const res = await fetch(`${baseUrl}/v1/payment/check`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body:    JSON.stringify({ merchant_transaction_id: merchantTransactionId, country }),
-  });
-  return res.json();
+  const cfg = await getCfg();
+  const client = await getClient();
+  const result = await client.payment.getStatus(merchantTransactionId, cfg.country);
+  return result;
 }
 
 function isAccepted(result) {
-  return result?.data?.status === 'ACCEPTED'
-    || result?.status === 'ACCEPTED'
-    || result?.code === '00'
-    || result?.code === 200;
+  return result?.status === 'SUCCESS';
 }
 
-// Teste les credentials fournis sans modifier la config actuelle
-async function testCredentials(apikey, password, country = 'CI') {
-  const baseUrl = apikey?.startsWith('sk_live_')
-    ? 'https://api.cinetpay.co'
-    : 'https://api.cinetpay.net';
-  const res = await fetch(`${baseUrl}/v1/oauth/login`, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ api_key: apikey, api_password: password }),
+function invalidateTokenCache() {
+  _clientCache = null;
+  _clientCfgHash = '';
+}
+
+async function testCredentials(apikey, password, country = 'CI', env = 'production') {
+  const baseUrl = env === 'sandbox' ? 'https://api.cinetpay.net' : 'https://api.cinetpay.co';
+  const client = new CinetPayClient({
+    credentials: {
+      [country]: { apiKey: apikey, apiPassword: password },
+    },
+    baseUrl,
   });
-  const data = await res.json();
-  const ok = !!(data.token ?? data.data?.token);
-  return { ok, code: data.code, status: data.status, env: apikey?.startsWith('sk_live_') ? 'production' : 'sandbox' };
+
+  try {
+    await client.payment.getStatus('TEST_AUTH', country);
+    return { ok: true, code: 200, status: 'OK', env };
+  } catch (e) {
+    if (e instanceof AuthenticationError) {
+      return { ok: false, code: e.apiCode || 1005, status: e.apiStatus || 'INVALID_CREDENTIALS', message: e.message, env };
+    }
+    return { ok: true, code: e.apiCode || e.code || 404, status: e.apiStatus || 'OK', env };
+  }
 }
 
 module.exports = { initPayment, checkPayment, isAccepted, getCfg, invalidateTokenCache, testCredentials };

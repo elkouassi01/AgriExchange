@@ -10,6 +10,7 @@ const initPayment = async (cfg, params) => {
     body: JSON.stringify({
       apikey: cfg.apikey,
       site_id: cfg.site_id,
+      secret_key: cfg.secret_key,
       transaction_id: params.transactionId,
       amount: params.amount,
       currency: 'XOF',
@@ -25,7 +26,8 @@ const initPayment = async (cfg, params) => {
     }),
   });
   const data = await res.json();
-  const paymentUrl = data.data?.payment_url;
+  console.log('[CinetPay Legacy] initPayment response:', JSON.stringify(data));
+  const paymentUrl = data.data?.payment_url || data.payment_url;
   return { paymentUrl, raw: data };
 };
 
@@ -42,14 +44,19 @@ const checkPayment = async (cfg, transactionId) => {
 
 const testConnection = async (cfg) => {
   try {
+    const body = {
+      apikey: cfg.apikey,
+      site_id: cfg.site_id,
+      transaction_id: 'TEST',
+    };
+    if (cfg.secret_key) body.secret_key = cfg.secret_key;
     const res = await fetch(`${BASE}/payment/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ apikey: cfg.apikey, site_id: cfg.site_id, transaction_id: 'TEST' }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
-    // Codes 600/623/624 = auth OK but tx not found (expected for TEST)
-    const authOk = ['600', '623', '624', '00', '201'].includes(String(data?.code));
+    const authOk = ['600', '623', '624', '00', '201', '404'].includes(String(data?.code));
     return authOk
       ? { ok: true, message: 'Connexion CinetPay Legacy réussie' }
       : { ok: false, message: `Code: ${data?.code} — ${data?.message || ''}` };

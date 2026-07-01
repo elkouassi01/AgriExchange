@@ -210,38 +210,40 @@ const InscriptionPage = () => {
         return;
       }
 
-      const transaction_id = 'CP' + Date.now();
       const contactClean = fullPhone.replace(/\D/g, '');
 
-      const paymentData = {
-        apikey: '8937149296838988c80faf0.18612017',
-        site_id: '105896693',
-        transaction_id,
-        amount: montant,
-        currency: 'XOF',
-        description: 'Abonnement ' + formule + ' (' + type + ')',
-        customer_name: formData.nom.substring(0, 50),
-        customer_email: formData.email,
-        customer_phone_number: contactClean,
-        notify_url: (SERVER_BASE_URL || window.location.origin) + '/api/v1/cinetpay-notify',
-        return_url: window.location.origin + '/paiement-reussi',
-        cancel_url: window.location.origin + '/paiement-echec',
-        channels: 'ALL',
-        metadata: JSON.stringify({ user_email: formData.email, user_type: type, subscription_plan: formule }),
-        lang: 'fr',
-      };
-
-      const response = await fetch('https://api-checkout.cinetpay.com/v2/payment', {
+      const response = await fetch(buildApiUrl('/paiement/initiate'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify(paymentData),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // Données paiement
+          amount: montant,
+          description: 'Abonnement ' + formule + ' (' + type + ')',
+          customer_name: formData.nom.substring(0, 50),
+          customer_email: formData.email,
+          customer_phone: contactClean,
+          notify_url: (SERVER_BASE_URL || 'https://vivrimarket.com') + '/api/v1/cinetpay-notify',
+          return_url: window.location.origin + '/paiement-reussi',
+          cancel_url: window.location.origin + '/paiement-echec',
+          // Données d'inscription (sauvegardées en attente jusqu'à confirmation du paiement)
+          nom: formData.nom,
+          motDePasse: formData.motDePasse,
+          contact: contactClean,
+          role: type,
+          formule: formule,
+          fermeNom: formData.fermeNom || null,
+          localisation: formData.localisation || null,
+          typeExploitation: formData.typeExploitation || null,
+          surface: formData.surface || null,
+          userDescription: formData.description || null,
+        }),
       });
 
-      const result = await response.json();
-      if (result.code === '201' && result.data?.payment_url) {
-        window.location.href = result.data.payment_url;
+      const data = await response.json();
+      if (data.success && data.payment_url) {
+        window.location.href = data.payment_url;
       } else {
-        setSubmitError(result.message || 'Erreur lors du paiement');
+        setSubmitError(data.message || 'Erreur lors du paiement');
       }
     } catch (error) {
       setSubmitError('Erreur réseau : ' + error.message);
@@ -360,6 +362,7 @@ const InscriptionPage = () => {
               placeholder="Ex : konan@exemple.com"
               value={formData.email}
               onChange={handleChange}
+              autoComplete="off"
               className={errors.email ? 'error' : ''}
             />
             {errors.email && <p className="error-message">{errors.email}</p>}
@@ -404,6 +407,7 @@ const InscriptionPage = () => {
                 placeholder="Minimum 6 caractères"
                 value={formData.motDePasse}
                 onChange={handleChange}
+                autoComplete="new-password"
                 className={errors.motDePasse ? 'error' : ''}
               />
               <button
@@ -428,6 +432,7 @@ const InscriptionPage = () => {
                 placeholder="Répétez votre mot de passe"
                 value={formData.confirmerMotDePasse}
                 onChange={handleChange}
+                autoComplete="new-password"
                 className={errors.confirmerMotDePasse ? 'error' : ''}
               />
               <button

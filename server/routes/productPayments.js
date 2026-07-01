@@ -9,6 +9,7 @@ const mysqlContactRequestRepository = require('../repositories/mysqlContactReque
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const notificationService = require('../utils/notificationService');
 
+const paymentService = require('../utils/paymentService');
 const cinetpay = require('../utils/cinetpayService');
 const PRICE_VISITOR = 300;
 const PRICE_CONSUMER = 150;
@@ -33,7 +34,6 @@ router.post('/webhook', async (req, res) => {
     const txId = data.transaction_id || data.cpm_trans_id;
     if (!txId) return res.status(400).send('Missing transaction_id');
 
-    // Ne pas faire confiance au corps du webhook : re-vérifier auprès de CinetPay
     const verifyResult = await cinetpay.checkPayment(txId);
     const isAccepted = cinetpay.isAccepted(verifyResult);
 
@@ -59,12 +59,11 @@ router.post('/:productId/initiate', async (req, res) => {
       }
     }
 
-    // Tarif selon le statut du demandeur
     const decoded = optionalAuth(req);
     const isConsumer = decoded?.role === 'consommateur';
     const amount = isConsumer ? PRICE_CONSUMER : PRICE_VISITOR;
 
-    const transactionId = `PV${randomUUID().replace(/-/g, '')}`;
+    const transactionId = `PV${randomUUID().replace(/-/g, '').substring(0, 26)}`;
     const origin = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 
@@ -72,22 +71,23 @@ router.post('/:productId/initiate', async (req, res) => {
     const result = await cinetpay.initPayment({
       merchantTransactionId: transactionId,
       amount,
-      designation:    `Coordonnées vendeur - Denrée #${productId}`,
+      designation: `Coordonnées vendeur - Denrée #${productId}`,
       clientFirstName: nameParts[0] || 'Visiteur',
-      clientLastName:  nameParts.slice(1).join(' ') || '-',
-      clientEmail:    req.body.customer_email || 'guest@vivrimarket.com',
-      successUrl:     `${origin}/produits/${productId}?tx_id=${transactionId}`,
-      failedUrl:      `${origin}/produits/${productId}`,
-      notifyUrl:      `${serverUrl}/api/v1/product-payments/webhook`,
+      clientLastName: nameParts.slice(1).join(' ') || 'NA',
+      clientEmail: req.body.customer_email || 'guest@vivrimarket.com',
+      clientPhone: req.body.customer_phone || '',
+      successUrl: `${origin}/produits/${productId}?tx_id=${transactionId}`,
+      failedUrl: `${origin}/produits/${productId}`,
+      notifyUrl: `${serverUrl}/api/v1/product-payments/webhook`,
     });
 
-    if (result.payment_url) {
+    if (result.paymentUrl) {
       if (isMysql()) {
         await mysqlPaymentRepository.createPendingPayment(transactionId, productId);
       }
       return res.json({
         success: true,
-        payment_url: result.payment_url,
+        payment_url: result.paymentUrl,
         transaction_id: transactionId,
         amount,
       });

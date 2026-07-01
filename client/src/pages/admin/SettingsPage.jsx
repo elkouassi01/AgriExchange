@@ -231,9 +231,11 @@ const SettingsPage = () => {
           <div className="set-panel-header">
             <h2 className="set-panel-title">Santé du système</h2>
             <Tooltip title="Rafraîchir">
-              <IconButton onClick={loadStatus} disabled={loadingStatus} size="small">
-                <RefreshIcon fontSize="small" />
-              </IconButton>
+              <span>
+                <IconButton onClick={loadStatus} disabled={loadingStatus} size="small">
+                  <RefreshIcon fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
           </div>
 

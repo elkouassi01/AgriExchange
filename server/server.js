@@ -40,6 +40,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const cinetpayNotifyRoutes = require('./routes/cinetpayNotify');
 const chatRoutes = require('./routes/chatRoutes');
 const userRoutes = require('./routes/userRoutes');
+const paiementRoutes = require('./routes/paiement');
 const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
 const productPaymentsRoutes = require('./routes/productPayments');
 const contactRequestsRoutes = require('./routes/contactRequests');
@@ -49,6 +50,7 @@ const reviewsRoutes = require('./routes/reviews');
 const moderationRoutes = require('./routes/moderation');
 const categoriesRoutes = require('./routes/categoriesRoutes');
 const mapRoutes = require('./routes/mapRoutes');
+const countriesRoutes = require('./routes/countries');
 const { getClient: initWhatsApp } = require('./utils/whatsappClient');
 
 const app = express();
@@ -248,6 +250,7 @@ app.use('/api/v1/contact', contactRoutes);
 app.use('/api/v1/forfaits', forfaitsRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/cinetpay-notify', cinetpayNotifyRoutes);
+app.use('/api/v1/paiement', paiementRoutes);
 app.use('/api/v1/chat', chatRoutes);
 
 app.use('/api/v1/users', protect, userRoutes);
@@ -257,6 +260,7 @@ app.use('/api/v1/reviews', reviewsRoutes);
 app.use('/api/v1/moderation', moderationRoutes);
 app.use('/api/v1/categories', categoriesRoutes);
 app.use('/api/v1/map', mapRoutes);
+app.use('/api/v1/countries', countriesRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.status(200).json({

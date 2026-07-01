@@ -448,11 +448,11 @@ router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer'
       notifyUrl:      `${serverUrl}/api/v1/products/sponsor/webhook`,
     });
 
-    if (result.payment_url) {
+    if (result.paymentUrl) {
       await sponsoredRepo.createPending(productId, sellerId, transactionId);
       return res.json({
         success:        true,
-        payment_url:    result.payment_url,
+        payment_url:    result.paymentUrl,
         transaction_id: transactionId,
         amount:         sponsoredRepo.SPONSOR_AMOUNT,
         days:           sponsoredRepo.SPONSOR_DURATION_DAYS,

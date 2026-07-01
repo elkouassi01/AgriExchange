@@ -6,6 +6,12 @@ const PROVIDER_SCHEMAS = {
   cinetpay: [
     { key: 'api_key',      label: 'Clé API',            type: 'text',     placeholder: 'sk_live_...' },
     { key: 'api_password', label: 'Mot de passe API',   type: 'password', placeholder: '••••••••' },
+    { key: 'env',          label: 'Environnement',      type: 'select',   placeholder: 'production',
+      options: [
+        { value: 'sandbox',    label: 'Sandbox (test — aucun débit réel)' },
+        { value: 'production', label: 'Production (paiements réels)' },
+      ]
+    },
     { key: 'country',      label: 'Pays',               type: 'select',   placeholder: 'CI',
       options: [
         { value: 'CI', label: 'CI — Côte d\'Ivoire' },
@@ -20,8 +26,9 @@ const PROVIDER_SCHEMAS = {
     },
   ],
   cinetpay_legacy: [
-    { key: 'apikey',   label: 'API Key (numérique)', type: 'text',     placeholder: '8937149296...' },
+    { key: 'apikey',   label: 'API Key',            type: 'text',     placeholder: '8937149296...' },
     { key: 'site_id',  label: 'Site ID',             type: 'text',     placeholder: '105896693' },
+    { key: 'secret_key', label: 'Secret Key',        type: 'password', placeholder: '••••••••' },
   ],
   paydunya: [
     { key: 'master_key',  label: 'Master Key',   type: 'password', placeholder: '••••••••' },
