@@ -3,7 +3,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { randomUUID } = require('crypto');
-const cinetpay = require('../utils/cinetpayService');
+const paymentService = require('../utils/paymentService');
+const paymentTransactions = require('../utils/paymentTransactions');
 const { getMysqlPool } = require('../config/mysql');
 
 // Auto-migrate : crée la table si absente
@@ -68,12 +69,13 @@ router.post('/initiate', async (req, res) => {
 
   try {
     const transactionId = 'CP' + Date.now() + randomUUID().replace(/-/g, '').substring(0, 8);
+    const providerId = await paymentService.getActiveProviderId();
 
     const nameParts = (customer_name || nom || 'Client').substring(0, 50).split(' ');
-    const result = await cinetpay.initPayment({
-      merchantTransactionId: transactionId,
+    const result = await paymentService.initPayment(providerId, {
+      transactionId,
       amount: parseInt(amount, 10),
-      designation: description || 'Paiement VivriMarket',
+      description: description || 'Paiement VivriMarket',
       clientFirstName: nameParts[0] || 'Client',
       clientLastName: nameParts.slice(1).join(' ') || 'NA',
       clientEmail: customer_email || 'guest@vivrimarket.com',
@@ -87,6 +89,8 @@ router.post('/initiate', async (req, res) => {
       console.error('[paiement/initiate] Pas de paymentUrl:', result);
       return res.status(400).json({ success: false, message: result.message || 'Erreur initialisation paiement' });
     }
+
+    await paymentTransactions.record(transactionId, providerId);
 
     // Sauvegarder l'inscription en attente si les données utilisateur sont fournies
     if (nom && motDePasse && (customer_email || contact)) {
@@ -144,8 +148,9 @@ router.get('/status/:txId', async (req, res) => {
   if (!txId) return res.status(400).json({ success: false, message: 'txId requis' });
 
   try {
-    const result = await cinetpay.checkPayment(txId);
-    const paid = cinetpay.isAccepted(result);
+    const providerId = await paymentTransactions.getProvider(txId);
+    const result = await paymentService.checkPayment(providerId, txId);
+    const paid = result.accepted;
 
     // Vérifier aussi si l'inscription a été complétée
     let inscriptionCompleted = false;
@@ -162,7 +167,7 @@ router.get('/status/:txId', async (req, res) => {
     return res.json({
       success: true,
       paid,
-      status: result?.status || 'UNKNOWN',
+      status: paid ? 'SUCCESS' : (result.raw?.status || 'PENDING'),
       inscriptionCompleted,
     });
   } catch (error) {

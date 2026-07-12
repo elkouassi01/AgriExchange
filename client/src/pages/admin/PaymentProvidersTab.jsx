@@ -64,6 +64,7 @@ const ProviderCard = ({ provider, onUpdated }) => {
   const [msg, setMsg]               = useState('');
 
   const schema = PROVIDER_SCHEMAS[provider.id] || [];
+  const checkoutCapable = ['cinetpay', 'cinetpay_legacy'].includes(provider.id);
 
   const loadConfig = useCallback(async () => {
     if (configLoaded) return;
@@ -86,8 +87,13 @@ const ProviderCard = ({ provider, onUpdated }) => {
     setEnabled(next);
     try {
       await api.put(`/admin/payment-providers/${provider.id}`, { enabled: next });
+      setMsg('');
       onUpdated();
-    } catch { setEnabled(!next); }
+    } catch (e) {
+      setEnabled(!next);
+      setMsg(e.response?.data?.message || 'Erreur.');
+      setTimeout(() => setMsg(''), 6000);
+    }
   };
 
   const handleTest = async () => {
@@ -138,6 +144,17 @@ const ProviderCard = ({ provider, onUpdated }) => {
           </button>
         </div>
       </div>
+
+      {!checkoutCapable && (
+        <div className="pp-no-config" style={{ padding: '0 16px 12px' }}>
+          ⚠️ Confirmation de paiement (webhook) non implémentée pour ce provider — configurable et testable, mais ne peut pas être activé comme moyen de paiement en caisse.
+        </div>
+      )}
+      {msg && !expanded && (
+        <div className={`set-test-result ${msg.includes('Erreur') || msg.includes('confirmation') ? 'set-test--error' : 'set-test--ok'}`} style={{ margin: '0 16px 12px' }}>
+          {msg}
+        </div>
+      )}
 
       {/* Config form */}
       {expanded && (
@@ -204,12 +221,20 @@ const ProviderCard = ({ provider, onUpdated }) => {
 export default function PaymentProvidersTab() {
   const [providers, setProviders] = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
     try {
       const res = await api.get('/admin/payment-providers');
       setProviders(res.data.providers || []);
-    } catch { /* ignore */ }
+      setLoadError('');
+    } catch (e) {
+      setLoadError(
+        e.response
+          ? `Erreur ${e.response.status} : ${e.response.data?.message || 'échec du chargement'}`
+          : `Erreur réseau : ${e.message}`
+      );
+    }
     setLoading(false);
   }, []);
 
@@ -230,6 +255,14 @@ export default function PaymentProvidersTab() {
         Activez et configurez les providers de paiement disponibles sur la plateforme.
         Seuls les providers actifs sont proposés aux utilisateurs lors du paiement.
       </p>
+      {loadError && (
+        <div className="set-test-result set-test--error" style={{ marginBottom: 16 }}>
+          ❌ {loadError} — <button className="pp-config-btn" onClick={load}>Réessayer</button>
+        </div>
+      )}
+      {!loadError && providers.length === 0 && (
+        <p className="pp-no-config">Aucun provider trouvé.</p>
+      )}
       <div className="pp-list">
         {providers.map(p => (
           <ProviderCard key={p.id} provider={p} onUpdated={load} />

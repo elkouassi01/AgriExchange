@@ -10,7 +10,8 @@ const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const notificationService = require('../utils/notificationService');
 const { isMysql } = require('../utils/authHelpers');
 
-const cinetpay = require('../utils/cinetpayService');
+const paymentService = require('../utils/paymentService');
+const paymentTransactions = require('../utils/paymentTransactions');
 
 const parseJsonArray = (value) => {
   if (!value) return [];
@@ -434,11 +435,12 @@ router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer'
     const origin    = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 
+    const providerId = await paymentService.getActiveProviderId();
     const nameParts = (req.user.nom || 'Agriculteur').substring(0, 50).split(' ');
-    const result = await cinetpay.initPayment({
-      merchantTransactionId: transactionId,
+    const result = await paymentService.initPayment(providerId, {
+      transactionId,
       amount:         sponsoredRepo.SPONSOR_AMOUNT,
-      designation:    `Sponsoring denrée "${product.nom}" — ${sponsoredRepo.SPONSOR_DURATION_DAYS} jours`,
+      description:    `Sponsoring denrée "${product.nom}" — ${sponsoredRepo.SPONSOR_DURATION_DAYS} jours`,
       clientFirstName: nameParts[0] || 'Agriculteur',
       clientLastName:  nameParts.slice(1).join(' ') || '-',
       clientEmail:    req.user.email || 'agriculteur@vivrimarket.com',
@@ -449,6 +451,7 @@ router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer'
     });
 
     if (result.paymentUrl) {
+      await paymentTransactions.record(transactionId, providerId);
       await sponsoredRepo.createPending(productId, sellerId, transactionId);
       return res.json({
         success:        true,
@@ -474,9 +477,10 @@ router.get('/:id/sponsor/check', protect, authorize(['agriculteur', 'farmer']), 
     const { tx_id } = req.query;
     if (!tx_id) return res.status(400).json({ success: false, message: 'tx_id requis' });
 
-    // Vérifier auprès de CinetPay
-    const verifyResult = await cinetpay.checkPayment(tx_id);
-    const paid = cinetpay.isAccepted(verifyResult);
+    // Vérifier auprès du provider de paiement
+    const providerId = await paymentTransactions.getProvider(tx_id);
+    const verifyResult = await paymentService.checkPayment(providerId, tx_id);
+    const paid = verifyResult.accepted;
 
     if (!paid) return res.json({ success: false, paid: false });
 
@@ -500,8 +504,9 @@ router.post('/sponsor/webhook', async (req, res) => {
     const txId = req.body.transaction_id || req.body.cpm_trans_id;
     if (!txId) return res.status(400).send('Missing transaction_id');
 
-    const verifyResult = await cinetpay.checkPayment(txId);
-    const accepted = cinetpay.isAccepted(verifyResult);
+    const providerId = await paymentTransactions.getProvider(txId);
+    const verifyResult = await paymentService.checkPayment(providerId, txId);
+    const accepted = verifyResult.accepted;
 
     if (accepted && isMysql()) {
       await sponsoredRepo.activateSponsor(txId);

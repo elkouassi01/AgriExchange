@@ -10,7 +10,7 @@ const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const notificationService = require('../utils/notificationService');
 
 const paymentService = require('../utils/paymentService');
-const cinetpay = require('../utils/cinetpayService');
+const paymentTransactions = require('../utils/paymentTransactions');
 const PRICE_VISITOR = 300;
 const PRICE_CONSUMER = 150;
 
@@ -34,8 +34,9 @@ router.post('/webhook', async (req, res) => {
     const txId = data.transaction_id || data.cpm_trans_id;
     if (!txId) return res.status(400).send('Missing transaction_id');
 
-    const verifyResult = await cinetpay.checkPayment(txId);
-    const isAccepted = cinetpay.isAccepted(verifyResult);
+    const providerId = await paymentTransactions.getProvider(txId);
+    const verifyResult = await paymentService.checkPayment(providerId, txId);
+    const isAccepted = verifyResult.accepted;
 
     if (isAccepted && isMysql()) {
       await mysqlPaymentRepository.markAsPaid(txId);
@@ -67,11 +68,12 @@ router.post('/:productId/initiate', async (req, res) => {
     const origin = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 
+    const providerId = await paymentService.getActiveProviderId();
     const nameParts = (req.body.customer_name || 'Visiteur').substring(0, 50).split(' ');
-    const result = await cinetpay.initPayment({
-      merchantTransactionId: transactionId,
+    const result = await paymentService.initPayment(providerId, {
+      transactionId,
       amount,
-      designation: `Coordonnées vendeur - Denrée #${productId}`,
+      description: `Coordonnées vendeur - Denrée #${productId}`,
       clientFirstName: nameParts[0] || 'Visiteur',
       clientLastName: nameParts.slice(1).join(' ') || 'NA',
       clientEmail: req.body.customer_email || 'guest@vivrimarket.com',
@@ -82,6 +84,7 @@ router.post('/:productId/initiate', async (req, res) => {
     });
 
     if (result.paymentUrl) {
+      await paymentTransactions.record(transactionId, providerId);
       if (isMysql()) {
         await mysqlPaymentRepository.createPendingPayment(transactionId, productId);
       }
@@ -136,9 +139,11 @@ router.get('/:productId/check', async (req, res) => {
       typeExploitation: product.vendeur?.description || null,
     };
 
-    // Envoyer WhatsApp au vendeur (une seule fois par paiement)
+    // Envoyer WhatsApp au vendeur (une seule fois par paiement — scopé par transaction,
+    // pas par numéro de vendeur, sinon un 2e acheteur payant pour le même vendeur
+    // pendant qu'une 1re demande est encore "pending" ne serait jamais notifié)
     if (seller.contact) {
-      const existing = await mysqlContactRequestRepository.findPendingBySellerPhone(seller.contact);
+      const existing = await mysqlContactRequestRepository.findByPaymentId(tx_id);
       if (!existing) {
         await mysqlContactRequestRepository.ensureTables();
         await mysqlContactRequestRepository.createContactRequest({

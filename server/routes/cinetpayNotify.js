@@ -5,7 +5,8 @@
 const express = require('express');
 const router = express.Router();
 const { randomUUID } = require('crypto');
-const cinetpay = require('../utils/cinetpayService');
+const paymentService = require('../utils/paymentService');
+const paymentTransactions = require('../utils/paymentTransactions');
 const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
 const { getMysqlPool } = require('../config/mysql');
 
@@ -56,14 +57,15 @@ router.post('/cinetpay-notify', async (req, res) => {
     // Re-vérification obligatoire via l'API CinetPay (sécurité)
     let result;
     try {
-      result = await cinetpay.checkPayment(txId);
+      const providerId = await paymentTransactions.getProvider(txId);
+      result = await paymentService.checkPayment(providerId, txId);
     } catch (e) {
       console.error('[CinetPay Notify] Échec checkPayment:', e.message);
       return;
     }
 
-    const paid = cinetpay.isAccepted(result);
-    console.log('[CinetPay Notify]', txId, '→', result?.status, paid ? '✅ PAYÉ' : '⏳ NON PAYÉ');
+    const paid = result.accepted;
+    console.log('[CinetPay Notify]', txId, '→', result.raw?.status, paid ? '✅ PAYÉ' : '⏳ NON PAYÉ');
 
     if (!paid) return;
 

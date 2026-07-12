@@ -238,6 +238,13 @@ router.put('/payment-providers/:id', async (req, res) => {
     const existing = await providerRepo.findById(id);
     if (!existing) return res.status(404).json({ success: false, message: 'Provider introuvable' });
 
+    if (enabled && !paymentService.CHECKOUT_CAPABLE.includes(id)) {
+      return res.status(400).json({
+        success: false,
+        message: `"${existing.label}" ne peut pas être activé comme moyen de paiement : la confirmation webhook n'est pas encore implémentée pour ce provider.`,
+      });
+    }
+
     // Merge config: only update fields that are not empty/masked
     const currentConfig = existing.config || {};
     const newConfig = { ...currentConfig };

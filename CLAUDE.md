@@ -18,7 +18,7 @@ AgriExchange/
 │   ├── controllers/      # Business logic
 │   ├── repositories/     # mysql*.js (active DB layer)
 │   ├── middlewares/      # auth.js (JWT), accessMiddleware.js, errorHandler.js
-│   ├── utils/            # emailService, paymentService, cinetpayService, dbMigrations.js
+│   ├── utils/            # emailService, paymentService, providers/ (cinetpay, cinetpay_legacy...), dbMigrations.js
 │   └── scripts/          # initMysql.js, migrate-to-mysql.js
 └── client/               # React 19 + Vite frontend
     ├── src/
@@ -74,7 +74,11 @@ Three roles: `agriculteur`, `consommateur`, `admin`. `ProtectedRoute` in `App.js
 - Production: uses `VITE_API_BASE_URL` env var, or falls back to `/api/v1` (works because Nginx proxies `/api/` to port 5000)
 
 ### Payment Flow
-CinetPay handles payments. `InscriptionPage` POSTs to `https://api-checkout.cinetpay.com/v2/payment` directly from the browser with the API key. On payment success, CinetPay calls `POST /api/v1/cinetpay-notify` (server webhook). The `apikey` and `site_id` in `InscriptionPage.jsx` (line ~217) are the live CinetPay credentials.
+CinetPay v1 handles payments via the official `cinetpay-js` SDK, called **server-side only** (no API credentials in the browser). Three checkout entry points — subscription (`server/routes/paiement.js`), seller-contact unlock (`server/routes/productPayments.js`), product sponsoring (`server/routes/products.js`) — all call `server/utils/paymentService.js`, which dispatches to the active provider adapter under `server/utils/providers/` (`cinetpay.js` by default). The active provider is whichever of `cinetpay` / `cinetpay_legacy` is toggled on in the admin "Moyens de paiement" tab (table `payment_providers`); `paydunya`/`stripe` adapters exist but can't be activated for checkout — no webhook receiver exists for their payload format yet.
+
+Each initiated transaction is recorded in `payment_transactions` (`server/utils/paymentTransactions.js`) mapping `transaction_id → provider_id`, so the corresponding webhook/status-check always re-verifies against the correct provider even if the admin switches providers later. Webhooks (`POST /api/v1/cinetpay-notify`, `POST /api/v1/product-payments/webhook`, `POST /api/v1/products/sponsor/webhook`) never trust the incoming payload — they always call `paymentService.checkPayment()` to re-verify status with CinetPay before crediting anything.
+
+Provider credentials: enter them via the admin UI (stored in `payment_providers.config`), or set `CINETPAY_APIKEY` / `CINETPAY_API_PASSWORD` / `CINETPAY_COUNTRY` / `CINETPAY_ENV` env vars, which `providers/cinetpay.js` falls back to when no DB config is set.
 
 ### Image Storage
 Cloudinary (configured via `CLD_CLOUD`, `CLD_KEY`, `CLD_SECRET`) or local `server/uploads/`. `buildUploadUrl()` in `config/api.js` resolves both.

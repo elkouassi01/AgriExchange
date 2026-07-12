@@ -85,6 +85,19 @@ const findPendingBySellerPhone = async (phone) => {
   return rows[0] || null;
 };
 
+// Utilisé pour l'idempotence par paiement (un acheteur = une transaction = une
+// notification), contrairement à findPendingBySellerPhone qui regroupe par vendeur
+// (utile côté webhook WhatsApp entrant, où seul le numéro du vendeur est connu).
+const findByPaymentId = async (paymentId) => {
+  await ensureTables();
+  const pool = getMysqlPool();
+  const [rows] = await pool.query(
+    `SELECT * FROM contact_requests WHERE payment_id = ? LIMIT 1`,
+    [paymentId]
+  );
+  return rows[0] || null;
+};
+
 const markResponded = async (id) => {
   const pool = getMysqlPool();
   await pool.query(
@@ -147,6 +160,7 @@ module.exports = {
   ensureTables,
   createContactRequest,
   findPendingBySellerPhone,
+  findByPaymentId,
   markResponded,
   getExpiredPending,
   markExpired,

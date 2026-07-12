@@ -45,6 +45,21 @@ const getEnabledProviders = async () => {
   }));
 };
 
+// Providers dont le webhook de confirmation est implémenté et peuvent donc
+// être sélectionnés comme provider actif pour le checkout. PayDunya et Stripe
+// ont un format de notification différent et pas encore de récepteur — les
+// activer romprait silencieusement la confirmation de paiement.
+const CHECKOUT_CAPABLE = ['cinetpay', 'cinetpay_legacy'];
+
+// Retourne le provider à utiliser pour initier un nouveau paiement : le premier
+// provider "checkout capable" activé par l'admin (ordre = position), ou 'cinetpay'
+// par défaut si aucun n'est activé.
+const getActiveProviderId = async () => {
+  const all = await repo.findAll();
+  const active = all.find((p) => CHECKOUT_CAPABLE.includes(p.id) && p.enabled);
+  return active?.id || 'cinetpay';
+};
+
 // Invalide les caches de token (après mise à jour des credentials)
 const invalidateCaches = (providerId) => {
   if (providerId === 'cinetpay' || !providerId) {
@@ -52,4 +67,7 @@ const invalidateCaches = (providerId) => {
   }
 };
 
-module.exports = { initPayment, checkPayment, testProvider, getEnabledProviders, invalidateCaches };
+module.exports = {
+  initPayment, checkPayment, testProvider, getEnabledProviders, invalidateCaches,
+  getActiveProviderId, CHECKOUT_CAPABLE,
+};

@@ -5,7 +5,21 @@ const { CinetPayClient } = require('cinetpay-js');
 
 let _cache = null;
 
-async function getClient(cfg) {
+// La config vient de la table payment_providers (saisie admin). Si elle n'a pas
+// encore été renseignée (déploiement existant, ou admin n'a jamais ouvert l'onglet),
+// on retombe sur les variables d'environnement — mêmes valeurs que cinetpayService.js —
+// pour ne jamais casser les paiements réels en production.
+function resolveCfg(cfg = {}) {
+  return {
+    api_key: cfg.api_key || process.env.CINETPAY_APIKEY,
+    api_password: cfg.api_password || process.env.CINETPAY_API_PASSWORD,
+    country: cfg.country || process.env.CINETPAY_COUNTRY || 'CI',
+    env: cfg.env || process.env.CINETPAY_ENV || 'production',
+  };
+}
+
+async function getClient(cfgIn) {
+  const cfg = resolveCfg(cfgIn);
   const cacheKey = `${cfg.api_key}:${cfg.country}:${cfg.env}`;
   if (_cache && _cache.cfgKey === cacheKey && Date.now() < _cache.expiresAt) {
     return _cache.client;
@@ -13,7 +27,7 @@ async function getClient(cfg) {
   const baseUrl = cfg.env === 'sandbox' ? 'https://api.cinetpay.net' : 'https://api.cinetpay.co';
   const client = new CinetPayClient({
     credentials: {
-      [cfg.country || 'CI']: {
+      [cfg.country]: {
         apiKey: cfg.api_key,
         apiPassword: cfg.api_password,
       },
@@ -47,9 +61,10 @@ function ensureMinLength(str, min, fallback) {
   return s.length >= min ? s : fallback;
 }
 
-const initPayment = async (cfg, params) => {
-  const client = await getClient(cfg);
-  const phone = normalizePhone(params.clientPhone, (cfg.country || 'CI') === 'CI' ? '225' : undefined);
+const initPayment = async (cfgIn, params) => {
+  const cfg = resolveCfg(cfgIn);
+  const client = await getClient(cfgIn);
+  const phone = normalizePhone(params.clientPhone, cfg.country === 'CI' ? '225' : undefined);
   const payload = {
     currency: 'XOF',
     merchantTransactionId: String(params.transactionId).substring(0, 30),
@@ -63,25 +78,27 @@ const initPayment = async (cfg, params) => {
     failedUrl: params.failedUrl,
     notifyUrl: params.notifyUrl,
     channel: 'PUSH',
-    country: cfg.country || 'CI',
+    country: cfg.country,
   };
   if (phone) payload.clientPhoneNumber = phone;
-  const result = await client.payment.initialize(payload, cfg.country || 'CI');
+  const result = await client.payment.initialize(payload, cfg.country);
   return { paymentUrl: result.paymentUrl, raw: result };
 };
 
-const checkPayment = async (cfg, transactionId) => {
-  const client = await getClient(cfg);
-  const result = await client.payment.getStatus(transactionId, cfg.country || 'CI');
+const checkPayment = async (cfgIn, transactionId) => {
+  const cfg = resolveCfg(cfgIn);
+  const client = await getClient(cfgIn);
+  const result = await client.payment.getStatus(transactionId, cfg.country);
   const accepted = result.status === 'SUCCESS';
   return { accepted, raw: result };
 };
 
-const testConnection = async (cfg) => {
+const testConnection = async (cfgIn) => {
   try {
+    const cfg = resolveCfg(cfgIn);
     invalidateTokenCache();
-    const client = await getClient(cfg);
-    await client.payment.getStatus('TEST_AUTH', cfg.country || 'CI');
+    const client = await getClient(cfgIn);
+    await client.payment.getStatus('TEST_AUTH', cfg.country);
     return { ok: true, message: 'Connexion CinetPay réussie' };
   } catch (e) {
     return { ok: false, message: e.message };
