@@ -27,7 +27,7 @@ router.get(
         ? await mysqlUserRepository.getActiveSubscriptionForUser(userId)
         : null;
 
-      if (!abonnement || abonnement.statut !== 'actif') {
+      if (!abonnement || abonnement.statut !== 'actif' || new Date(abonnement.dateFin) < new Date()) {
         return res.status(403).json({ message: "Abonnement inactif ou inexistant" });
       }
 

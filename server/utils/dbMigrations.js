@@ -115,6 +115,51 @@ const ensureMessagesSenderNullable = async () => {
   }
 };
 
+// user_subscriptions n'avait pas de contrainte UNIQUE sur user_id — deux requêtes
+// concurrentes (double-clic, webhook redélivré) pouvaient chacune voir "aucune ligne
+// existante" et insérer un doublon, l'un des deux pouvant ensuite masquer le véritable
+// abonnement actif selon l'ordre de created_at. On dédoublonne (on garde la ligne la
+// plus récente par utilisateur) puis on ajoute la contrainte pour rendre la race
+// impossible au niveau base — updateUserSubscription utilise ensuite INSERT ... ON
+// DUPLICATE KEY UPDATE, atomique.
+const ensureUserSubscriptionsUnique = async () => {
+  const pool = getMysqlPool();
+  if (!(await tableExists(pool, 'user_subscriptions'))) return;
+
+  const [[{ cnt }]] = await pool.query(
+    `SELECT COUNT(*) AS cnt FROM information_schema.statistics
+     WHERE table_schema = DATABASE() AND table_name = 'user_subscriptions'
+       AND index_name = 'uq_usub_user_id'`
+  );
+  if (cnt > 0) return;
+
+  try {
+    const [dupes] = await pool.query(
+      `SELECT user_id FROM user_subscriptions GROUP BY user_id HAVING COUNT(*) > 1`
+    );
+    for (const { user_id } of dupes) {
+      await pool.query(
+        `DELETE FROM user_subscriptions
+         WHERE user_id = ? AND id NOT IN (
+           SELECT id FROM (
+             SELECT id FROM user_subscriptions WHERE user_id = ?
+             ORDER BY created_at DESC LIMIT 1
+           ) keep
+         )`,
+        [user_id, user_id]
+      );
+    }
+    if (dupes.length) {
+      console.log(`[DB] user_subscriptions: ${dupes.length} doublon(s) supprimé(s) avant contrainte UNIQUE`);
+    }
+
+    await pool.query('ALTER TABLE user_subscriptions ADD UNIQUE KEY uq_usub_user_id (user_id)');
+    console.log('[DB] Contrainte ajoutée: user_subscriptions.user_id UNIQUE');
+  } catch (e) {
+    console.warn('[DB] Contrainte ignorée: user_subscriptions.user_id UNIQUE —', e.message.split('\n')[0]);
+  }
+};
+
 const ensureAuditLogsTable = async () => {
   const pool = getMysqlPool();
   if (await tableExists(pool, 'admin_audit_logs')) return;
@@ -270,4 +315,4 @@ const ensureSellerReviewsTable = async () => {
   }
 };
 
-module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable };
+module.exports = { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable, ensureUserSubscriptionsUnique };

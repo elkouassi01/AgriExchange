@@ -142,56 +142,28 @@ const createUser = async (data) => {
   return findUserById(id);
 };
 
+// Grâce à la contrainte UNIQUE(user_id) (voir dbMigrations.ensureUserSubscriptionsUnique),
+// cet upsert est atomique côté MySQL — plus besoin de SELECT-puis-transaction, qui
+// laissait une fenêtre de race entre deux requêtes concurrentes.
 const updateUserSubscription = async (userId, subscriptionData) => {
   const pool = getMysqlPool();
-  const conn = await pool.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    const [existing] = await conn.query(
-      'SELECT id FROM user_subscriptions WHERE user_id = ?',
-      [userId]
-    );
-
-    if (existing.length > 0) {
-      await conn.query(
-        `UPDATE user_subscriptions
-         SET formule = ?, date_debut = ?, date_fin = ?,
-             montant = ?, statut = ?
-         WHERE user_id = ?`,
-        [
-          subscriptionData.formule,
-          subscriptionData.dateDebut,
-          subscriptionData.dateFin,
-          subscriptionData.montant,
-          subscriptionData.statut,
-          userId,
-        ]
-      );
-    } else {
-      const subId = randomUUID();
-      await conn.query(
-        `INSERT INTO user_subscriptions (id, user_id, formule, date_debut, date_fin, montant, statut)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          subId,
-          userId,
-          subscriptionData.formule,
-          subscriptionData.dateDebut,
-          subscriptionData.dateFin,
-          subscriptionData.montant,
-          subscriptionData.statut,
-        ]
-      );
-    }
-
-    await conn.commit();
-  } catch (error) {
-    await conn.rollback();
-    throw error;
-  } finally {
-    conn.release();
-  }
+  const subId = randomUUID();
+  await pool.query(
+    `INSERT INTO user_subscriptions (id, user_id, formule, date_debut, date_fin, montant, statut)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       formule = VALUES(formule), date_debut = VALUES(date_debut), date_fin = VALUES(date_fin),
+       montant = VALUES(montant), statut = VALUES(statut)`,
+    [
+      subId,
+      userId,
+      subscriptionData.formule,
+      subscriptionData.dateDebut,
+      subscriptionData.dateFin,
+      subscriptionData.montant,
+      subscriptionData.statut,
+    ]
+  );
 };
 
 const listUsers = async (filters = {}, pagination = {}) => {

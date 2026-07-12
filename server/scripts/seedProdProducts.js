@@ -4,13 +4,16 @@
  */
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const { getMysqlPool } = require('../config/mysql');
-const { randomUUID } = require('crypto');
+const { randomUUID, randomBytes } = require('crypto');
 const bcrypt = require('bcryptjs');
 
+// Pas de mot de passe en dur ici (ce fichier est commité en clair) — soit fourni via
+// VIVRI_SEED_PASSWORD, soit généré aléatoirement et affiché une seule fois à la création.
+const generatedPassword = randomBytes(9).toString('base64').replace(/[+/=]/g, '');
 const VIVRI_ACCOUNT = {
   nom: 'VivriMarket',
   email: 'vendeur@vivrimarket.com',
-  motDePasse: 'Vivri@2026!',
+  motDePasse: process.env.VIVRI_SEED_PASSWORD || generatedPassword,
   contact: '+2250700000099',
   role: 'agriculteur',
   ferme_nom: 'VivriMarket Officiel',
@@ -176,10 +179,12 @@ async function seed() {
   );
 
   let sellerId;
+  let accountCreated = false;
   if (rows.length > 0) {
     sellerId = rows[0].id;
     console.log(`Compte VivriMarket existant : ${sellerId}`);
   } else {
+    accountCreated = true;
     sellerId = randomUUID();
     const hash = await bcrypt.hash(VIVRI_ACCOUNT.motDePasse, 10);
     await pool.query(
@@ -227,10 +232,15 @@ async function seed() {
   }
 
   console.log(`\n${PRODUITS.length} produits insérés avec succès.`);
-  console.log('\n── Compte vendeur VivriMarket ──────────────────');
-  console.log(`  Email    : ${VIVRI_ACCOUNT.email}`);
-  console.log(`  Password : ${VIVRI_ACCOUNT.motDePasse}`);
-  console.log('────────────────────────────────────────────────\n');
+  if (accountCreated) {
+    console.log('\n── Compte vendeur VivriMarket (nouvellement créé) ──');
+    console.log(`  Email    : ${VIVRI_ACCOUNT.email}`);
+    console.log(`  Password : ${VIVRI_ACCOUNT.motDePasse}`);
+    if (!process.env.VIVRI_SEED_PASSWORD) {
+      console.log('  (généré aléatoirement — notez-le, il ne sera plus jamais affiché)');
+    }
+    console.log('────────────────────────────────────────────────────\n');
+  }
 
   process.exit(0);
 }

@@ -32,7 +32,6 @@ const errorHandler = require('./middlewares/errorHandler');
 const { protect } = require('./middlewares/auth');
 
 const authRoutes = require('./routes/auth');
-const utilisateursRoutes = require('./routes/utilisateurs');
 const productsRoutes = require('./routes/products');
 const contactRoutes = require('./routes/contact');
 const forfaitsRoutes = require('./routes/forfaits');
@@ -199,7 +198,7 @@ const connectToMysql = async () => {
   console.log('MySQL connected');
   const { ensureTables } = require('./repositories/mysqlContactRequestRepository');
   await ensureTables();
-  const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable } = require('./utils/dbMigrations');
+  const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable, ensureUserSubscriptionsUnique } = require('./utils/dbMigrations');
   await ensureColumns();
   await ensureIndexes();
   await ensureAuditLogsTable();
@@ -208,6 +207,7 @@ const connectToMysql = async () => {
   await ensureSellerReviewsTable();
   await ensureAppSettingsTable();
   await ensurePaymentProvidersTable();
+  await ensureUserSubscriptionsUnique();
 };
 
 const connectToDatabase = async () => {
@@ -243,7 +243,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
 }));
 
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/utilisateurs', utilisateursRoutes);
 app.use('/api/v1/inscription-gratuite', inscriptionGratuiteRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/contact', contactRoutes);

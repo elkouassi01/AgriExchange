@@ -212,9 +212,6 @@ const AddProductForm = () => {
       };
 
       const payload = buildFormData(productData, formData.imageFile);
-      
-      console.log('TOKEN ENVOYÉ :', token);
-      console.log('HEADERS :', { Authorization: `Bearer ${token}` });
 
       const res = await axios.post(
         buildApiUrl('/products/add'),

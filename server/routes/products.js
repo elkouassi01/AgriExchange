@@ -108,7 +108,7 @@ const resolveImageUrl = async (req, fallbackImageUrl) => {
   return uploadRes.secure_url;
 };
 
-router.post('/add', upload.single('imageFile'), protect, authorize(['agriculteur', 'farmer']), async (req, res) => {
+router.post('/add', protect, authorize(['agriculteur', 'farmer']), upload.single('imageFile'), async (req, res) => {
   try {
     const payload = buildValidatedPayload(req);
     payload.imageUrl = await resolveImageUrl(req, payload.imageUrl);
@@ -738,9 +738,9 @@ const uploadImageBuffer = async (buffer) => {
 // POST /products/:id/images — ajoute des photos à la galerie d'un produit
 router.post(
   '/:id/images',
-  upload.array('images', 4),
   protect,
   authorize(['agriculteur', 'farmer']),
+  upload.array('images', 4),
   async (req, res) => {
     const files = req.files || [];
     if (files.length === 0) {
