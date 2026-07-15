@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAdminAuth } from '../../contexts/AdminAuthContext';
 import api from '../../services/axiosConfig';
 import './AdminLoginPage.css';
 
@@ -12,7 +11,6 @@ const AdminLoginPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAdminAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -34,7 +32,6 @@ const AdminLoginPage = () => {
         throw new Error('Accès réservé aux administrateurs.');
       }
 
-      login(data.utilisateur);
       navigate('/admin/dashboard');
     } catch (err) {
       const message = err.response?.data?.message || err.message || 'Erreur serveur. Réessayez.';

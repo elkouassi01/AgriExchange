@@ -4,7 +4,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
-import { useAdminAuth } from '../../../src/contexts/AdminAuthContext';
+import { useUser } from '../../../src/contexts/UserContext';
 
 // Mocks
 vi.mock('../../../src/components/admin/AdminSidebar', () => ({
@@ -20,8 +20,8 @@ vi.mock('../../../src/components/admin/AdminHeader', () => ({
   )
 }));
 
-vi.mock('../../../src/contexts/AdminAuthContext', () => ({
-  useAdminAuth: vi.fn()
+vi.mock('../../../src/contexts/UserContext', () => ({
+  useUser: vi.fn()
 }));
 
 describe('Composant AdminLayout', () => {
@@ -29,8 +29,8 @@ describe('Composant AdminLayout', () => {
   const mockLogout = vi.fn();
 
   beforeEach(() => {
-    useAdminAuth.mockReturnValue({
-      admin: mockAdmin,
+    useUser.mockReturnValue({
+      user: mockAdmin,
       logout: mockLogout
     });
   });

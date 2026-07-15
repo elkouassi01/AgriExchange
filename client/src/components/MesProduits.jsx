@@ -5,6 +5,85 @@ import { buildUploadUrl } from '../config/api';
 import api from '../services/axiosConfig';
 import SponsorPayModal from './SponsorPayModal';
 
+// Définis au niveau module (pas dans le composant) pour ne pas être recréés à
+// chaque render — sinon React les traite comme de nouveaux types de composants
+// et démonte/remonte toute la liste (ProductImage relance son chargement d'image)
+// à chaque changement d'état de MesProduits (ex: ouverture de la modale sponsoring).
+const getDefaultEmoji = (nom) => {
+  const nomLower = nom.toLowerCase();
+  if (nomLower.includes('tomate')) return '🍅';
+  if (nomLower.includes('pomme')) return '🍎';
+  if (nomLower.includes('carotte')) return '🥕';
+  if (nomLower.includes('salade') || nomLower.includes('laitue')) return '🥬';
+  if (nomLower.includes('oignon')) return '🧅';
+  if (nomLower.includes('ail')) return '🧄';
+  if (nomLower.includes('poivron')) return '🫑';
+  if (nomLower.includes('brocoli')) return '🥦';
+  if (nomLower.includes('mais')) return '🌽';
+  if (nomLower.includes('aubergine')) return '🍆';
+  if (nomLower.includes('fruit')) return '🍓';
+  if (nomLower.includes('legume')) return '🥦';
+  return '📦';
+};
+
+const IconPackage = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path>
+    <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"></path>
+  </svg>
+);
+
+const IconCheck = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12"></polyline>
+  </svg>
+);
+
+const IconAlert = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+    <line x1="12" y1="9" x2="12" y2="13"></line>
+    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+  </svg>
+);
+
+const IconX = () => (
+  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+);
+
+const ProductImage = ({ src, alt, nom }) => {
+  const [imageSrc, setImageSrc] = useState(getDefaultEmoji(nom));
+
+  useEffect(() => {
+    if (!src) {
+      setImageSrc(getDefaultEmoji(nom));
+      return;
+    }
+
+    const finalUrl = buildUploadUrl(src);
+    const image = new Image();
+    image.onload = () => setImageSrc(finalUrl);
+    image.onerror = () => setImageSrc(getDefaultEmoji(nom));
+    image.src = finalUrl;
+  }, [nom, src]);
+
+  if (imageSrc.startsWith('http') || imageSrc.startsWith('/')) {
+    return (
+      <img
+        src={imageSrc}
+        alt={alt}
+        className="produit-image-reel"
+        onError={() => setImageSrc(getDefaultEmoji(nom))}
+      />
+    );
+  }
+
+  return <div className="produit-emoji" aria-hidden="true">{imageSrc}</div>;
+};
+
 const MesProduits = () => {
   const [produits, setProduits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -157,82 +236,6 @@ const MesProduits = () => {
       case 'Epuise': return 'statut-epuise';
       default: return 'statut-default';
     }
-  };
-
-  const getDefaultEmoji = (nom) => {
-    const nomLower = nom.toLowerCase();
-    if (nomLower.includes('tomate')) return '🍅';
-    if (nomLower.includes('pomme')) return '🍎';
-    if (nomLower.includes('carotte')) return '🥕';
-    if (nomLower.includes('salade') || nomLower.includes('laitue')) return '🥬';
-    if (nomLower.includes('oignon')) return '🧅';
-    if (nomLower.includes('ail')) return '🧄';
-    if (nomLower.includes('poivron')) return '🫑';
-    if (nomLower.includes('brocoli')) return '🥦';
-    if (nomLower.includes('mais')) return '🌽';
-    if (nomLower.includes('aubergine')) return '🍆';
-    if (nomLower.includes('fruit')) return '🍓';
-    if (nomLower.includes('legume')) return '🥦';
-    return '📦';
-  };
-
-  // Icônes SVG pour les statistiques
-  const IconPackage = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"></path>
-      <path d="M3 9V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"></path>
-    </svg>
-  );
-
-  const IconCheck = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
-  );
-
-  const IconAlert = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-      <line x1="12" y1="9" x2="12" y2="13"></line>
-      <line x1="12" y1="17" x2="12.01" y2="17"></line>
-    </svg>
-  );
-
-  const IconX = () => (
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"></line>
-      <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-  );
-
-  const ProductImage = ({ src, alt, nom }) => {
-    const [imageSrc, setImageSrc] = useState(getDefaultEmoji(nom));
-
-    useEffect(() => {
-      if (!src) {
-        setImageSrc(getDefaultEmoji(nom));
-        return;
-      }
-
-      const finalUrl = buildUploadUrl(src);
-      const image = new Image();
-      image.onload = () => setImageSrc(finalUrl);
-      image.onerror = () => setImageSrc(getDefaultEmoji(nom));
-      image.src = finalUrl;
-    }, [nom, src]);
-
-    if (imageSrc.startsWith('http') || imageSrc.startsWith('/')) {
-      return (
-        <img
-          src={imageSrc}
-          alt={alt}
-          className="produit-image-reel"
-          onError={() => setImageSrc(getDefaultEmoji(nom))}
-        />
-      );
-    }
-
-    return <div className="produit-emoji" aria-hidden="true">{imageSrc}</div>;
   };
 
   if (loading) {

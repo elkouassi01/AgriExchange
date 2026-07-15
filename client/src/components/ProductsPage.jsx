@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import './ProductsPage.css';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL, buildUploadUrl } from '../config/api';
@@ -136,8 +136,15 @@ export default function ProductsPage() {
   const [openGroups, setOpenGroups]     = useState({});
   const [sidebarOpen, setSidebarOpen]   = useState(false);
 
+  const controllerRef = useRef(null);
+  const mountedRef = useRef(true);
+
   const fetchProduits = useCallback(async () => {
+    // Annule toute requête précédente encore en vol (retry rapide, ou fetch initial
+    // encore en cours) avant d'en démarrer une nouvelle.
+    controllerRef.current?.abort();
     const controller = new AbortController();
+    controllerRef.current = controller;
     const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       setLoading(true);
@@ -172,6 +179,7 @@ export default function ProductsPage() {
         setOpenGroups(defaults);
       }
     } catch (err) {
+      if (!mountedRef.current) return;
       if (err.name === 'AbortError') {
         setError('Le serveur met trop de temps à répondre. Vérifiez votre connexion.');
       } else {
@@ -181,11 +189,18 @@ export default function ProductsPage() {
       }
     } finally {
       clearTimeout(timeout);
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchProduits(); }, [fetchProduits]);
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchProduits();
+    return () => {
+      mountedRef.current = false;
+      controllerRef.current?.abort();
+    };
+  }, [fetchProduits]);
 
   const filteredProducts = useMemo(() => {
     const cats = getCategoriesForId(selectedId, categoryTree);

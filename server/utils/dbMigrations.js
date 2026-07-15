@@ -54,6 +54,8 @@ const REQUIRED_INDEXES = [
 const OPTIONAL_INDEXES = [
   { table: 'contact_requests', name: 'idx_cr_status',            cols: 'status' },
   { table: 'contact_requests', name: 'idx_cr_seller_phone',      cols: 'seller_phone' },
+  { table: 'contact_requests', name: 'idx_cr_buyer_email',       cols: 'buyer_email' },
+  { table: 'contact_requests', name: 'idx_cr_buyer_phone',       cols: 'buyer_phone' },
   { table: 'product_payments', name: 'idx_pp_status',            cols: 'status' },
   { table: 'product_payments', name: 'idx_pp_transaction_id',    cols: 'transaction_id' },
 ];

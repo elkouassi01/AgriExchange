@@ -67,10 +67,12 @@ router.get('/all', protect, authorize(['admin']), async (req, res) => {
     const offset = (Math.max(parseInt(page, 10), 1) - 1) * parseInt(limit, 10);
 
     const statusFilter = ['pending', 'approved', 'rejected'].includes(status) ? status : null;
-    const whereClause = statusFilter ? `WHERE p.moderation_status = '${statusFilter}'` : '';
+    const whereClause = statusFilter ? 'WHERE p.moderation_status = ?' : '';
+    const whereParams = statusFilter ? [statusFilter] : [];
 
     const [[{ total }]] = await pool.query(
-      `SELECT COUNT(*) AS total FROM products p ${whereClause}`
+      `SELECT COUNT(*) AS total FROM products p ${whereClause}`,
+      whereParams
     );
 
     const [rows] = await pool.query(
@@ -84,7 +86,7 @@ router.get('/all', protect, authorize(['admin']), async (req, res) => {
        ${whereClause}
        ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,
-      [parseInt(limit, 10), offset]
+      [...whereParams, parseInt(limit, 10), offset]
     );
 
     return res.json({ success: true, total, page: parseInt(page, 10), products: rows });

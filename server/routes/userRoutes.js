@@ -1,19 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const {
-  login,
   getUserForfait,
   enregistrerVueProduit,
   verifierAccesProduit
 } = require('../controllers/userController');
 const { protect } = require('../middlewares/authMiddleware');
-
-/**
- * @route   POST /api/v1/users/login
- * @desc    Connexion d’un utilisateur avec email et mot de passe
- * @access  Public
- */
-router.post('/login', login);
 
 /**
  * @route   GET /api/v1/users/:id/forfait
