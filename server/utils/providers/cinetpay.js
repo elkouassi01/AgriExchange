@@ -1,7 +1,7 @@
 // CinetPay new API adapter via SDK officiel cinetpay-js
 // Config fields: api_key, api_password, country, env ('sandbox' | 'production')
 
-const { CinetPayClient } = require('cinetpay-js');
+const { CinetPayClient, AuthenticationError } = require('cinetpay-js');
 
 let _cache = null;
 
@@ -101,7 +101,14 @@ const testConnection = async (cfgIn) => {
     await client.payment.getStatus('TEST_AUTH', cfg.country);
     return { ok: true, message: 'Connexion CinetPay réussie' };
   } catch (e) {
-    return { ok: false, message: e.message };
+    // TEST_AUTH n'est pas une vraie transaction — une erreur API "normale" (ex: 404
+    // Not Found) après ce point signifie que l'authentification a réussi (le SDK a
+    // obtenu un token) ; seule une AuthenticationError signifie que les identifiants
+    // sont réellement invalides.
+    if (e instanceof AuthenticationError) {
+      return { ok: false, message: e.message };
+    }
+    return { ok: true, message: 'Connexion CinetPay réussie' };
   }
 };
 
