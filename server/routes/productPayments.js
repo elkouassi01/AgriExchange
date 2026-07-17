@@ -107,17 +107,43 @@ router.post('/:productId/initiate', async (req, res) => {
 });
 
 // GET /api/v1/product-payments/:productId/check?tx_id=xxx
+// ou  /api/v1/product-payments/:productId/check?buyer_phone=xxx (sans tx_id, pour
+// reconnaître un acheteur qui a déjà payé depuis un autre appareil/navigateur)
 router.get('/:productId/check', async (req, res) => {
   const { productId } = req.params;
   const { tx_id, buyer_phone, buyer_email } = req.query;
 
-  if (!tx_id) {
-    return res.status(400).json({ success: false, message: 'tx_id requis' });
+  if (!tx_id && !buyer_phone && !buyer_email) {
+    return res.status(400).json({ success: false, message: 'tx_id ou coordonnées requis' });
   }
 
   try {
     if (!isMysql()) {
       return res.status(400).json({ success: false, message: 'Fonctionnalité non disponible' });
+    }
+
+    const product = await mysqlProductRepository.findProductById(productId);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Denrée introuvable' });
+    }
+
+    const seller = {
+      nom: product.vendeur?.nom || null,
+      email: product.vendeur?.email || null,
+      contact: product.vendeur?.contact || null,
+      fermeNom: product.vendeur?.fermeNom || null,
+      adresse: product.vendeur?.adresse || null,
+      typeExploitation: product.vendeur?.description || null,
+    };
+
+    // Pas de tx_id : on reconnaît (ou pas) un acheteur déjà payé, indépendamment de
+    // l'appareil, via une demande de contact déjà créée pour ce produit à son nom.
+    if (!tx_id) {
+      const priorAccess = await mysqlContactRequestRepository.findByProductAndBuyer(productId, {
+        phone: buyer_phone, email: buyer_email,
+      });
+      if (!priorAccess) return res.json({ success: false, paid: false });
+      return res.json({ success: true, paid: true, seller });
     }
 
     let payment = await mysqlPaymentRepository.checkPaymentForProduct(tx_id, productId);
@@ -140,20 +166,6 @@ router.get('/:productId/check', async (req, res) => {
     if (!payment || payment.status !== 'paid') {
       return res.json({ success: false, paid: false });
     }
-
-    const product = await mysqlProductRepository.findProductById(productId);
-    if (!product) {
-      return res.status(404).json({ success: false, message: 'Denrée introuvable' });
-    }
-
-    const seller = {
-      nom: product.vendeur?.nom || null,
-      email: product.vendeur?.email || null,
-      contact: product.vendeur?.contact || null,
-      fermeNom: product.vendeur?.fermeNom || null,
-      adresse: product.vendeur?.adresse || null,
-      typeExploitation: product.vendeur?.description || null,
-    };
 
     // Envoyer WhatsApp au vendeur (une seule fois par paiement — scopé par transaction,
     // pas par numéro de vendeur, sinon un 2e acheteur payant pour le même vendeur

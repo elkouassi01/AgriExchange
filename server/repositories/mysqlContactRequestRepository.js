@@ -85,6 +85,34 @@ const findPendingBySellerPhone = async (phone) => {
   return rows[0] || null;
 };
 
+// Reconnaît un acheteur qui a déjà payé pour ce produit, indépendamment de
+// l'appareil/navigateur utilisé (le localStorage côté client ne survit pas à un
+// changement de navigateur ou une navigation privée) — recherche par téléphone
+// et/ou email plutôt que par transaction_id.
+const findByProductAndBuyer = async (productId, { phone, email }) => {
+  await ensureTables();
+  const pool = getMysqlPool();
+  const conditions = [];
+  const params = [productId];
+  if (phone) {
+    conditions.push(`REPLACE(REPLACE(buyer_phone, '+', ''), ' ', '') = ?`);
+    params.push(phone.replace(/\D/g, ''));
+  }
+  if (email) {
+    conditions.push('LOWER(buyer_email) = LOWER(?)');
+    params.push(email.trim());
+  }
+  if (!conditions.length) return null;
+
+  const [rows] = await pool.query(
+    `SELECT * FROM contact_requests
+     WHERE product_id = ? AND (${conditions.join(' OR ')})
+     ORDER BY created_at DESC LIMIT 1`,
+    params
+  );
+  return rows[0] || null;
+};
+
 // Utilisé pour l'idempotence par paiement (un acheteur = une transaction = une
 // notification), contrairement à findPendingBySellerPhone qui regroupe par vendeur
 // (utile côté webhook WhatsApp entrant, où seul le numéro du vendeur est connu).
@@ -161,6 +189,7 @@ module.exports = {
   createContactRequest,
   findPendingBySellerPhone,
   findByPaymentId,
+  findByProductAndBuyer,
   markResponded,
   getExpiredPending,
   markExpired,

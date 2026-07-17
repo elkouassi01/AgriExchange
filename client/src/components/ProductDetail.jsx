@@ -215,6 +215,25 @@ function ProductDetail() {
     }
   }, [id, checkAccess, searchParams, setSearchParams]);
 
+  // Reconnaît un acheteur déjà payé par téléphone/email, même sans le tx_id
+  // d'origine (autre appareil, navigateur privé, localStorage vidé). Retourne
+  // true si l'accès a été accordé sans paiement.
+  const checkExistingAccessByIdentity = async (phone, email) => {
+    if (!phone && !email) return false;
+    try {
+      const params = new URLSearchParams();
+      if (phone) params.set('buyer_phone', phone);
+      if (email) params.set('buyer_email', email);
+      const res = await api.get(`/product-payments/${id}/check?${params.toString()}`);
+      if (res.data.paid) {
+        setSeller(res.data.seller);
+        setAccessState('granted');
+        return true;
+      }
+    } catch { /* pas d'accès trouvé — on continue vers le paiement */ }
+    return false;
+  };
+
   const initiatePayment = async (visitorInfo = null) => {
     setPaymentLoading(true);
     setPaymentError('');
@@ -240,13 +259,16 @@ function ProductDetail() {
     }
   };
 
-  const handlePay = () => {
+  const handlePay = async () => {
     if (!user) {
       setModalStep('login');
       setShowLoginModal(true);
-    } else {
-      initiatePayment();
+      return;
     }
+    setPaymentLoading(true);
+    const alreadyPaid = await checkExistingAccessByIdentity(null, user.email);
+    if (alreadyPaid) { setPaymentLoading(false); return; }
+    initiatePayment();
   };
 
   const handleLogin = async (e) => {
@@ -272,6 +294,9 @@ function ProductDetail() {
   const handleVisitorPay = async (e) => {
     e.preventDefault();
     setShowLoginModal(false);
+    setPaymentLoading(true);
+    const alreadyPaid = await checkExistingAccessByIdentity(visitorForm.phone, visitorForm.email);
+    if (alreadyPaid) { setPaymentLoading(false); return; }
     // Envoyer le message WhatsApp de bienvenue (sans bloquer le paiement)
     api.post('/auth/welcome-visitor', {
       phone: visitorForm.phone,
