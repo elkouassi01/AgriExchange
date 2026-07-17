@@ -120,7 +120,23 @@ router.get('/:productId/check', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Fonctionnalité non disponible' });
     }
 
-    const payment = await mysqlPaymentRepository.checkPaymentForProduct(tx_id, productId);
+    let payment = await mysqlPaymentRepository.checkPaymentForProduct(tx_id, productId);
+
+    // Filet de sécurité : si le webhook n'a pas (encore) marqué le paiement comme
+    // payé — retard de finalisation côté CinetPay, notification jamais reçue — on
+    // re-vérifie une fois en direct plutôt que de bloquer l'acheteur indéfiniment
+    // alors que le paiement a réellement abouti.
+    if (payment && payment.status !== 'paid') {
+      try {
+        const providerId = await paymentTransactions.getProvider(tx_id);
+        const verifyResult = await paymentService.checkPayment(providerId, tx_id);
+        if (verifyResult.accepted) {
+          await mysqlPaymentRepository.markAsPaid(tx_id);
+          payment = { ...payment, status: 'paid' };
+        }
+      } catch (_) { /* re-vérification best-effort — on retombe sur le statut DB */ }
+    }
+
     if (!payment || payment.status !== 'paid') {
       return res.json({ success: false, paid: false });
     }
