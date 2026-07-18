@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const mysqlTransactionRepository = require('../repositories/mysqlTransactionRepository');
 const mysqlAbonnementRepository = require('../repositories/mysqlAbonnementRepository');
+const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
 const { getMysqlPool } = require('../config/mysql');
 const auditLog = require('../repositories/mysqlAuditLogRepository');
 const { isWhatsAppReady } = require('../utils/whatsappClient');
@@ -373,23 +374,86 @@ const getUserActivity = async (req, res) => {
   }
 };
 
+// La table `transactions` n'est écrite par aucun flux de paiement réel (CinetPay v1
+// écrit dans product_payments, pending_registrations, product_sponsor_payments —
+// jamais dans `transactions`). On reconstitue donc l'historique réel par UNION sur
+// ces trois tables plutôt que d'interroger une table structurellement vide.
+// Chacune est créée à la volée au premier paiement de son type — pas garanties
+// présentes (ex: installation neuve, ou aucun abonnement jamais vendu) — donc on
+// ne les inclut dans l'UNION que si elles existent réellement, sous peine de
+// faire planter toute la page transactions pour une table simplement pas encore créée.
+const TRANSACTION_SOURCES = [
+  {
+    table: 'product_payments',
+    sql: `SELECT
+      pp.transaction_id AS reference, pp.amount AS montant, 'XOF' AS devise, 'cinetpay' AS methode,
+      CASE pp.status WHEN 'paid' THEN 'completed' ELSE pp.status END AS statut,
+      CONCAT('Déblocage contact — ', COALESCE(pr.nom, 'denrée supprimée')) AS description,
+      pp.created_at AS created_at,
+      COALESCE(pp.buyer_phone, 'Visiteur') AS user_nom, COALESCE(pp.buyer_email, '—') AS user_email
+    FROM product_payments pp LEFT JOIN products pr ON pr.id = pp.product_id`,
+  },
+  {
+    table: 'pending_registrations',
+    sql: `SELECT
+      reg.transaction_id AS reference, reg.amount AS montant, 'XOF' AS devise, 'cinetpay' AS methode,
+      reg.status AS statut,
+      CONCAT('Abonnement ', COALESCE(reg.formule, '?'), ' (', COALESCE(reg.role, '?'), ')') AS description,
+      reg.created_at AS created_at, reg.nom AS user_nom, reg.email AS user_email
+    FROM pending_registrations reg`,
+  },
+  {
+    table: 'product_sponsor_payments',
+    sql: `SELECT
+      sp.transaction_id AS reference, sp.amount AS montant, 'XOF' AS devise, 'cinetpay' AS methode,
+      CASE sp.status WHEN 'active' THEN 'completed' WHEN 'expired' THEN 'completed' ELSE sp.status END AS statut,
+      CONCAT('Sponsoring — ', COALESCE(pr2.nom, 'denrée supprimée')) AS description,
+      sp.created_at AS created_at, u.nom AS user_nom, u.email AS user_email
+    FROM product_sponsor_payments sp
+    LEFT JOIN products pr2 ON pr2.id = sp.product_id
+    LEFT JOIN users u ON u.id = sp.seller_id`,
+  },
+];
+
+// Résultat vide et sans lignes mais avec les bonnes colonnes, si aucune des trois
+// tables n'existe encore (installation toute neuve).
+const EMPTY_TRANSACTIONS_SQL =
+  `SELECT NULL AS reference, 0 AS montant, 'XOF' AS devise, 'cinetpay' AS methode,
+   NULL AS statut, NULL AS description, NULL AS created_at, NULL AS user_nom, NULL AS user_email
+   WHERE 1=0`;
+
+const buildTransactionsUnionSql = async (pool) => {
+  // Garantit que product_payments (colonnes buyer_phone/buyer_email incluses) existe
+  // avant d'y référer en SQL brut — ces colonnes ne sont sinon ajoutées qu'au premier
+  // vrai paiement initié depuis le dernier redémarrage.
+  await mysqlPaymentRepository.ensureTable();
+  const [rows] = await pool.query(
+    `SELECT table_name FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_name IN (?)`,
+    [TRANSACTION_SOURCES.map((s) => s.table)]
+  );
+  const existing = new Set(rows.map((r) => r.table_name || r.TABLE_NAME));
+  const parts = TRANSACTION_SOURCES.filter((s) => existing.has(s.table)).map((s) => s.sql);
+  return parts.length ? parts.join(' UNION ALL ') : EMPTY_TRANSACTIONS_SQL;
+};
+
 const getTransactionStats = async (req, res) => {
   try {
     const pool = getMysqlPool();
+    const unionSql = await buildTransactionsUnionSql(pool);
     const [[stats]] = await pool.query(`
       SELECT
-        COUNT(*)                                              AS total,
-        COALESCE(SUM(CASE WHEN status='completed' THEN montant ELSE 0 END), 0) AS revenue,
-        COALESCE(SUM(CASE WHEN status='success'   THEN montant ELSE 0 END), 0) AS revenue_success,
-        COUNT(CASE WHEN status IN ('pending')      THEN 1 END)  AS pending_count,
-        COALESCE(SUM(CASE WHEN status='pending'    THEN montant ELSE 0 END), 0) AS pending_amount,
-        COUNT(CASE WHEN status='failed'            THEN 1 END)  AS failed_count,
-        COUNT(CASE WHEN status IN ('success','completed') THEN 1 END) AS success_count
-      FROM transactions
+        COUNT(*)                                                            AS total,
+        COALESCE(SUM(CASE WHEN statut='completed' THEN montant ELSE 0 END), 0) AS revenue,
+        COUNT(CASE WHEN statut='pending'  THEN 1 END)                       AS pending_count,
+        COALESCE(SUM(CASE WHEN statut='pending' THEN montant ELSE 0 END), 0)  AS pending_amount,
+        COUNT(CASE WHEN statut='failed'   THEN 1 END)                       AS failed_count,
+        COUNT(CASE WHEN statut='completed' THEN 1 END)                      AS success_count
+      FROM (${unionSql}) AS all_tx
     `);
     res.json({
       total:          Number(stats.total),
-      revenue:        Number(stats.revenue) + Number(stats.revenue_success),
+      revenue:        Number(stats.revenue),
       pendingCount:   Number(stats.pending_count),
       pendingAmount:  Number(stats.pending_amount),
       failedCount:    Number(stats.failed_count),
@@ -404,6 +468,7 @@ const getTransactionStats = async (req, res) => {
 const getTransactions = async (req, res) => {
   try {
     const pool = getMysqlPool();
+    const unionSql = await buildTransactionsUnionSql(pool);
     const { page = 1, limit = 20, status, search } = req.query;
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
@@ -411,38 +476,36 @@ const getTransactions = async (req, res) => {
 
     const conditions = [];
     const values = [];
-    if (status) { conditions.push('t.status = ?'); values.push(status); }
+    if (status && status !== 'all') {
+      if (status === 'success') conditions.push(`statut = 'completed'`);
+      else { conditions.push('statut = ?'); values.push(status); }
+    }
     if (search?.trim()) {
-      conditions.push('(t.reference LIKE ? OR u.nom LIKE ? OR u.email LIKE ?)');
+      conditions.push('(reference LIKE ? OR user_nom LIKE ? OR user_email LIKE ?)');
       const like = `%${search.trim()}%`;
       values.push(like, like, like);
     }
-
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const [[countRow], [rows]] = await Promise.all([
-      pool.query(`SELECT COUNT(*) AS total FROM transactions t ${where}`, values),
+    const [countResult, transactionsResult] = await Promise.all([
+      pool.query(`SELECT COUNT(*) AS total FROM (${unionSql}) AS all_tx ${where}`, values),
       pool.query(
-        `SELECT t.id, t.reference, t.montant, t.devise, t.methode,
-                t.status, t.description, t.created_at,
-                u.nom AS user_nom, u.email AS user_email
-         FROM transactions t
-         LEFT JOIN users u ON u.id = t.user_id
+        `SELECT * FROM (${unionSql}) AS all_tx
          ${where}
-         ORDER BY t.created_at DESC
+         ORDER BY created_at DESC
          LIMIT ? OFFSET ?`,
         [...values, limitNum, offset]
       ),
     ]);
-
-    const total = parseInt(countRow.total, 10);
-    const transactions = rows.map(r => ({
-      id: r.id,
-      reference: r.reference || r.id,
+    const rows = transactionsResult[0];
+    const total = parseInt(countResult[0][0].total, 10);
+    const transactions = rows.map((r, i) => ({
+      id: `${r.reference}-${i}`,
+      reference: r.reference,
       montant: Number(r.montant),
       devise: r.devise || 'XOF',
       methode: r.methode || '—',
-      statut: r.status,
+      statut: r.statut,
       description: r.description || '',
       createdAt: r.created_at,
       userNom: r.user_nom || 'Visiteur',

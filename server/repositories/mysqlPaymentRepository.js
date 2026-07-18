@@ -93,4 +93,4 @@ const checkPaymentForProduct = async (transactionId, productId) => {
   return rows[0] || null;
 };
 
-module.exports = { createPendingPayment, markAsPaid, checkPaymentForProduct, findPaidByProductAndBuyer };
+module.exports = { createPendingPayment, markAsPaid, checkPaymentForProduct, findPaidByProductAndBuyer, ensureTable };
