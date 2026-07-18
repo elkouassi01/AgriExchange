@@ -8,6 +8,7 @@ const { randomUUID } = require('crypto');
 const paymentService = require('../utils/paymentService');
 const paymentTransactions = require('../utils/paymentTransactions');
 const mysqlPaymentRepository = require('../repositories/mysqlPaymentRepository');
+const mysqlUserRepository = require('../repositories/mysqlUserRepository');
 const { getMysqlPool } = require('../config/mysql');
 
 // Crée la table pending_registrations si absente (auto-migrate)
@@ -121,19 +122,26 @@ router.post('/cinetpay-notify', async (req, res) => {
       ]
     );
 
-    // Créer l'abonnement si c'est un agriculteur
-    if (reg.role === 'agriculteur' && reg.formule) {
+    // Activer l'abonnement (agriculteur ou consommateur — la restriction précédente
+    // au seul rôle agriculteur laissait les consommateurs payants sans aucun droit).
+    // Écrit dans user_subscriptions, la table que le reste du code vérifie réellement
+    // (quota de vues, éligibilité sponsoring) — l'ancienne requête visait `abonnements`
+    // avec des noms de colonnes inexistants (user_id/date_fin/statut au lieu de
+    // utilisateur_id/date_expiration/status) et échouait silencieusement à chaque fois.
+    if (reg.formule) {
       const durations = { BLEU: 1, GOLD: 3, PLATINUM: 6 };
       const months = durations[reg.formule] || 1;
+      const dateDebut = new Date();
       const dateFin = new Date();
       dateFin.setMonth(dateFin.getMonth() + months);
 
-      await pool.query(
-        `INSERT INTO abonnements (user_id, formule, date_debut, date_fin, montant, statut)
-         VALUES (?, ?, NOW(), ?, ?, 'actif')
-         ON DUPLICATE KEY UPDATE formule = VALUES(formule), date_fin = VALUES(date_fin), statut = 'actif'`,
-        [userId, reg.formule, dateFin, reg.amount || 0]
-      ).catch(() => {});
+      await mysqlUserRepository.updateUserSubscription(userId, {
+        formule: reg.formule,
+        dateDebut,
+        dateFin,
+        montant: reg.amount || 0,
+        statut: 'actif',
+      }).catch((e) => console.error('[CinetPay Notify] Erreur activation abonnement:', e.message));
     }
 
     await pool.query(

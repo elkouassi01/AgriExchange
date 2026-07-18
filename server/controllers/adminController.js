@@ -26,6 +26,9 @@ const getDashboardStats = async (req, res) => {
 
   try {
     const pool = getMysqlPool();
+    // `transactions` n'est écrite par aucun flux de paiement réel — mêmes vraies
+    // sources que la page admin Transactions (voir buildTransactionsUnionSql).
+    const unionSql = await buildTransactionsUnionSql(pool);
 
     // ── Utilisateurs : totaux + nouveaux ce mois ─────────────────────────
     const [[stats]] = await pool.query(`
@@ -36,28 +39,25 @@ const getDashboardStats = async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW()))  AS new_users_month,
         (SELECT COUNT(*) FROM users WHERE role = 'agriculteur' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS new_farmers_month,
         (SELECT COUNT(*) FROM users WHERE role = 'consommateur' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS new_consumers_month,
-        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status IN ('completed','success'))            AS total_revenue,
-        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status IN ('completed','success') AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS revenue_month,
-        (SELECT COALESCE(SUM(montant), 0) FROM transactions WHERE status IN ('completed','success') AND MONTH(created_at) = MONTH(DATE_SUB(NOW(), INTERVAL 1 MONTH)) AND YEAR(created_at) = YEAR(DATE_SUB(NOW(), INTERVAL 1 MONTH))) AS revenue_last_month,
-        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'BLEU')     AS active_subscriptions_bleu,
-        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'GOLD')     AS active_subscriptions_gold,
-        (SELECT COUNT(*) FROM abonnements WHERE date_expiration >= NOW() AND formule = 'PLATINUM') AS active_subscriptions_platinum
+        (SELECT COUNT(*) FROM user_subscriptions WHERE statut = 'actif' AND date_fin >= NOW() AND formule = 'BLEU')     AS active_subscriptions_bleu,
+        (SELECT COUNT(*) FROM user_subscriptions WHERE statut = 'actif' AND date_fin >= NOW() AND formule = 'GOLD')     AS active_subscriptions_gold,
+        (SELECT COUNT(*) FROM user_subscriptions WHERE statut = 'actif' AND date_fin >= NOW() AND formule = 'PLATINUM') AS active_subscriptions_platinum
     `);
 
-    // ── Transactions par statut + ce mois ────────────────────────────────
-    const [statusRows] = await pool.query(
-      'SELECT status, COUNT(*) AS count FROM transactions GROUP BY status'
-    );
-    const transactionStatus = { success: 0, completed: 0, pending: 0, failed: 0 };
-    statusRows.forEach((row) => {
-      if (row.status in transactionStatus) transactionStatus[row.status] = parseInt(row.count, 10);
-    });
-    const txCompleted = transactionStatus.success + transactionStatus.completed;
-
-    const [[txMonth]] = await pool.query(`
-      SELECT COUNT(*) AS count FROM transactions
-      WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())
+    // ── Revenus + transactions par statut ─────────────────────────────────
+    const [[txStats]] = await pool.query(`
+      SELECT
+        COALESCE(SUM(CASE WHEN statut='completed' THEN montant ELSE 0 END), 0) AS total_revenue,
+        COALESCE(SUM(CASE WHEN statut='completed' AND MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW()) THEN montant ELSE 0 END), 0) AS revenue_month,
+        COALESCE(SUM(CASE WHEN statut='completed' AND MONTH(created_at)=MONTH(DATE_SUB(NOW(), INTERVAL 1 MONTH)) AND YEAR(created_at)=YEAR(DATE_SUB(NOW(), INTERVAL 1 MONTH)) THEN montant ELSE 0 END), 0) AS revenue_last_month,
+        COUNT(*)                                             AS tx_total,
+        COUNT(CASE WHEN statut='completed' THEN 1 END)       AS tx_completed,
+        COUNT(CASE WHEN statut='pending'   THEN 1 END)       AS tx_pending,
+        COUNT(CASE WHEN statut='failed'    THEN 1 END)       AS tx_failed,
+        COUNT(CASE WHEN MONTH(created_at)=MONTH(NOW()) AND YEAR(created_at)=YEAR(NOW()) THEN 1 END) AS tx_month
+      FROM (${unionSql}) AS all_tx
     `);
+    const txCompleted = parseInt(txStats.tx_completed, 10);
 
     // ── Activité 6 derniers mois ─────────────────────────────────────────
     const [activityRows] = await pool.query(`
@@ -65,8 +65,8 @@ const getDashboardStats = async (req, res) => {
         MONTH(created_at) AS month,
         YEAR(created_at)  AS year,
         COUNT(*)          AS count,
-        COALESCE(SUM(montant), 0) AS amount
-      FROM transactions
+        COALESCE(SUM(CASE WHEN statut='completed' THEN montant ELSE 0 END), 0) AS amount
+      FROM (${unionSql}) AS all_tx
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
       GROUP BY YEAR(created_at), MONTH(created_at)
       ORDER BY year, month
@@ -132,8 +132,8 @@ const getDashboardStats = async (req, res) => {
     } catch {}
 
     // ── Calcul growth revenus (mois en cours vs mois précédent) ──────────
-    const revMonth     = parseFloat(stats.revenue_month      || 0);
-    const revLastMonth = parseFloat(stats.revenue_last_month || 0);
+    const revMonth     = parseFloat(txStats.revenue_month      || 0);
+    const revLastMonth = parseFloat(txStats.revenue_last_month || 0);
     const revenueGrowth = revLastMonth > 0
       ? Math.round(((revMonth - revLastMonth) / revLastMonth) * 100)
       : (revMonth > 0 ? 100 : 0);
@@ -148,7 +148,7 @@ const getDashboardStats = async (req, res) => {
         newConsumersMonth:parseInt(stats.new_consumers_month, 10),
       },
       revenue: {
-        total:       parseFloat(stats.total_revenue),
+        total:       parseFloat(txStats.total_revenue),
         thisMonth:   revMonth,
         lastMonth:   revLastMonth,
         growth:      revenueGrowth,
@@ -159,11 +159,11 @@ const getDashboardStats = async (req, res) => {
         { formule: 'PLATINUM', count: parseInt(stats.active_subscriptions_platinum, 10) },
       ],
       transactions: {
-        total:      transactionStatus.success + transactionStatus.completed + transactionStatus.pending + transactionStatus.failed,
+        total:      parseInt(txStats.tx_total, 10),
         completed:  txCompleted,
-        pending:    transactionStatus.pending,
-        failed:     transactionStatus.failed,
-        thisMonth:  parseInt(txMonth.count || 0),
+        pending:    parseInt(txStats.tx_pending, 10),
+        failed:     parseInt(txStats.tx_failed, 10),
+        thisMonth:  parseInt(txStats.tx_month, 10),
       },
       products,
       activityData,
