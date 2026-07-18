@@ -86,7 +86,11 @@ router.post('/:productId/initiate', async (req, res) => {
     if (result.paymentUrl) {
       await paymentTransactions.record(transactionId, providerId);
       if (isMysql()) {
-        await mysqlPaymentRepository.createPendingPayment(transactionId, productId);
+        await mysqlPaymentRepository.createPendingPayment(transactionId, productId, {
+          amount,
+          buyerPhone: req.body.customer_phone || null,
+          buyerEmail: req.body.customer_email || null,
+        });
       }
       return res.json({
         success: true,
@@ -137,12 +141,15 @@ router.get('/:productId/check', async (req, res) => {
     };
 
     // Pas de tx_id : on reconnaît (ou pas) un acheteur déjà payé, indépendamment de
-    // l'appareil, via une demande de contact déjà créée pour ce produit à son nom.
+    // l'appareil. Deux sources : la contact_request (créée seulement si le vendeur a
+    // un numéro renseigné) et product_payments directement (capturé dès l'initiation,
+    // donc toujours présent si le paiement a réellement abouti).
     if (!tx_id) {
-      const priorAccess = await mysqlContactRequestRepository.findByProductAndBuyer(productId, {
-        phone: buyer_phone, email: buyer_email,
-      });
-      if (!priorAccess) return res.json({ success: false, paid: false });
+      const [priorContact, priorPayment] = await Promise.all([
+        mysqlContactRequestRepository.findByProductAndBuyer(productId, { phone: buyer_phone, email: buyer_email }),
+        mysqlPaymentRepository.findPaidByProductAndBuyer(productId, { phone: buyer_phone, email: buyer_email }),
+      ]);
+      if (!priorContact && !priorPayment) return res.json({ success: false, paid: false });
       return res.json({ success: true, paid: true, seller });
     }
 
