@@ -10,7 +10,7 @@ const getBrowserHostname = () => {
   return window.location.hostname;
 };
 
-const isLocalBrowser = LOCAL_HOSTS.has(getBrowserHostname());
+export const isLocalBrowser = LOCAL_HOSTS.has(getBrowserHostname());
 
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
 const configuredServerUrl = import.meta.env.VITE_API_URL?.trim();

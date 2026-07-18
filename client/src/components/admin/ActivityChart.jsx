@@ -5,16 +5,23 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  BarController,
   LineElement,
+  LineController,
   PointElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
 
+// BarController/LineController (pas seulement les éléments) sont indispensables
+// pour un graphique mixte barres+ligne comme celui-ci (datasets avec type: 'bar'
+// et type: 'line' combinés) — sans eux Chart.js lève "line is not a registered
+// controller" dès qu'il reçoit de vraies données.
 ChartJS.register(
   CategoryScale, LinearScale,
-  BarElement, LineElement, PointElement,
+  BarElement, BarController,
+  LineElement, LineController, PointElement,
   Title, Tooltip, Legend
 );
 
