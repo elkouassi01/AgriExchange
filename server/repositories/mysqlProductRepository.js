@@ -37,6 +37,13 @@ const normalizeProductRow = (row) => {
     tags: parseJson(row.tags),
     certifications: parseJson(row.certifications),
     isFeatured: Boolean(row.is_featured),
+    viewsCount: Number(row.views_count || 0),
+    // Vues gagnées depuis l'activation du sponsoring payant en cours — null si pas
+    // de sponsoring payant actif (le badge "vues gagnées" ne s'affiche pas côté client).
+    sponsorViewsGained:
+      row.paid_sponsor_until && new Date(row.paid_sponsor_until) > new Date() && row.sponsor_views_at_start != null
+        ? Math.max(0, Number(row.views_count || 0) - Number(row.sponsor_views_at_start))
+        : null,
     rating: Number(row.rating || 0),
     reviewsCount: row.reviews_count || 0,
     moderationStatus: row.moderation_status || 'approved',
@@ -81,6 +88,11 @@ const baseSelect = `
       FROM product_images
       WHERE product_id = p.id
     ) AS images,
+    (
+      SELECT views_at_start FROM product_sponsor_payments psp
+      WHERE psp.product_id = p.id AND psp.status = 'active'
+      ORDER BY psp.end_date DESC LIMIT 1
+    ) AS sponsor_views_at_start,
     u.nom           AS seller_nom,
     u.email         AS seller_email,
     u.contact       AS seller_contact,
@@ -154,11 +166,15 @@ const listProducts = async (params = {}, options = {}) => {
   const sortColumn = SORTABLE_COLUMNS[params.sortBy] || SORTABLE_COLUMNS.createdAt;
   const sortDirection = params.sortOrder === 'asc' ? 'ASC' : 'DESC';
 
+  // Les denrées sponsorisées (gratuites via is_featured ou payantes via
+  // paid_sponsor_until non expiré) passent en tête de liste, avant le tri demandé.
+  const sponsorRank = "(p.is_featured = 1 OR (p.paid_sponsor_until IS NOT NULL AND p.paid_sponsor_until > NOW())) DESC";
+
   const countQuery = `SELECT COUNT(*) AS total FROM products p ${whereSql}`;
   const listQuery = `
     ${baseSelect}
     ${whereSql}
-    ORDER BY ${sortColumn} ${sortDirection}
+    ORDER BY ${sponsorRank}, ${sortColumn} ${sortDirection}
     LIMIT ? OFFSET ?
   `;
 
@@ -186,6 +202,18 @@ const findProductById = async (id) => {
   const query = `${baseSelect} WHERE p.id = ? LIMIT 1`;
   const [rows] = await pool.query(query, [id]);
   return normalizeProductRow(rows[0]);
+};
+
+// Incrémente le compteur de vues d'une denrée — utilisé pour calculer les vues
+// gagnées grâce au sponsoring payant (voir sponsorViewsGained). Best-effort : ne
+// doit jamais faire échouer l'affichage de la fiche produit.
+const incrementViewCount = async (id) => {
+  const pool = getMysqlPool();
+  try {
+    await pool.query('UPDATE products SET views_count = views_count + 1 WHERE id = ?', [id]);
+  } catch (err) {
+    console.error('[incrementViewCount]', err.message);
+  }
 };
 
 const createProduct = async (payload) => {
@@ -500,6 +528,7 @@ module.exports = {
   createProduct,
   deleteProduct,
   findProductById,
+  incrementViewCount,
   listProducts,
   parseArrayParam,
   updateProduct,

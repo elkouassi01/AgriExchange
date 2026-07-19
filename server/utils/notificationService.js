@@ -73,11 +73,14 @@ const saveSystemMessage = async (userId, message, metadata = {}) => {
     const prefix = metadata.type ? `[${metadata.type.toUpperCase()}] ` : '';
     const fullMessage = prefix + message;
 
+    // mysqlMessageRepository.sendMessage attend du camelCase (senderId/receiverId/
+    // produitId/texte) — avec les clés snake_case précédentes, tous les binds mysql2
+    // valaient `undefined` et l'INSERT échouait silencieusement à chaque appel.
     const messageData = {
-      sender_id: null, // Message système
-      receiver_id: userId,
-      product_id: null, // Pas lié à un produit
-      contenu: fullMessage,
+      senderId: null, // Message système
+      receiverId: userId,
+      produitId: null, // Pas lié à un produit
+      texte: fullMessage,
     };
 
     const saved = await mysqlMessageRepository.sendMessage(messageData);
@@ -247,11 +250,26 @@ const sendSponsorActivated = async (userId, phone, email, productName, sponsorDa
   });
 };
 
+/**
+ * Prévenir un vendeur que son sponsoring payant expire bientôt (rappel de renouvellement)
+ */
+const sendSponsorExpiringSoon = async (userId, phone, email, productName, endDate) => {
+  const subject = '⏰ Votre sponsoring expire bientôt';
+  const dateStr = new Date(endDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' });
+  const message = `Le sponsoring de votre produit "${productName}" expire le ${dateStr}.\n\nRenouvelez-le dès maintenant pour rester en tête des résultats et continuer à gagner en visibilité.`;
+
+  return sendNotification(userId, { phone, email }, subject, message, {
+    channels: ['whatsapp', 'email', 'inapp'],
+    type: NOTIFICATION_TYPES.SPONSOR_ACTIVATED,
+  });
+};
+
 module.exports = {
   NOTIFICATION_TYPES,
   sendOTPNotification,
   sendNotification,
   sendSponsorActivated,
+  sendSponsorExpiringSoon,
   sendByPhone,
   initialize: () => {
     emailService.initializeEmail();

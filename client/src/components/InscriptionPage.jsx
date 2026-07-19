@@ -296,7 +296,7 @@ const InscriptionPage = () => {
             <span className="inscription-promo-banner__icon">🎉</span>
             <div className="inscription-promo-banner__text">
               <strong>Inscription 100% GRATUITE</strong>
-              <span>Offre valable jusqu'au {promoEndStr} — quelle que soit la formule</span>
+              <span>Profitez-en avant le {promoEndStr} et publiez vos denrées dès aujourd'hui !</span>
             </div>
           </div>
         )}

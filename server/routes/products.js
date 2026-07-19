@@ -431,7 +431,12 @@ router.post('/:id/sponsor/initiate', protect, authorize(['agriculteur', 'farmer'
     }
 
     const { randomUUID } = require('crypto');
-    const transactionId = `SP${randomUUID().replace(/-/g, '').toUpperCase()}`;
+    // CinetPay tronque merchantTransactionId à 30 caractères (providers/cinetpay.js) —
+    // un ID plus long que ça est enregistré tronqué côté CinetPay mais utilisé en
+    // entier ici pour re-vérifier le paiement, qui échoue alors toujours à retrouver
+    // la transaction. SP + 26 caractères = 28, sous la limite (même format que
+    // productPayments.js).
+    const transactionId = `SP${randomUUID().replace(/-/g, '').substring(0, 26).toUpperCase()}`;
     const origin    = req.headers.origin || process.env.CLIENT_URL || 'https://vivrimarket.com';
     const serverUrl = process.env.SERVER_URL || 'https://vivrimarket.com';
 
@@ -542,6 +547,10 @@ router.get('/:id', async (req, res) => {
           message: 'Denrée introuvable'
         });
       }
+
+      // Best-effort, non bloquant — alimente sponsorViewsGained (vues gagnées grâce
+      // au sponsoring, affiché dans "Mes denrées").
+      mysqlProductRepository.incrementViewCount(product.id);
 
       // Strip seller contact info — gated behind 300 FCFA payment (see /api/v1/product-payments)
       const publicProduct = {

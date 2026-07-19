@@ -11,6 +11,9 @@ const REQUIRED_COLUMNS = [
   { table: 'products', column: 'moderation_note',     definition: 'TEXT NULL' },
   { table: 'products', column: 'moderated_by',        definition: 'CHAR(36) NULL' },
   { table: 'products', column: 'moderated_at',        definition: 'DATETIME NULL' },
+  { table: 'products', column: 'views_count',         definition: 'INT NOT NULL DEFAULT 0' },
+  { table: 'product_sponsor_payments', column: 'views_at_start',   definition: 'INT NULL' },
+  { table: 'product_sponsor_payments', column: 'reminder_sent_at', definition: 'DATETIME NULL' },
 ];
 
 const columnExists = async (pool, table, column) => {

@@ -133,6 +133,7 @@ const MesProduits = () => {
           statut: getStatutProduit(produit),
           dateAjout: produit.createdAt || produit.dateAjout || 'Date inconnue',
           isFeatured: Boolean(produit.isFeatured || produit.is_featured),
+          sponsorViewsGained: produit.sponsorViewsGained ?? null,
           moderationStatus: produit.moderationStatus || produit.moderation_status || 'approved',
           moderationNote: produit.moderationNote || produit.moderation_note || null,
         }))
@@ -338,6 +339,11 @@ const MesProduits = () => {
               <div className="produit-img-wrap">
                 <ProductImage src={produit.imageUrl} alt={produit.nom} nom={produit.nom} />
                 {produit.isFeatured && <span className="produit-sponsored-badge">⭐ Sponsorisé</span>}
+                {produit.sponsorViewsGained !== null && (
+                  <span className="produit-views-badge" title="Vues gagnées depuis l'activation du sponsoring">
+                    👁 +{produit.sponsorViewsGained} vue{produit.sponsorViewsGained !== 1 ? 's' : ''}
+                  </span>
+                )}
                 {produit.moderationStatus === 'pending' && (
                   <span className="produit-moderation-badge produit-moderation-badge--pending">⏳ En attente</span>
                 )}

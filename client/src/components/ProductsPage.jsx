@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './ProductsPage.css';
 import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL, buildUploadUrl } from '../config/api';
+import SponsoredProducts from './SponsoredProducts';
 
 const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1594282486555-88f2f92b9a68';
 
@@ -234,6 +235,9 @@ export default function ProductsPage() {
 
   return (
     <div className="products-container">
+      {/* Denrées sponsorisées en tête de liste — masqué automatiquement si aucune */}
+      {!selectedId && <SponsoredProducts />}
+
       {/* En-tête */}
       <div className="products-header">
         <div className="products-header-left">

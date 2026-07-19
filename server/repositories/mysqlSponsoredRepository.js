@@ -19,6 +19,8 @@ const ensureTable = async () => {
       status         ENUM('pending','active','expired','failed') NOT NULL DEFAULT 'pending',
       start_date     DATETIME      NULL,
       end_date       DATETIME      NULL,
+      views_at_start   INT         NULL,
+      reminder_sent_at DATETIME    NULL,
       created_at     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
       CONSTRAINT fk_psp_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
@@ -79,11 +81,22 @@ const activateSponsor = async (transactionId) => {
     [endDate, record.product_id],
   );
 
+  // Instantané des vues au moment de l'activation — permet de calculer les vues
+  // gagnées grâce au sponsoring (vues actuelles - vues au départ) côté "Mes denrées".
+  await pool.query(
+    `UPDATE product_sponsor_payments psp
+     JOIN products p ON p.id = psp.product_id
+     SET psp.views_at_start = p.views_count
+     WHERE psp.transaction_id = ?`,
+    [transactionId],
+  );
+
   return { ...record, status: 'active', start_date: now, end_date: endDate };
 };
 
 // Désactive les sponsorisations payantes expirées (à appeler via cron)
 const expireOldSponsorships = async () => {
+  await ensureTable();
   const pool = getMysqlPool();
   try {
     // Expire les entrées dans la table de paiements
@@ -104,6 +117,34 @@ const expireOldSponsorships = async () => {
   }
 };
 
+// Sponsorings payants actifs qui expirent dans les 48h et n'ont pas encore
+// reçu de rappel — à appeler via cron (voir server.js).
+const getExpiringSoon = async () => {
+  await ensureTable();
+  const pool = getMysqlPool();
+  const [rows] = await pool.query(
+    `SELECT psp.id, psp.transaction_id, psp.end_date, psp.product_id,
+            p.nom AS product_nom,
+            u.id AS seller_id, u.nom AS seller_nom, u.contact AS seller_contact, u.email AS seller_email
+     FROM product_sponsor_payments psp
+     JOIN products p ON p.id = psp.product_id
+     JOIN users u ON u.id = psp.seller_id
+     WHERE psp.status = 'active'
+       AND psp.end_date IS NOT NULL
+       AND psp.end_date BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 48 HOUR)
+       AND psp.reminder_sent_at IS NULL`,
+  );
+  return rows;
+};
+
+const markReminderSent = async (id) => {
+  const pool = getMysqlPool();
+  await pool.query(
+    `UPDATE product_sponsor_payments SET reminder_sent_at = NOW() WHERE id = ?`,
+    [id],
+  );
+};
+
 // Vérifie si un produit a un sponsoring payant actif
 const getActivePaidSponsor = async (productId) => {
   await ensureTable();
@@ -118,10 +159,13 @@ const getActivePaidSponsor = async (productId) => {
 };
 
 module.exports = {
+  ensureTable,
   createPending,
   getByTxId,
   activateSponsor,
   expireOldSponsorships,
+  getExpiringSoon,
+  markReminderSent,
   getActivePaidSponsor,
   SPONSOR_AMOUNT,
   SPONSOR_DURATION_DAYS,

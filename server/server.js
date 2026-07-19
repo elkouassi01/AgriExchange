@@ -42,6 +42,7 @@ const productPaymentsRoutes = require('./routes/productPayments');
 const contactRequestsRoutes = require('./routes/contactRequests');
 const { startContactRequestCron } = require('./routes/contactRequests');
 const sponsoredRepo = require('./repositories/mysqlSponsoredRepository');
+const notificationService = require('./utils/notificationService');
 const reviewsRoutes = require('./routes/reviews');
 const moderationRoutes = require('./routes/moderation');
 const categoriesRoutes = require('./routes/categoriesRoutes');
@@ -195,6 +196,11 @@ const connectToMysql = async () => {
   console.log('MySQL connected');
   const { ensureTables } = require('./repositories/mysqlContactRequestRepository');
   await ensureTables();
+  // product_sponsor_payments doit exister avant ensureColumns() (qui lui ajoute des
+  // colonnes) et avant tout SELECT produit (baseSelect y fait une sous-requête pour
+  // les vues gagnées grâce au sponsoring) — sans ça, toute la liste des denrées
+  // planterait sur une base neuve tant qu'aucun sponsoring payant n'a été acheté.
+  await sponsoredRepo.ensureTable();
   const { ensureIndexes, ensureColumns, ensureAuditLogsTable, ensureMessagesSenderNullable, ensureCategoriesTable, ensureSellerReviewsTable, ensureAppSettingsTable, ensurePaymentProvidersTable, ensureUserSubscriptionsUnique } = require('./utils/dbMigrations');
   await ensureColumns();
   await ensureIndexes();
@@ -333,6 +339,22 @@ io.on('connection', (socket) => {
 });
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Rappel de renouvellement — prévient un vendeur par WhatsApp/email quand son
+// sponsoring payant expire dans moins de 48h, une seule fois par sponsoring.
+const remindExpiringSponsorships = async () => {
+  try {
+    const rows = await sponsoredRepo.getExpiringSoon();
+    for (const row of rows) {
+      await notificationService.sendSponsorExpiringSoon(
+        row.seller_id, row.seller_contact, row.seller_email, row.product_nom, row.end_date,
+      );
+      await sponsoredRepo.markReminderSent(row.id);
+    }
+  } catch (err) {
+    console.error('[sponsor reminder cron]', err.message);
+  }
+};
+
 let server;
 
 const startServer = async () => {
@@ -352,12 +374,14 @@ const startServer = async () => {
         startContactRequestCron();
       }
 
-      // Cron : expirer les sponsorisations payantes toutes les heures
+      // Cron : expirer les sponsorisations payantes + rappel de renouvellement, toutes les heures
       if (process.env.DATABASE_PROVIDER !== 'mongo') {
         setInterval(() => {
           sponsoredRepo.expireOldSponsorships();
+          remindExpiringSponsorships();
         }, 60 * 60 * 1000); // toutes les heures
         sponsoredRepo.expireOldSponsorships(); // run immédiatement au démarrage
+        remindExpiringSponsorships();
       }
     });
   } catch (err) {
