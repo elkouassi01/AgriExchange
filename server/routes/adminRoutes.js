@@ -195,6 +195,27 @@ router.get('/abonnements',
 // 📋 Audit logs
 router.get('/audit-logs', validatePagination, adminController.getAuditLogs);
 
+// 📱 WhatsApp — reconnexion depuis l'admin (au lieu de lire le QR dans les logs serveur)
+const whatsappClient = require('../utils/whatsappClient');
+
+router.get('/whatsapp/qr', async (req, res) => {
+  try {
+    const qr = await whatsappClient.getQrImage();
+    res.json({ ready: whatsappClient.isWhatsAppReady(), qr });
+  } catch (err) {
+    res.status(500).json({ message: 'Erreur génération QR code' });
+  }
+});
+
+router.post('/whatsapp/reconnect', async (req, res) => {
+  try {
+    await whatsappClient.reconnect();
+    res.json({ success: true, message: 'Reconnexion initiée — récupérez le QR dans quelques secondes' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Erreur reconnexion WhatsApp' });
+  }
+});
+
 // ── Paramètres paiement multi-providers ──────────────────────────────────────
 const appSettings     = require('../repositories/mysqlAppSettingsRepository');
 const providerRepo    = require('../repositories/mysqlPaymentProviderRepository');

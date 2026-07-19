@@ -1,8 +1,39 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
+const qrcodeTerminal = require('qrcode-terminal');
+const qrcode = require('qrcode');
 
 let client = null;
 let isReady = false;
+let lastQr = null; // chaîne QR brute la plus récente, effacée une fois connecté
+
+const attachListeners = (c) => {
+  c.on('qr', (qr) => {
+    lastQr = qr;
+    isReady = false;
+    console.log('\n══════════════════════════════════════════');
+    console.log('  Scannez ce QR code avec WhatsApp VivriMarket');
+    console.log('  (ou depuis Admin → Paramètres → WhatsApp)');
+    console.log('══════════════════════════════════════════\n');
+    qrcodeTerminal.generate(qr, { small: true });
+  });
+
+  c.on('ready', () => {
+    isReady = true;
+    lastQr = null;
+    console.log('✅ WhatsApp VivriMarket connecté');
+  });
+
+  c.on('disconnected', (reason) => {
+    isReady = false;
+    console.warn('⚠️  WhatsApp déconnecté:', reason);
+  });
+
+  c.on('message', async (msg) => {
+    // Traitement des réponses vendeurs (OUI)
+    const { handleVendorReply } = require('../routes/contactRequests');
+    await handleVendorReply(msg);
+  });
+};
 
 const getClient = () => {
   if (client) return client;
@@ -15,34 +46,33 @@ const getClient = () => {
     },
   });
 
-  client.on('qr', (qr) => {
-    console.log('\n══════════════════════════════════════════');
-    console.log('  Scannez ce QR code avec WhatsApp VivriMarket');
-    console.log('══════════════════════════════════════════\n');
-    qrcode.generate(qr, { small: true });
-  });
-
-  client.on('ready', () => {
-    isReady = true;
-    console.log('✅ WhatsApp VivriMarket connecté');
-  });
-
-  client.on('disconnected', () => {
-    isReady = false;
-    console.warn('⚠️  WhatsApp déconnecté');
-  });
-
-  client.on('message', async (msg) => {
-    // Traitement des réponses vendeurs (OUI)
-    const { handleVendorReply } = require('../routes/contactRequests');
-    await handleVendorReply(msg);
-  });
+  attachListeners(client);
 
   client.initialize().catch((err) => {
     console.error('WhatsApp init error:', err.message);
   });
 
   return client;
+};
+
+// Détruit la session en cours (si bloquée/déconnectée) et en redémarre une neuve,
+// ce qui déclenche un nouveau QR code si la session sauvegardée n'est plus valide.
+// Nécessaire car le client ne se reconnecte jamais tout seul après un 'disconnected'.
+const reconnect = async () => {
+  if (client) {
+    try { await client.destroy(); } catch (_) { /* déjà mort, on continue */ }
+  }
+  client = null;
+  isReady = false;
+  lastQr = null;
+  getClient();
+};
+
+// Retourne le QR courant sous forme d'image (data URL PNG), prête à afficher
+// dans l'admin — jamais transmis à un service tiers, généré localement.
+const getQrImage = async () => {
+  if (!lastQr) return null;
+  return qrcode.toDataURL(lastQr, { width: 280, margin: 1 });
 };
 
 const sendWhatsApp = async (phone, message) => {
@@ -68,4 +98,4 @@ const sendWhatsApp = async (phone, message) => {
 
 const isWhatsAppReady = () => isReady;
 
-module.exports = { getClient, sendWhatsApp, isWhatsAppReady };
+module.exports = { getClient, sendWhatsApp, isWhatsAppReady, reconnect, getQrImage };

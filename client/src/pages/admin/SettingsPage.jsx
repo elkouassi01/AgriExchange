@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import './SettingsPage.css';
 import { CircularProgress, IconButton, Tooltip } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
@@ -171,6 +171,10 @@ const SettingsPage = () => {
   const [statusError, setStatusError] = useState('');
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult]   = useState(null); // { ok, message }
+  const [waReconnecting, setWaReconnecting] = useState(false);
+  const [waQr, setWaQr]               = useState(null);
+  const [waMsg, setWaMsg]             = useState('');
+  const waQrReceivedRef               = useRef(false);
 
   const loadStatus = useCallback(async () => {
     setLoadingStatus(true);
@@ -198,6 +202,58 @@ const SettingsPage = () => {
     } finally {
       setTestSending(false);
     }
+  };
+
+  // Récupère le QR code courant ; renvoie true tant qu'on doit continuer à sonder
+  // (pas encore prêt et pas encore de QR à afficher).
+  const pollWhatsAppQr = useCallback(async () => {
+    try {
+      const { data } = await api.get('/admin/whatsapp/qr');
+      if (data.ready) {
+        setWaQr(null);
+        setWaMsg('✅ WhatsApp connecté.');
+        loadStatus();
+        return false;
+      }
+      if (data.qr) {
+        waQrReceivedRef.current = true;
+        setWaQr(data.qr);
+        return true;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }, [loadStatus]);
+
+  const handleWhatsAppReconnect = async () => {
+    setWaReconnecting(true);
+    setWaMsg('');
+    setWaQr(null);
+    waQrReceivedRef.current = false;
+    try {
+      await api.post('/admin/whatsapp/reconnect');
+    } catch (e) {
+      setWaMsg(e.response?.data?.message || 'Erreur lors de la reconnexion.');
+      setWaReconnecting(false);
+      return;
+    }
+
+    // Sonde le QR toutes les 3s pendant 2 minutes maximum (le temps que le client
+    // WhatsApp redémarre et génère un nouveau code).
+    let attempts = 0;
+    const maxAttempts = 40;
+    const interval = setInterval(async () => {
+      attempts += 1;
+      const keepGoing = await pollWhatsAppQr();
+      if (!keepGoing || attempts >= maxAttempts) {
+        clearInterval(interval);
+        setWaReconnecting(false);
+        if (attempts >= maxAttempts && !waQrReceivedRef.current) {
+          setWaMsg('Délai dépassé — réessayez, ou vérifiez les logs serveur.');
+        }
+      }
+    }, 3000);
   };
 
   return (
@@ -358,7 +414,7 @@ const SettingsPage = () => {
           <h3 className="set-section-title" style={{ marginTop: '24px' }}>WhatsApp</h3>
           <p className="set-section-desc">
             Le client WhatsApp est initialisé au démarrage du serveur.
-            Pour reconnecter, redémarrez le processus PM2 et scannez le QR code affiché dans les logs.
+            En cas de déconnexion, reconnectez-vous directement ici en scannant le QR code.
           </p>
           {status?.whatsapp && (
             <div className="set-config-grid">
@@ -372,6 +428,35 @@ const SettingsPage = () => {
                 <span className="set-config-key">Activé</span>
                 <span className="set-config-val">{status.whatsapp.enabled ? 'Oui' : 'Non (WHATSAPP_ENABLED=false)'}</span>
               </div>
+            </div>
+          )}
+
+          {status?.whatsapp?.status !== 'ok' && (
+            <div className="pay-actions" style={{ marginTop: 12, flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+              <button
+                className="set-btn-test"
+                onClick={handleWhatsAppReconnect}
+                disabled={waReconnecting}
+              >
+                {waReconnecting
+                  ? <><CircularProgress size={14} color="inherit" style={{ marginRight: 8 }} />{waQr ? 'En attente du scan…' : 'Démarrage…'}</>
+                  : '🔄 Reconnecter WhatsApp'}
+              </button>
+
+              {waQr && (
+                <div style={{ textAlign: 'center' }}>
+                  <img src={waQr} alt="QR code WhatsApp" style={{ width: 220, height: 220, border: '1px solid #e2e8f0', borderRadius: 8 }} />
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 8 }}>
+                    WhatsApp → Paramètres → Appareils liés → Lier un appareil
+                  </p>
+                </div>
+              )}
+
+              {waMsg && (
+                <div className={`set-test-result ${waMsg.startsWith('✅') ? 'set-test--ok' : 'set-test--error'}`}>
+                  {waMsg}
+                </div>
+              )}
             </div>
           )}
         </div>
