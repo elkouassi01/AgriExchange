@@ -7,6 +7,44 @@ const { getMysqlPool } = require('../config/mysql');
 const auditLog = require('../repositories/mysqlAuditLogRepository');
 const { isWhatsAppReady } = require('../utils/whatsappClient');
 const { sendGeneric } = require('../utils/emailService');
+const tls = require('tls');
+
+// Vérifie le certificat SSL via une vraie poignée de main TLS vers le domaine
+// (reflète exactement ce qu'un visiteur reçoit), plutôt qu'une lecture de fichier
+// sur le disque — évite les soucis de permissions et détecte aussi une mauvaise
+// config Nginx qui servirait le mauvais certificat. C'est l'incident qu'on a eu
+// (renouvellement Certbot silencieusement en échec) que ce contrôle aurait révélé
+// immédiatement au lieu d'attendre qu'un visiteur le signale.
+const checkSslCertificate = (host = process.env.SSL_CHECK_HOST || 'vivrimarket.com', port = 443) => {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+
+    const socket = tls.connect({ host, port, servername: host, timeout: 5000 }, () => {
+      const cert = socket.getPeerCertificate();
+      socket.end();
+      if (!cert || !cert.valid_to) {
+        finish({ status: 'unknown', message: 'Certificat introuvable' });
+        return;
+      }
+      const validTo = new Date(cert.valid_to);
+      const daysRemaining = Math.ceil((validTo - Date.now()) / (1000 * 60 * 60 * 24));
+      let status = 'ok';
+      if (daysRemaining < 0) status = 'error';
+      else if (daysRemaining <= 14) status = 'warning';
+      finish({ status, host, validTo: validTo.toISOString(), daysRemaining });
+    });
+    socket.on('error', (err) => finish({ status: 'error', host, message: err.message }));
+    socket.on('timeout', () => {
+      socket.destroy();
+      finish({ status: 'error', host, message: 'Timeout de connexion' });
+    });
+  });
+};
 
 const sanitizeUser = (user) => {
   if (!user) return null;
@@ -724,11 +762,14 @@ const getSystemStatus = async (req, res) => {
     };
   }
 
+  const sslInfo = await checkSslCertificate();
+
   const memMB = (bytes) => Math.round(bytes / 1024 / 1024);
   const mem = process.memoryUsage();
 
   res.json({
     mysql: { status: mysqlStatus, counts: dbCounts },
+    ssl: sslInfo,
     whatsapp: {
       status: isWhatsAppReady() ? 'ok' : 'disconnected',
       enabled: process.env.WHATSAPP_ENABLED !== 'false',

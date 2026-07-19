@@ -19,7 +19,7 @@ const fmtUptime = (s) => {
 // ── Sub-components ───────────────────────────────────────
 const ServiceCard = ({ label, status, detail, icon }) => {
   const isOk = status === 'ok';
-  const isWarn = status === 'disconnected' || status === 'unknown';
+  const isWarn = status === 'disconnected' || status === 'unknown' || status === 'warning';
   return (
     <div className={`set-service-card ${isOk ? 'set-service--ok' : isWarn ? 'set-service--warn' : 'set-service--error'}`}>
       <div className="set-service-icon">{icon}</div>
@@ -329,6 +329,18 @@ const SettingsPage = () => {
                       : `Erreur SMTP — ${status.email?.config?.host || '—'}`
                   }
                   icon="📧"
+                />
+                <ServiceCard
+                  label="Certificat SSL"
+                  status={status.ssl?.status}
+                  detail={
+                    status.ssl?.status === 'error'
+                      ? `Expiré ou injoignable — ${status.ssl?.message || status.ssl?.host || ''}`
+                      : status.ssl?.daysRemaining != null
+                        ? `Expire dans ${status.ssl.daysRemaining} jour${status.ssl.daysRemaining > 1 ? 's' : ''} (${new Date(status.ssl.validTo).toLocaleDateString('fr-FR')})`
+                        : '—'
+                  }
+                  icon="🔒"
                 />
               </div>
 
