@@ -92,6 +92,12 @@ router.post('/initiate', async (req, res) => {
 
     await paymentTransactions.record(transactionId, providerId);
 
+    // Les consommateurs n'ont plus de formule d'abonnement payante (paiement à
+    // l'unité uniquement pour débloquer un contact vendeur, cf. productPayments.js)
+    // — on force formule à null pour ce rôle même si le client en a envoyé une,
+    // pour ne jamais activer d'abonnement consommateur côté webhook.
+    const safeFormule = role === 'consommateur' ? null : (formule || 'BLEU');
+
     // Sauvegarder l'inscription en attente si les données utilisateur sont fournies
     if (nom && motDePasse && (customer_email || contact)) {
       try {
@@ -113,7 +119,7 @@ router.post('/initiate', async (req, res) => {
             hashedPassword,
             (contact || customer_phone || '').replace(/\D/g, '').substring(0, 30),
             role || 'agriculteur',
-            formule || 'BLEU',
+            safeFormule,
             fermeNom  || null,
             localisation || null,
             typeExploitation || null,

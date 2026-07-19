@@ -18,7 +18,6 @@ import ProductDetail from './components/ProductDetail';
 import CategoriePage from './components/CategoriePage';
 import OffersPage from './components/OffersPage';
 import InscriptionPage from './components/InscriptionPage';
-import PaiementPage from './components/PaiementPage';
 import PaiementReussi from './components/PaiementReussi';
 import PaiementEchec from './components/PaiementEchec';
 import TermsPage from './components/TermsPage';
@@ -101,7 +100,6 @@ const AppContent = () => {
         <Route path="/produits/:id" element={<ProductDetail />} />
         <Route path="/categories/:nomCategorie" element={<CategoriePage />} />
         <Route path="/inscription" element={<InscriptionPage />} />
-        <Route path="/paiement" element={<PaiementPage />} />
         <Route path="/paiement-reussi" element={<PaiementReussi />} />
         <Route path="/paiement-echec" element={<PaiementEchec />} />
         <Route path="/offres" element={<OffersPage />} />

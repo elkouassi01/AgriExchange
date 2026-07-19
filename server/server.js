@@ -29,16 +29,13 @@ const { testMysqlConnection } = require('./config/mysql');
 const msgRepo = require('./repositories/mysqlMessageRepository');
 
 const errorHandler = require('./middlewares/errorHandler');
-const { protect } = require('./middlewares/auth');
 
 const authRoutes = require('./routes/auth');
 const productsRoutes = require('./routes/products');
 const contactRoutes = require('./routes/contact');
-const forfaitsRoutes = require('./routes/forfaits');
 const adminRoutes = require('./routes/adminRoutes');
 const cinetpayNotifyRoutes = require('./routes/cinetpayNotify');
 const chatRoutes = require('./routes/chatRoutes');
-const userRoutes = require('./routes/userRoutes');
 const paiementRoutes = require('./routes/paiement');
 const inscriptionGratuiteRoutes = require('./routes/inscriptionGratuite');
 const productPaymentsRoutes = require('./routes/productPayments');
@@ -246,13 +243,11 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/inscription-gratuite', inscriptionGratuiteRoutes);
 app.use('/api/v1/products', productsRoutes);
 app.use('/api/v1/contact', contactRoutes);
-app.use('/api/v1/forfaits', forfaitsRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/cinetpay-notify', cinetpayNotifyRoutes);
 app.use('/api/v1/paiement', paiementRoutes);
 app.use('/api/v1/chat', chatRoutes);
 
-app.use('/api/v1/users', protect, userRoutes);
 app.use('/api/v1/product-payments', productPaymentsRoutes);
 app.use('/api/v1/contact-requests', contactRequestsRoutes);
 app.use('/api/v1/reviews', reviewsRoutes);

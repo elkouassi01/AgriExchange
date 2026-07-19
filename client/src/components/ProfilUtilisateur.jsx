@@ -117,7 +117,7 @@ const ProfilUtilisateur = () => {
     }
   };
 
-  const planMeta = user.abonnement?.formule
+  const planMeta = isFarmer && user.abonnement?.formule
     ? { BLEU: { color: '#2563eb', bg: '#dbeafe' }, GOLD: { color: '#d97706', bg: '#fef9c3' }, PLATINUM: { color: '#7c3aed', bg: '#ede9fe' } }[user.abonnement.formule]
     : null;
 

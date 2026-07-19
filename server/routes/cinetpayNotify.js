@@ -122,13 +122,14 @@ router.post('/cinetpay-notify', async (req, res) => {
       ]
     );
 
-    // Activer l'abonnement (agriculteur ou consommateur — la restriction précédente
-    // au seul rôle agriculteur laissait les consommateurs payants sans aucun droit).
-    // Écrit dans user_subscriptions, la table que le reste du code vérifie réellement
-    // (quota de vues, éligibilité sponsoring) — l'ancienne requête visait `abonnements`
-    // avec des noms de colonnes inexistants (user_id/date_fin/statut au lieu de
-    // utilisateur_id/date_expiration/status) et échouait silencieusement à chaque fois.
-    if (reg.formule) {
+    // Activer l'abonnement — réservé aux agriculteurs (les consommateurs n'ont plus
+    // de formule payante depuis le passage au paiement à l'unité pour débloquer un
+    // contact vendeur, cf. productPayments.js). Écrit dans user_subscriptions, la
+    // table que le reste du code vérifie réellement (éligibilité sponsoring) —
+    // l'ancienne requête visait `abonnements` avec des noms de colonnes inexistants
+    // (user_id/date_fin/statut au lieu de utilisateur_id/date_expiration/status) et
+    // échouait silencieusement à chaque fois.
+    if (reg.formule && reg.role === 'agriculteur') {
       const durations = { BLEU: 1, GOLD: 3, PLATINUM: 6 };
       const months = durations[reg.formule] || 1;
       const dateDebut = new Date();

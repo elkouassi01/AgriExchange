@@ -135,22 +135,23 @@ const GeneralTab = ({ status }) => {
         </div>
       </div>
 
-      <h3 className="set-section-title" style={{ marginTop: '24px' }}>Formules d'abonnement</h3>
+      <h3 className="set-section-title" style={{ marginTop: '24px' }}>Formules d'abonnement (agriculteurs)</h3>
       <div className="set-plans-grid">
         {[
-          { name: 'BLEU',     duration: '1 mois',  quota: '1 vue/mois',      color: '#0369a1', bg: '#e0f2fe' },
-          { name: 'GOLD',     duration: '3 mois',  quota: '5 vues/mois',     color: '#b45309', bg: '#fef3c7' },
-          { name: 'PLATINUM', duration: '6 mois',  quota: 'Vues illimitées', color: '#7c3aed', bg: '#ede9fe' },
+          { name: 'BLEU',     duration: '1 mois',  quota: 'Jusqu’à 2 denrées',   color: '#0369a1', bg: '#e0f2fe' },
+          { name: 'GOLD',     duration: '3 mois',  quota: 'Jusqu’à 5 denrées',   color: '#b45309', bg: '#fef3c7' },
+          { name: 'PLATINUM', duration: '6 mois',  quota: 'Denrées illimitées', color: '#7c3aed', bg: '#ede9fe' },
         ].map(plan => (
           <div key={plan.name} className="set-plan-card" style={{ borderTop: `3px solid ${plan.color}` }}>
             <span className="set-plan-badge" style={{ color: plan.color, background: plan.bg }}>{plan.name}</span>
             <div className="set-plan-info">
               <span>⏱ {plan.duration}</span>
-              <span>👁 {plan.quota}</span>
+              <span>🌾 {plan.quota}</span>
             </div>
           </div>
         ))}
       </div>
+      <p className="set-plans-note">Les consommateurs n'ont pas de formule d'abonnement — paiement à l'unité (150/300 FCFA) pour débloquer les coordonnées d'un vendeur.</p>
     </div>
   );
 };

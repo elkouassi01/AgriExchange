@@ -53,17 +53,8 @@ export const UserProvider = ({ children }) => {
       const userId = currentUser?.id || currentUser?._id;
 
       if (currentUser && userId) {
-        const emptyAbonnement = { formule: null, statut: 'inactif', dateFin: null, vuesDetails: { quotaRestant: 0, produitsVus: [] } };
-        const abonnement = currentUser.role === 'consommateur'
-          ? await fetchUserAbonnement(userId)
-          : emptyAbonnement;
-        const fullUser = {
-          ...currentUser,
-          abonnement: abonnement.formule ? abonnement : null,
-          vuesDetails: abonnement.vuesDetails,
-        };
-        setUser(fullUser);
-        localStorage.setItem('userData', JSON.stringify(fullUser));
+        setUser(currentUser);
+        localStorage.setItem('userData', JSON.stringify(currentUser));
       } else {
         clearSession();
       }
@@ -78,30 +69,7 @@ export const UserProvider = ({ children }) => {
     }
   };
 
-  // Recupere les infos d'abonnement
-  const fetchUserAbonnement = async (userId) => {
-    try {
-      const res = await api.get('/users/' + userId + '/forfait');
-      return {
-        formule: res.data.formule,
-        statut: res.data.statut || 'inactif',
-        dateFin: res.data.dateFin,
-        vuesDetails: {
-          quotaRestant: res.data.quotaRestant ?? 0,
-          produitsVus: res.data.produitsVus ?? [],
-        },
-      };
-    } catch {
-      return {
-        formule: null,
-        statut: 'inactif',
-        dateFin: null,
-        vuesDetails: { quotaRestant: 0, produitsVus: [] },
-      };
-    }
-  };
-
-  // Rafraichit les donnees utilisateur + abonnement
+  // Rafraichit les donnees utilisateur
   const refreshUserData = async () => {
     const uid = user?.id || user?._id;
     if (!uid) return;
@@ -110,31 +78,9 @@ export const UserProvider = ({ children }) => {
       const userRes = await api.get('/auth/me');
       const currentUser = userRes.data.utilisateur || userRes.data.user;
 
-      const emptyAbonnement = { formule: null, statut: 'inactif', dateFin: null, vuesDetails: { quotaRestant: 0, produitsVus: [] } };
-      let abonnement = emptyAbonnement;
-
-      if ((currentUser?.role ?? user?.role) === 'consommateur') {
-        const abonnementRes = await api.get('/users/' + uid + '/forfait');
-        abonnement = {
-          formule: abonnementRes.data.formule,
-          statut: abonnementRes.data.statut || 'inactif',
-          dateFin: abonnementRes.data.dateFin,
-          vuesDetails: {
-            quotaRestant: abonnementRes.data.quotaRestant ?? 0,
-            produitsVus: abonnementRes.data.produitsVus ?? [],
-          },
-        };
-      }
-
-      const fullUser = {
-        ...currentUser,
-        abonnement: abonnement.formule ? abonnement : null,
-        vuesDetails: abonnement.vuesDetails,
-      };
-
-      setUser(fullUser);
-      localStorage.setItem('userData', JSON.stringify(fullUser));
-      return fullUser;
+      setUser(currentUser);
+      localStorage.setItem('userData', JSON.stringify(currentUser));
+      return currentUser;
     } catch (err) {
       console.error('Erreur refreshUserData:', err);
       return user;

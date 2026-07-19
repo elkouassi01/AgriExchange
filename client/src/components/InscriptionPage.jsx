@@ -54,8 +54,10 @@ const FARMER_PLANS = {
   },
 };
 
-const CONSUMER_TARIFFS = { BLEU: '1 000 FCFA/mois', GOLD: '3 000 FCFA/mois', PLATINUM: '5 000 FCFA/mois' };
-const CONSUMER_AMOUNTS = { BLEU: 1000, GOLD: 3000, PLATINUM: 5000 };
+// Montants du paiement agriculteur post-promo (une fois PROMO_FIN_AGRICULTEUR dépassée) —
+// doivent rester alignés sur les prix affichés dans FARMER_PLANS ci-dessus / OffersPage.jsx.
+// Les consommateurs n'ont plus de formule payante (paiement à l'unité, cf. productPayments.js).
+const FARMER_AMOUNTS = { BLEU: 500, GOLD: 1500, PLATINUM: 3000 };
 
 const TYPE_EXPLOITATION_OPTIONS = [
   { value: '', label: "Sélectionnez un type d'exploitation" },
@@ -204,7 +206,7 @@ const InscriptionPage = () => {
         return;
       }
 
-      const montant = CONSUMER_AMOUNTS[formule];
+      const montant = FARMER_AMOUNTS[formule];
       if (!montant) {
         setSubmitError('Formule invalide. Choisissez une formule depuis la page des offres.');
         return;
@@ -278,16 +280,13 @@ const InscriptionPage = () => {
           {type === 'agriculteur' ? 'Inscription Agriculteur' : 'Inscription Consommateur'}
         </h1>
 
-        {formule && (
+        {type === 'agriculteur' && formule && (
           <div className={'formule-badge formule-badge--' + formule.toLowerCase()}>
             Formule {formule}
             {planInfo && (
               <span className="formule-badge-price">
                 {isPromo ? ' — GRATUIT' : (' — ' + planInfo.price)}
               </span>
-            )}
-            {!planInfo && CONSUMER_TARIFFS[formule] && (
-              <span className="formule-badge-price"> — {CONSUMER_TARIFFS[formule]}</span>
             )}
           </div>
         )}

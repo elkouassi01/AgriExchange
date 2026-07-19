@@ -26,12 +26,6 @@ const ROLE_CONFIG = {
   admin:        { label: 'Admin',       color: '#7c3aed', bg: '#ede9fe' },
 };
 
-const PLAN_CONFIG = {
-  BLEU:     { color: '#2563eb', bg: '#dbeafe' },
-  GOLD:     { color: '#b45309', bg: '#fef3c7' },
-  PLATINUM: { color: '#7c3aed', bg: '#ede9fe' },
-};
-
 const avatarBg = (role) => ROLE_CONFIG[role]?.color || '#6b7280';
 
 const PAGE_SIZE = 15;
@@ -250,7 +244,6 @@ const UsersPage = () => {
                 <th>Utilisateur</th>
                 <th>Contact</th>
                 <th>Rôle</th>
-                <th>Plan</th>
                 <th>Statut</th>
                 <th>Inscription</th>
                 <th>Actions</th>
@@ -258,10 +251,9 @@ const UsersPage = () => {
             </thead>
             <tbody>
               {paginated.length === 0 ? (
-                <tr><td colSpan={7} className="up-empty">Aucun utilisateur trouvé</td></tr>
+                <tr><td colSpan={6} className="up-empty">Aucun utilisateur trouvé</td></tr>
               ) : paginated.map(u => {
                 const rc = ROLE_CONFIG[u.role] || { label: u.role, color: '#6b7280', bg: '#f1f5f9' };
-                const pc = u.abonnement?.formule ? PLAN_CONFIG[u.abonnement.formule] : null;
                 return (
                   <tr key={u.id} className="up-row">
                     {/* Utilisateur */}
@@ -281,14 +273,6 @@ const UsersPage = () => {
                       <span className="up-badge" style={{ color: rc.color, background: rc.bg }}>
                         {rc.label}
                       </span>
-                    </td>
-                    {/* Plan */}
-                    <td className="up-cell">
-                      {pc ? (
-                        <span className="up-badge" style={{ color: pc.color, background: pc.bg }}>
-                          {u.abonnement.formule}
-                        </span>
-                      ) : <span className="up-muted">—</span>}
                     </td>
                     {/* Statut */}
                     <td className="up-cell">

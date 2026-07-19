@@ -77,9 +77,9 @@ const getDashboardStats = async (req, res) => {
         (SELECT COUNT(*) FROM users WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW()))  AS new_users_month,
         (SELECT COUNT(*) FROM users WHERE role = 'agriculteur' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS new_farmers_month,
         (SELECT COUNT(*) FROM users WHERE role = 'consommateur' AND MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())) AS new_consumers_month,
-        (SELECT COUNT(*) FROM user_subscriptions WHERE statut = 'actif' AND date_fin >= NOW() AND formule = 'BLEU')     AS active_subscriptions_bleu,
-        (SELECT COUNT(*) FROM user_subscriptions WHERE statut = 'actif' AND date_fin >= NOW() AND formule = 'GOLD')     AS active_subscriptions_gold,
-        (SELECT COUNT(*) FROM user_subscriptions WHERE statut = 'actif' AND date_fin >= NOW() AND formule = 'PLATINUM') AS active_subscriptions_platinum
+        (SELECT COUNT(*) FROM user_subscriptions us JOIN users u ON u.id = us.user_id WHERE us.statut = 'actif' AND us.date_fin >= NOW() AND us.formule = 'BLEU'     AND u.role = 'agriculteur') AS active_subscriptions_bleu,
+        (SELECT COUNT(*) FROM user_subscriptions us JOIN users u ON u.id = us.user_id WHERE us.statut = 'actif' AND us.date_fin >= NOW() AND us.formule = 'GOLD'     AND u.role = 'agriculteur') AS active_subscriptions_gold,
+        (SELECT COUNT(*) FROM user_subscriptions us JOIN users u ON u.id = us.user_id WHERE us.statut = 'actif' AND us.date_fin >= NOW() AND us.formule = 'PLATINUM' AND u.role = 'agriculteur') AS active_subscriptions_platinum
     `);
 
     // ── Revenus + transactions par statut ─────────────────────────────────
@@ -560,6 +560,11 @@ const getTransactions = async (req, res) => {
   }
 };
 
+// Les abonnements payants ne concernent plus que les agriculteurs (les consommateurs
+// sont passés au paiement à l'unité, cf. productPayments.js) — la table `abonnements`
+// n'est écrite par aucun flux réel depuis le passage du webhook CinetPay à
+// `user_subscriptions` (voir cinetpayNotify.js), qui est la seule source vraie ici,
+// filtrée à role = 'agriculteur' comme filet de sécurité.
 const getSubscriptions = async (req, res) => {
   try {
     const pool = getMysqlPool();
@@ -568,46 +573,50 @@ const getSubscriptions = async (req, res) => {
     const limitNum = parseInt(limit, 10);
     const offset = (pageNum - 1) * limitNum;
 
-    const conditions = [];
+    const conditions = ["u.role = 'agriculteur'"];
     const values = [];
-    if (status === 'active')         { conditions.push('a.date_expiration >= NOW() AND a.status = ?'); values.push('active'); }
-    else if (status === 'expired')   { conditions.push('a.date_expiration < NOW()'); }
-    else if (status === 'cancelled') { conditions.push('a.status = ?'); values.push('cancelled'); }
-    else if (status === 'pending')   { conditions.push('a.status = ?'); values.push('pending'); }
+    if (status === 'active')         { conditions.push("us.date_fin >= NOW() AND us.statut = 'actif'"); }
+    else if (status === 'expired')   { conditions.push('us.date_fin < NOW()'); }
+    else if (status === 'cancelled') { conditions.push("us.statut = 'suspendu'"); }
+    else if (status === 'pending')   { conditions.push("us.statut = 'en_attente'"); }
     else if (status === 'expiring_soon') {
-      conditions.push('a.date_expiration >= NOW() AND a.date_expiration <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND a.status = ?');
-      values.push('active');
+      conditions.push("us.date_fin >= NOW() AND us.date_fin <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND us.statut = 'actif'");
     }
-    if (formule) { conditions.push('a.formule = ?'); values.push(formule); }
+    if (formule) { conditions.push('us.formule = ?'); values.push(formule); }
     if (search?.trim()) {
       conditions.push('(u.nom LIKE ? OR u.email LIKE ?)');
       const like = `%${search.trim()}%`;
       values.push(like, like);
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const where = `WHERE ${conditions.join(' AND ')}`;
 
     const [[statsRow], [countRow], [rows]] = await Promise.all([
       pool.query(`
         SELECT
-          COUNT(*)                                                                          AS total,
-          SUM(date_expiration >= NOW() AND status = 'active')                              AS active,
-          SUM(date_expiration < NOW())                                                      AS expired,
-          SUM(status = 'cancelled')                                                         AS cancelled,
-          SUM(status = 'pending')                                                           AS pending,
-          SUM(date_expiration >= NOW() AND date_expiration <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND status = 'active') AS expiring_soon,
-          COALESCE(SUM(montant), 0)                                                         AS total_revenue,
-          SUM(formule = 'BLEU')                                                             AS bleu,
-          SUM(formule = 'GOLD')                                                             AS gold,
-          SUM(formule = 'PLATINUM')                                                         AS platinum
-        FROM abonnements`),
-      pool.query(`SELECT COUNT(*) AS total FROM abonnements a ${where}`, values),
+          COUNT(*)                                                                            AS total,
+          SUM(us.date_fin >= NOW() AND us.statut = 'actif')                                    AS active,
+          SUM(us.date_fin < NOW())                                                              AS expired,
+          SUM(us.statut = 'suspendu')                                                           AS cancelled,
+          SUM(us.statut = 'en_attente')                                                         AS pending,
+          SUM(us.date_fin >= NOW() AND us.date_fin <= DATE_ADD(NOW(), INTERVAL 7 DAY) AND us.statut = 'actif') AS expiring_soon,
+          COALESCE(SUM(us.montant), 0)                                                          AS total_revenue,
+          SUM(us.formule = 'BLEU')                                                              AS bleu,
+          SUM(us.formule = 'GOLD')                                                              AS gold,
+          SUM(us.formule = 'PLATINUM')                                                          AS platinum
+        FROM user_subscriptions us
+        JOIN users u ON u.id = us.user_id
+        WHERE u.role = 'agriculteur'`),
       pool.query(
-        `SELECT a.*, u.nom AS user_nom, u.email AS user_email
-         FROM abonnements a
-         LEFT JOIN users u ON u.id = a.utilisateur_id
+        `SELECT COUNT(*) AS total FROM user_subscriptions us JOIN users u ON u.id = us.user_id ${where}`,
+        values
+      ),
+      pool.query(
+        `SELECT us.*, u.nom AS user_nom, u.email AS user_email
+         FROM user_subscriptions us
+         JOIN users u ON u.id = us.user_id
          ${where}
-         ORDER BY a.date_debut DESC LIMIT ? OFFSET ?`,
+         ORDER BY us.date_debut DESC LIMIT ? OFFSET ?`,
         [...values, limitNum, offset]
       ),
     ]);
@@ -617,10 +626,9 @@ const getSubscriptions = async (req, res) => {
       formule: r.formule,
       montant: Number(r.montant),
       dateDebut: r.date_debut,
-      dateExpiration: r.date_expiration,
-      status: r.status,
-      isActive: new Date(r.date_expiration) >= new Date() && r.status === 'active',
-      transactionId: r.transaction_id,
+      dateExpiration: r.date_fin,
+      status: r.statut === 'suspendu' ? 'cancelled' : r.statut === 'en_attente' ? 'pending' : undefined,
+      isActive: r.statut === 'actif' && new Date(r.date_fin) >= new Date(),
       createdAt: r.created_at,
       userNom: r.user_nom || 'Inconnu',
       userEmail: r.user_email || '—',

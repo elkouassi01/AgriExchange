@@ -343,6 +343,12 @@
   color: #475569;
 }
 
+.set-plans-note {
+  margin: 12px 2px 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
 /* ── Onglet Paiement ────────────────────────────────────── */
 .pay-form {
   display: flex;
