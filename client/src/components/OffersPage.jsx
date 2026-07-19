@@ -1,13 +1,22 @@
-import React from "react";
-import { useNavigate, Link } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import "./OffersPage.css";
 import Footer from "./Footer";
 const OffersPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubscription = (type, formule) => {
     navigate(`/inscription?type=${type}&formule=${formule}`);
   };
+
+  // Arrivée depuis "Créer un compte Agriculteur" (LoginPage) : va directement
+  // aux formules plutôt que de faire défiler l'utilisateur depuis le haut.
+  useEffect(() => {
+    if (location.hash === '#offres-agriculteurs') {
+      document.getElementById('offres-agriculteurs')?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [location.hash]);
 
   return (
     <div className="offers-container">
@@ -71,7 +80,7 @@ const OffersPage = () => {
       </section>
 
       {/* ---- Section Agriculteurs ---- */}
-      <section className="offer-category farmer-section">
+      <section id="offres-agriculteurs" className="offer-category farmer-section">
         <div className="category-header">
           <div className="icon">🌾</div>
           <h2>Offres Agriculteurs — Publiez vos denrées</h2>

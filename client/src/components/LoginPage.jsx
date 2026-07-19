@@ -154,7 +154,7 @@ const LoginPage = () => {
            <p>Pas encore de compte ?</p>
            <div className="register-links">
              <Link to="/inscription?type=consommateur">Créer un compte Consommateur</Link>
-             <Link to="/inscription?type=agriculteur">Créer un compte Agriculteur</Link>
+             <Link to="/offres#offres-agriculteurs">Créer un compte Agriculteur</Link>
            </div>
          </div>
       </form>

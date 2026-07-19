@@ -1,18 +1,13 @@
 const express = require('express');
 const router = express.Router();
+const CALLING_CODES = require('../data/callingCodes');
 
-router.get('/calling-codes', async (req, res) => {
-  try {
-    const response = await fetch('https://restcountries.com/v3.1/all?fields=idd,name,flags');
-    if (!response.ok) {
-      return res.status(response.status).json({ success: false, message: 'Erreur lors de la récupération des données' });
-    }
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    console.error('[countries/calling-codes]', err.message);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
-  }
+// Liste statique (voir server/data/callingCodes.js) — l'ancien appel à
+// restcountries.com/v3.1 est mort : cette API renvoie désormais HTTP 200
+// avec un message de dépréciation au lieu des données, ce qui cassait le
+// sélecteur d'indicatif sur les pages d'inscription.
+router.get('/calling-codes', (req, res) => {
+  res.json(CALLING_CODES);
 });
 
 module.exports = router;
