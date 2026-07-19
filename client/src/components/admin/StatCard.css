@@ -19,16 +19,16 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--admin-primary), var(--admin-info));
+  height: 3px;
+  background: var(--admin-primary);
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
 }
 
 .stat-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-2px);
   box-shadow: var(--admin-shadow-md);
-  border-color: rgba(59, 130, 246, 0.3);
+  border-color: var(--admin-border);
 }
 
 .stat-card:hover::before {
@@ -39,20 +39,24 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 1rem;
+  margin-bottom: 1.125rem;
 }
 
 .card-icon {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--admin-primary), var(--admin-primary-dark));
-  border-radius: 12px;
-  color: white;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-  font-size: 1.5rem;
+  background: color-mix(in srgb, var(--admin-primary) 12%, transparent);
+  border-radius: 11px;
+  color: var(--admin-primary-dark);
+  flex-shrink: 0;
+}
+
+.card-icon svg {
+  width: 22px;
+  height: 22px;
 }
 
 .card-title {
@@ -89,6 +93,8 @@
   margin: 0;
   line-height: 1.2;
   word-break: break-word;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .card-footer {
@@ -125,22 +131,32 @@
   height: 16px;
 }
 
-/* Variantes de couleur pour l'icône */
+/* Variantes de couleur pour l'icône — fond teinté sobre plutôt qu'un dégradé */
 .stat-card--success .card-icon {
-  background: linear-gradient(135deg, var(--admin-success), #16a34a);
+  background: color-mix(in srgb, var(--admin-success) 14%, transparent);
+  color: #15803d;
 }
 
 .stat-card--warning .card-icon {
-  background: linear-gradient(135deg, var(--admin-warning), #d97706);
+  background: color-mix(in srgb, var(--admin-warning) 14%, transparent);
+  color: #b45309;
 }
 
 .stat-card--danger .card-icon {
-  background: linear-gradient(135deg, var(--admin-danger), #dc2626);
+  background: color-mix(in srgb, var(--admin-danger) 14%, transparent);
+  color: #b91c1c;
 }
 
 .stat-card--info .card-icon {
-  background: linear-gradient(135deg, var(--admin-info), #0891b2);
+  background: color-mix(in srgb, var(--admin-info) 14%, transparent);
+  color: #0e7490;
 }
+
+.stat-card::before { background: var(--admin-primary); }
+.stat-card--success::before { background: var(--admin-success); }
+.stat-card--warning::before { background: var(--admin-warning); }
+.stat-card--danger::before  { background: var(--admin-danger); }
+.stat-card--info::before    { background: var(--admin-info); }
 
 /* Animation value change */
 @keyframes statPulse {

@@ -5,6 +5,11 @@ import { useUser } from '../../contexts/UserContext';
 import StatCard from '../../components/admin/StatCard';
 import ActivityChart from '../../components/admin/ActivityChart';
 import { fetchDashboardStats } from '../../services/adminService';
+import GroupsOutlined from '@mui/icons-material/GroupsOutlined';
+import AgricultureOutlined from '@mui/icons-material/AgricultureOutlined';
+import ShoppingCartOutlined from '@mui/icons-material/ShoppingCartOutlined';
+import PaymentsOutlined from '@mui/icons-material/PaymentsOutlined';
+import Inventory2Outlined from '@mui/icons-material/Inventory2Outlined';
 
 const fmtMoney = (n) => Number(n || 0).toLocaleString('fr-FR');
 
@@ -95,7 +100,7 @@ const DashboardPage = () => {
       <div className="stats-grid">
         <StatCard
           title="Utilisateurs"
-          icon="👥"
+          icon={<GroupsOutlined />}
           value={stats?.users?.total || 0}
           sub={stats?.users?.newThisMonth > 0 ? `+${stats.users.newThisMonth} ce mois` : null}
           description="inscrits au total"
@@ -103,7 +108,7 @@ const DashboardPage = () => {
         />
         <StatCard
           title="Agriculteurs"
-          icon="🌾"
+          icon={<AgricultureOutlined />}
           value={stats?.users?.farmers || 0}
           sub={stats?.users?.newFarmersMonth > 0 ? `+${stats.users.newFarmersMonth} ce mois` : null}
           description="comptes vendeurs"
@@ -111,7 +116,7 @@ const DashboardPage = () => {
         />
         <StatCard
           title="Consommateurs"
-          icon="🛒"
+          icon={<ShoppingCartOutlined />}
           value={stats?.users?.consumers || 0}
           sub={stats?.users?.newConsumersMonth > 0 ? `+${stats.users.newConsumersMonth} ce mois` : null}
           description="comptes acheteurs"
@@ -119,7 +124,7 @@ const DashboardPage = () => {
         />
         <StatCard
           title="Revenu total"
-          icon="💰"
+          icon={<PaymentsOutlined />}
           value={`${fmtMoney(stats?.revenue?.total)} XOF`}
           change={stats?.revenue?.growth ?? null}
           sub={stats?.revenue?.thisMonth > 0 ? `${fmtMoney(stats.revenue.thisMonth)} XOF ce mois` : null}
@@ -128,7 +133,7 @@ const DashboardPage = () => {
         />
         <StatCard
           title="Denrées actives"
-          icon="📦"
+          icon={<Inventory2Outlined />}
           value={stats?.products?.total || 0}
           sub={pendingModeration > 0 ? `${pendingModeration} en attente` : 'Tout approuvé ✓'}
           description="sur la plateforme"
